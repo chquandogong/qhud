@@ -329,17 +329,96 @@
 
   const tauri = window.__TAURI__;
   if (tauri) {
+    const win = tauri.window.getCurrentWindow();
+    const PhysicalPos =
+      (tauri.dpi && tauri.dpi.PhysicalPosition) ||
+      tauri.window.PhysicalPosition;
+    const PhysicalSize =
+      (tauri.dpi && tauri.dpi.PhysicalSize) || tauri.window.PhysicalSize;
+
     tauri.event.listen("qhud://report", ({ payload }) => {
       state.payload = payload;
       state.receivedAt = Date.now();
       render();
     });
+
+    // Manual move/resize: compositor-side interactive move/resize
+    // (startDragging / drag regions / tao edge grabs) is unreliable
+    // for a keep-below XWayland window on GNOME, and WebKitGTK's
+    // event.screenX/Y goes stale while the window itself moves. So
+    // geometry is driven by an rAF loop over Tauri's *global*
+    // cursorPosition(), which is immune to both problems: pointer
+    // events only arm/disarm the loop.
+    const cursorPosition = tauri.window.cursorPosition;
+    const manual = { mode: null, grabX: 0, grabY: 0, baseW: 0, baseH: 0 };
+
+    async function beginManual(mode, e) {
+      try {
+        e.currentTarget.setPointerCapture(e.pointerId);
+      } catch {}
+      // Deliberately no outerPosition()/outerSize(): tao mis-reports
+      // both by a phantom frame height (~top-bar sized) for this
+      // undecorated X11 window. The DOM already knows the truth:
+      // clientX/Y is the pointer's offset inside the window, and
+      // innerWidth/Height is the real window size (frameless ⇒
+      // client area == window).
+      const scale = window.devicePixelRatio || 1;
+      if (mode === "move") {
+        manual.grabX = Math.round(e.clientX * scale);
+        manual.grabY = Math.round(e.clientY * scale);
+      } else {
+        const cur = await cursorPosition();
+        manual.grabX = cur.x;
+        manual.grabY = cur.y;
+        manual.baseW = Math.round(window.innerWidth * scale);
+        manual.baseH = Math.round(window.innerHeight * scale);
+      }
+      manual.mode = mode;
+      requestAnimationFrame(step);
+    }
+
+    async function step() {
+      if (!manual.mode) return;
+      try {
+        const cur = await cursorPosition();
+        if (manual.mode === "move") {
+          await win.setPosition(
+            new PhysicalPos(
+              Math.round(cur.x - manual.grabX),
+              Math.round(cur.y - manual.grabY),
+            ),
+          );
+        } else if (manual.mode === "resize") {
+          await win.setSize(
+            new PhysicalSize(
+              Math.max(320, Math.round(manual.baseW + cur.x - manual.grabX)),
+              Math.max(200, Math.round(manual.baseH + cur.y - manual.grabY)),
+            ),
+          );
+        }
+      } catch (err) {
+        console.error("qhud manual drag:", err);
+      }
+      if (manual.mode) requestAnimationFrame(step);
+    }
+
+    const endManual = () => {
+      manual.mode = null;
+    };
+    document.addEventListener("pointerup", endManual);
+    document.addEventListener("pointercancel", endManual);
+    window.addEventListener("blur", endManual);
+
+    for (const bar of document.querySelectorAll(".topbar, .foot")) {
+      bar.addEventListener("pointerdown", (e) => {
+        if (e.target.closest(".grip")) return;
+        e.preventDefault();
+        beginManual("move", e);
+      });
+    }
     grip.addEventListener("pointerdown", (e) => {
       e.preventDefault();
-      tauri.window
-        .getCurrentWindow()
-        .startResizeDragging("SouthEast")
-        .catch(() => {});
+      beginManual("resize", e);
     });
   } else {
     // Browser preview (no Tauri runtime): render a static sample so

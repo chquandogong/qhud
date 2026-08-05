@@ -472,10 +472,16 @@ body {
   margin-left: auto;
   flex: none;
   color: var(--tx-faint);
-  font-size: 11px;
+  font-size: 13px;
   cursor: nwse-resize;
-  padding: 0 2px;
+  /* Generous inner hit-zone: tao's invisible borderless-resize edge
+     swallows pointer input within ~10px of the window border, so the
+     grip's clickable box must extend well inside that inset. */
+  padding: 8px 4px 2px 16px;
+  margin-right: 2px;
+  margin-bottom: 2px;
   line-height: 1;
+  touch-action: none;
 }
 .grip:hover {
   color: var(--tx-mut);

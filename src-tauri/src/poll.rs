@@ -32,10 +32,20 @@ type LiveCtx = Context<TmuxSource, SilentNotify>;
 /// `LIVE_RETRY` so starting herdr/tmux after qhud goes live without a
 /// restart.
 pub fn run(app: AppHandle) {
+    use tauri_plugin_window_state::{AppHandleExt, StateFlags};
+
     let mut live: Option<(LiveCtx, &'static str)> = None;
     let mut last_attempt: Option<Instant> = None;
+    let mut tick: u64 = 0;
 
     loop {
+        // The window-state plugin only persists on graceful exit, and a
+        // desktop widget usually dies by signal/logout — checkpoint
+        // geometry periodically so position/size survive anyway.
+        tick += 1;
+        if tick.is_multiple_of(15) {
+            let _ = app.save_window_state(StateFlags::all());
+        }
         if live.is_none() && last_attempt.is_none_or(|t| t.elapsed() >= LIVE_RETRY) {
             last_attempt = Some(Instant::now());
             live = build_live();
