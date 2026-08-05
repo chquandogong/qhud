@@ -39,6 +39,7 @@ Emitted as Tauri event `qhud://report`; see `src-tauri/src/view.rs`.
 {
   "schema": 1,
   "source": "live" | "demo",
+  "backend": "herdr" | "tmux" | null,   // resolved mux backend; null in demo (additive, v0.1.1)
   "generated_at_ms": 0,
   "poll_secs": 2,
   "summary": { "panes": 3, "conflicts": 1, "max_5h_pct": 88 },

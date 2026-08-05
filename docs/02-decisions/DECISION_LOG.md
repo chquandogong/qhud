@@ -84,3 +84,26 @@ Format: context → options → decision → rationale → residual risk.
   attestation. No npm/deb/AppImage yet.
 - **Residual risk**: users must install webkit2gtk runtime — documented
   in RUNBOOK.
+
+## D-007 · Mux backend follows qmonster's factory; widget-auto probes herdr → tmux
+
+- **Context**: v0.1.0 hardcoded the tmux `PollingSource`, so herdr
+  rigs (this machine's primary mux) never went live. qmonster's
+  `[mux] backend = "auto"` resolves via `HERDR_ENV`/`HERDR_SOCKET_PATH`
+  — env vars that only exist _inside_ a herdr pane, which a desktop
+  widget usually isn't.
+- **Options**: (a) require users to set `backend = "herdr"` explicitly,
+  (b) qhud re-implements backend detection, (c) reuse
+  `app::tmux_source::build_tmux_source` and, when the config says
+  `auto` and no herdr env is inherited, probe herdr first then tmux.
+- **Decision**: (c). Explicit `tmux`/`herdr` configs are passed through
+  untouched; the backend label shown in the footer comes from the
+  _resolved_ source, not the config.
+- **Rationale**: (a) breaks the shared-config promise (same file, same
+  meaning in both frontends); (b) duplicates upstream logic that will
+  drift. Probing costs one failed CLI call at worst.
+- **Evidence**: live transition verified on 2026-08-05 —
+  `qhud: live via herdr (4 panes: …)` against a running herdr 0.7.5
+  server with real agent workspaces; tmux fallback preserved.
+- **Residual risk**: if herdr _and_ tmux both run, herdr wins under
+  widget-auto (documented; set `[mux] backend` explicitly to override).

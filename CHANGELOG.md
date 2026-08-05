@@ -2,6 +2,25 @@
 
 All notable changes to qhud. Format: [Keep a Changelog](https://keepachangelog.com/), versioning: [SemVer](https://semver.org/).
 
+## [0.1.1] — 2026-08-05
+
+### Fixed
+
+- **herdr rigs never went live**: v0.1.0 hardcoded the tmux polling
+  source. qhud now builds its pane source through qmonster's own
+  `build_tmux_source` factory, so `[mux] backend` (`auto` / `tmux` /
+  `herdr`) means the same thing in both frontends (D-007).
+
+### Added
+
+- Widget-flavored `auto`: when qhud runs outside any mux pane (no
+  herdr env inherited), it probes herdr first, then falls back to
+  tmux.
+- Payload schema v1 additive field `backend` ("herdr" | "tmux"),
+  rendered in the footer (`live·herdr · poll 2s · …`).
+- Live/demo transition logs on stderr with resolved backend and pane
+  labels — greppable evidence for the TEST_PLAN checklist.
+
 ## [0.1.0] — 2026-08-05
 
 First release — the smallest useful wedge.
