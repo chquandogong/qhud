@@ -1,0 +1,15 @@
+# Rust
+/target/
+src-tauri/target/
+
+# Tauri generated schemas
+src-tauri/gen/
+
+# Editor / OS noise
+.DS_Store
+*.swp
+.idea/
+.vscode/
+
+# Local scratch
+*.log

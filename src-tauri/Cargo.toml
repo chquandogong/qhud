@@ -1,0 +1,27 @@
+[package]
+name = "qhud"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.88"
+license = "MIT"
+description = "Ambient desktop HUD for AI CLI sessions — a glanceable, always-on-desktop second frontend for qmonster"
+repository = "https://github.com/chquandogong/qhud"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon", "image-png"] }
+tauri-plugin-window-state = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "1"
+# Observe pipeline is reused wholesale from the qmonster TUI. Pinned to
+# the exact rev this bridge was written against; bump deliberately and
+# re-run the contract tests in src/view.rs when you do.
+qmonster = { git = "https://github.com/chquandogong/qmonster", rev = "aa2bd3906c7a868ff407ff623bd625766082ae17" }
+
+[profile.release]
+strip = true
+lto = true
+codegen-units = 1
