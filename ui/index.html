@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>qhud</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div id="root" class="root">
+      <header class="topbar" data-tauri-drag-region>
+        <span class="live-dot" data-tauri-drag-region aria-hidden="true"></span>
+        <span class="brand" data-tauri-drag-region>qhud</span>
+        <span class="summary" id="summary" data-tauri-drag-region></span>
+        <span class="badge" id="srcBadge" hidden>DEMO</span>
+      </header>
+
+      <main id="tiles" class="tiles" aria-live="polite"></main>
+
+      <footer class="foot" data-tauri-drag-region>
+        <span class="meta" id="meta" data-tauri-drag-region></span>
+        <span class="grip" id="grip" title="drag to resize">◢</span>
+      </footer>
+    </div>
+    <script src="app.js"></script>
+  </body>
+</html>
