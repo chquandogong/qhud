@@ -301,7 +301,8 @@
       if (empty) empty.remove();
     }
 
-    metaEl.textContent = `${p.source} · poll ${p.poll_secs}s · updated ${clock(p.generated_at_ms)}`;
+    const src = p.backend ? `${p.source}·${p.backend}` : p.source;
+    metaEl.textContent = `${src} · poll ${p.poll_secs}s · updated ${clock(p.generated_at_ms)}`;
   }
 
   // 1s ticker: countdowns and elapsed badges advance between polls.

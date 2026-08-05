@@ -21,8 +21,11 @@ pub const SCHEMA_VERSION: u32 = 1;
 #[derive(Serialize, Clone)]
 pub struct Payload {
     pub schema: u32,
-    /// "live" (tmux observation) or "demo" (no tmux server).
+    /// "live" (mux observation) or "demo" (no mux server).
     pub source: &'static str,
+    /// Which mux backend feeds the live payload ("herdr" | "tmux");
+    /// `None` in demo mode. Additive schema-v1 field.
+    pub backend: Option<String>,
     pub generated_at_ms: u64,
     pub poll_secs: u64,
     pub panes: Vec<PaneView>,
@@ -112,6 +115,7 @@ pub fn payload(reports: &[PaneReport]) -> Payload {
     Payload {
         schema: SCHEMA_VERSION,
         source: "live",
+        backend: None, // filled by the poll loop, which knows the mux
         generated_at_ms: now_ms(),
         poll_secs: 2,
         panes,

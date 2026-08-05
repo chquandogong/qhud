@@ -148,6 +148,7 @@ pub fn payload() -> Payload {
     Payload {
         schema: SCHEMA_VERSION,
         source: "demo",
+        backend: None,
         generated_at_ms: now_ms(),
         poll_secs: 2,
         summary: Summary {
