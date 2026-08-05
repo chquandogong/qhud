@@ -32,18 +32,42 @@ cargo build --release          # binary at target/release/qhud
 - Quit: tray icon → _Quit qhud_, or `pkill qhud` (no titlebar by
   design).
 
-## Autostart (GNOME)
+## Autostart + app launcher (GNOME)
+
+Install the binary to a stable path first — pointing autostart at
+`target/release/` breaks on the next `cargo clean`:
 
 ```bash
-mkdir -p ~/.config/autostart
-cat > ~/.config/autostart/qhud.desktop <<'EOF'
+install -Dm755 target/release/qhud ~/.local/bin/qhud
+install -Dm644 src-tauri/icons/128x128.png \
+  ~/.local/share/icons/hicolor/128x128/apps/qhud.png
+
+mkdir -p ~/.config/autostart ~/.local/share/applications
+cat > ~/.config/autostart/qhud.desktop <<EOF
 [Desktop Entry]
 Type=Application
 Name=qhud
-Exec=/home/USER/qhud/target/release/qhud
+Comment=Ambient desktop HUD for AI CLI sessions
+Exec=$HOME/.local/bin/qhud
+Icon=qhud
+Terminal=false
+Categories=System;Monitor;
+StartupNotify=false
+StartupWMClass=qhud
 X-GNOME-Autostart-enabled=true
+X-GNOME-Autostart-Delay=3
 EOF
+cp ~/.config/autostart/qhud.desktop ~/.local/share/applications/qhud.desktop
 ```
+
+The `applications` copy also puts qhud in the GNOME app grid. The 3 s
+autostart delay lets the desktop (and the AppIndicator extension, for
+the tray) settle first. There is no single-instance guard yet: if a
+widget is already running, launching again stacks a second one —
+`pkill -x qhud` first.
+
+**After rebuilding a new version**, refresh the installed copy:
+`install -m755 target/release/qhud ~/.local/bin/qhud && pkill -x qhud && ~/.local/bin/qhud &`
 
 ## Troubleshooting
 

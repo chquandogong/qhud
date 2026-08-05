@@ -27,6 +27,7 @@
 | Upstream `ObserveSnapshot` export in qmonster, then unpin                    | backlog                          | —                   |
 | GNOME Shell extension layer (overview-clean pinning)                         | backlog                          | —                   |
 | Click tile → focus that tmux pane                                            | backlog                          | —                   |
+| Single-instance guard (relaunch currently stacks a second widget)            | backlog                          | —                   |
 
 ## Decision queue (human)
 
