@@ -107,3 +107,37 @@ Format: context → options → decision → rationale → residual risk.
   server with real agent workspaces; tmux fallback preserved.
 - **Residual risk**: if herdr _and_ tmux both run, herdr wins under
   widget-auto (documented; set `[mux] backend` explicitly to override).
+
+## D-008 · All window-geometry interaction is self-driven (no compositor interactive ops)
+
+- **Context**: user report — selection, move, and resize all dead on the
+  running widget. Instrumented on-machine (setTitle beacons + synthetic
+  input) on 2026-08-05.
+- **Findings** (each verified, each alone fatal):
+  1. wry drag-regions / `startDragging` / `startResizeDragging` —
+     compositor-side interactive move/resize — are unreliable for a
+     keep-below XWayland window on GNOME (no-op or partial).
+  2. tao's invisible borderless-resize inset swallows all pointer input
+     within ~10px of the window border (measured: ≤8px eaten, ≥12px
+     delivered) — the resize grip lived entirely inside it.
+  3. WebKitGTK `event.screenX/Y` goes stale while the window itself is
+     moving (constant-lag deltas).
+  4. tao `outerPosition()`/`outerSize()` report a phantom ~37px frame
+     for this undecorated window (y short by 37, height long by 37).
+- **Decision**: drive geometry entirely ourselves — pointer events only
+  arm/disarm an rAF loop over Tauri's global `cursorPosition()`;
+  setPosition/setSize apply literally; grab metrics come from the DOM
+  (`clientX/Y`, `innerWidth/Height`), never from tao outer metrics.
+  Grip hit-zone enlarged well inside the tao inset. Capabilities
+  trimmed to exactly cursor-position + set-position + set-size.
+- **Evidence**: synthetic drags land pixel-exact on both monitors
+  (move Δ=(70,55)/(70,55), resize Δ=(52,36)/(52,36), shrink
+  Δ=(-45,-36)); DOM click delivery beacon-confirmed on both.
+- **Bonus fixes surfaced by the same investigation**:
+  `generate_context!` does not register `../ui` with cargo change
+  tracking (stale-asset builds — build.rs now emits rerun-if-changed);
+  window-state only saved on graceful exit (now checkpointed every
+  30 s from the poll loop).
+- **Residual risk**: rAF loop costs one IPC round-trip per frame while
+  dragging (negligible); `document.title` is not WM_NAME in Tauri —
+  future debugging must use `setTitle`.

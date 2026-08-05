@@ -71,14 +71,15 @@ widget is already running, launching again stacks a second one —
 
 ## Troubleshooting
 
-| Symptom                           | Fix                                                                                                                                            |
-| --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| Widget blank / not transparent    | `WEBKIT_DISABLE_DMABUF_RENDERER=1 ./qhud` (WebKitGTK dmabuf quirk, common on NVIDIA)                                                           |
-| Widget raises above windows       | confirm XWayland: `xprop WM_CLASS` on the window should answer; if you set `QHUD_NO_X11_FORCE=1`, layering is your compositor's job            |
-| Wrong monitor after unplug        | geometry restore points at a gone monitor — delete the window-state file under `~/.config/xyz.dogu.qhud/` and restart                          |
-| No tray icon                      | AppIndicator extension missing — widget still runs; quit via `pkill qhud`                                                                      |
-| Blurry on HiDPI                   | fractional scaling + XWayland on GNOME 46 blurs X11 clients; run displays at integer scale or upgrade to GNOME 47+ (`xwayland-native-scaling`) |
-| Stuck in `DEMO` with tmux running | qhud probes every 10 s; check the same config the TUI uses (`~/.qmonster/config/qmonster.toml` `[mux]/[tmux]` target)                          |
+| Symptom                                               | Fix                                                                                                                                            |
+| ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| Widget blank / not transparent                        | `WEBKIT_DISABLE_DMABUF_RENDERER=1 ./qhud` (WebKitGTK dmabuf quirk, common on NVIDIA)                                                           |
+| Widget raises above windows                           | confirm XWayland: `xprop WM_CLASS` on the window should answer; if you set `QHUD_NO_X11_FORCE=1`, layering is your compositor's job            |
+| Wrong monitor after unplug                            | geometry restore points at a gone monitor — delete the window-state file under `~/.config/xyz.dogu.qhud/` and restart                          |
+| No tray icon                                          | AppIndicator extension missing — widget still runs; quit via `pkill qhud`                                                                      |
+| Blurry on HiDPI                                       | fractional scaling + XWayland on GNOME 46 blurs X11 clients; run displays at integer scale or upgrade to GNOME 47+ (`xwayland-native-scaling`) |
+| Stuck in `DEMO` with tmux running                     | qhud probes every 10 s; check the same config the TUI uses (`~/.qmonster/config/qmonster.toml` `[mux]/[tmux]` target)                          |
+| Drag/resize ignores the outermost ~10px of the window | that border strip belongs to tao's built-in edge handler (D-008) — grab the topbar/footer interior to move, the ◢ glyph to resize              |
 
 ## Update the qmonster pipeline
 

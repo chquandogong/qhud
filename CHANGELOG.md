@@ -2,6 +2,34 @@
 
 All notable changes to qhud. Format: [Keep a Changelog](https://keepachangelog.com/), versioning: [SemVer](https://semver.org/).
 
+## [0.1.2] — 2026-08-05
+
+### Fixed
+
+- **Move, resize, and tile selection were dead in practice** (D-008).
+  Four independent upstream quirks, each verified on-machine:
+  compositor-side interactive move/resize (drag regions,
+  `startResizeDragging`) no-ops for a keep-below XWayland window on
+  GNOME; tao's invisible borderless-resize inset ate all pointer input
+  within ~10px of the border — where the resize grip lived; WebKitGTK
+  `screenX/Y` goes stale while the window moves; tao
+  `outerPosition/outerSize` report a phantom ~37px frame. Geometry
+  interaction is now fully self-driven: an rAF loop over the global
+  `cursorPosition()` with DOM-derived grab metrics. Verified
+  pixel-exact on both monitors.
+- **Stale UI assets in rebuilds**: `tauri::generate_context!` does not
+  register `../ui` with cargo's change tracking; `build.rs` now emits
+  `cargo:rerun-if-changed=../ui`.
+- **Window position/size lost on logout/kill**: the window-state
+  plugin only persists on graceful exit; geometry is now checkpointed
+  every 30 s from the poll loop.
+
+### Changed
+
+- Resize grip enlarged with an inner hit-zone that clears the tao edge
+  inset; capabilities trimmed to exactly `cursor-position`,
+  `set-position`, `set-size`, `window-state:default`.
+
 ## [0.1.1] — 2026-08-05
 
 ### Fixed

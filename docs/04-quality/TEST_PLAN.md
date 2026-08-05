@@ -40,6 +40,10 @@ Run on the target machine after any window-layer change:
 ⏳ rows were added from the Codex cross-validation (CV log) and are
 pending their first on-machine verification pass.
 
+2026-08-05 (D-008): click delivery, drag-move, and grip-resize
+re-verified pixel-exact on both monitors with the self-driven geometry
+implementation (synthetic-input evidence in DECISION_LOG D-008).
+
 ## Non-regression invariants
 
 - No file under `~/.qmonster` is created/modified by qhud (R5):
