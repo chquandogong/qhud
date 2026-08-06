@@ -15,7 +15,9 @@
 | FR-7  | Severity bands on gauges: `<60` good · `60–74` concern · `75–84` warn · `≥85` crit (mockup legend)                                                       | done                                |
 | FR-8  | Reset countdowns (`resets 47m`) and idle-elapsed badges tick locally between polls                                                                       | done                                |
 | FR-9  | No tmux server ⇒ demo payload (mockup fixture) with a visible `DEMO` badge; re-probe live every 10 s                                                     | done                                |
-| FR-10 | Tray icon: Show/Hide, Quit; widget survives without tray                                                                                                 | done (best-effort)                  |
+| FR-10 | Tray: Show/Hide, Pin above windows, Reset position, Quit; widget survives without tray | done (best-effort) |
+| FR-11 | Ctrl+wheel zooms the UI 70–160%, persisted (pointer-only) | done (D-012) |
+| FR-12 | Layer peek: tray check + `qhud --peek` argv relay; duplicate launches absorbed | done (D-012) |
 
 ## Non-functional
 

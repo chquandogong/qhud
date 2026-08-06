@@ -2,6 +2,25 @@
 
 All notable changes to qhud. Format: [Keep a Changelog](https://keepachangelog.com/), versioning: [SemVer](https://semver.org/).
 
+## [0.3.0] — 2026-08-06
+
+### Added
+
+- **Font zoom**: Ctrl+wheel over the widget scales the whole UI
+  (70–160%), persisted across restarts (D-012).
+- **Layer peek**: tray "Pin above windows" check item and
+  `qhud --peek` (relayed to the running instance) flip the widget
+  above all windows and back — bind a GNOME custom shortcut to
+  `~/.local/bin/qhud --peek`. Footer shows `pinned ·` while above.
+- **Single-instance guard**: launching qhud twice no longer stacks a
+  second widget (tauri-plugin-single-instance).
+
+### Fixed
+
+- First peek design (SIGUSR1) segfaulted the webview — WebKitGTK's
+  JavaScriptCore reserves SIGUSR1 for thread suspension; signals are
+  now documented as off-limits in this codebase (D-012).
+
 ## [0.2.0] — 2026-08-06
 
 ### Changed

@@ -219,3 +219,29 @@ Format: context → options → decision → rationale → residual risk.
   (`provider_quotas_takes_max_snapshot_per_window`).
 - **Evidence**: live compositor-path selection re-verified on the new
   layout (`sel:wC:p1:R`); README screenshots regenerated.
+
+## D-012 · Font zoom via Ctrl+wheel; layer peek via single-instance argv (signals are forbidden)
+
+- **Context**: operator asked for (1) adjustable font size and (2) a
+  way to see the widget when it sits at the very back by design.
+- **Font size**: Ctrl+wheel over the widget drives webview page zoom
+  (70–160%, step 10%), persisted in localStorage — pointer-only, so
+  the no-keyboard-focus contract holds.
+- **Peek**: tray check item "Pin above windows" + `qhud --peek` from a
+  second process, relayed to the running instance by
+  tauri-plugin-single-instance — bind a GNOME custom shortcut to
+  `~/.local/bin/qhud --peek`. Footer shows `pinned ·` while above;
+  toggling back re-asserts below+sticky.
+- **Hard lesson (verified 3× by segfault)**: **never install Unix
+  signal handlers in a Tauri/WebKitGTK process.** The first design
+  used SIGUSR1 + signal-hook; the process died with SIGSEGV on the
+  first signal before the handler thread even logged — WebKitGTK's
+  JavaScriptCore reserves SIGUSR1 for thread suspension, and hooking
+  it corrupts VM thread control. App-global hotkeys are equally
+  unavailable to XWayland clients on Wayland, which is why the
+  single-instance argv relay is the design: crash-free, and it
+  absorbs accidental double launches (closing the single-instance
+  backlog item).
+- **Evidence**: `--peek` round-trip verified — BELOW → ABOVE
+  (`layer:pinned`) → BELOW+STICKY (`layer:below`), duplicate launch
+  absorbed (1 process), no crash.

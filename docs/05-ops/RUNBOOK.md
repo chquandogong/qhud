@@ -31,6 +31,15 @@ cargo build --release          # binary at target/release/qhud
 - Move: drag the top bar (or footer). Resize: drag the ◢ grip.
 - Quit: tray icon → _Quit qhud_, or `pkill qhud` (no titlebar by
   design).
+- **Font size**: hold Ctrl and scroll the mouse wheel over the widget
+  (70–160%, remembered).
+- **Peek (bring to front temporarily)**: tray → _Pin above windows_
+  (again to send back), or run `~/.local/bin/qhud --peek`. For a
+  keyboard shortcut: GNOME Settings → Keyboard → Custom Shortcuts →
+  command `/home/USER/.local/bin/qhud --peek` (e.g. Super+Q). Never
+  send Unix signals to qhud — WebKitGTK reserves them (D-012).
+- Launching `qhud` while one is running is absorbed by the running
+  instance (single-instance guard).
 
 ## Autostart + app launcher (GNOME)
 
@@ -62,9 +71,8 @@ cp ~/.config/autostart/qhud.desktop ~/.local/share/applications/qhud.desktop
 
 The `applications` copy also puts qhud in the GNOME app grid. The 3 s
 autostart delay lets the desktop (and the AppIndicator extension, for
-the tray) settle first. There is no single-instance guard yet: if a
-widget is already running, launching again stacks a second one —
-`pkill -x qhud` first.
+the tray) settle first. Duplicate launches are absorbed by the running
+instance (single-instance guard, v0.3.0).
 
 **After rebuilding a new version**, refresh the installed copy:
 `install -m755 target/release/qhud ~/.local/bin/qhud && pkill -x qhud && ~/.local/bin/qhud &`
