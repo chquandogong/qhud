@@ -10,10 +10,29 @@
   const srcBadge = document.getElementById("srcBadge");
   const grip = document.getElementById("grip");
 
+  // localStorage can be denied outright in WebKitGTK for the tauri
+  // custom-protocol origin (writes throw SecurityError) — never let
+  // persistence break interaction.
+  const store = {
+    get(k) {
+      try {
+        return localStorage.getItem(k);
+      } catch {
+        return null;
+      }
+    },
+    set(k, v) {
+      try {
+        if (v == null) localStorage.removeItem(k);
+        else localStorage.setItem(k, v);
+      } catch {}
+    },
+  };
+
   const state = {
     payload: null,
     receivedAt: 0, // Date.now() when the payload arrived
-    selected: localStorage.getItem("qhud.selected") || null,
+    selected: store.get("qhud.selected"),
     nodes: new Map(), // pane_id -> tile element
   };
 
@@ -91,11 +110,14 @@
       el("div", "conflict"),
     );
 
-    tile.addEventListener("click", () => {
+    // pointerdown, not click: click synthesis needs a clean
+    // down+up pair, while pointerdown delivery is beacon-proven on
+    // this webview. Render first — persistence must never gate UI.
+    tile.addEventListener("pointerdown", (e) => {
+      if (e.button !== 0) return;
       state.selected = state.selected === pane.pane_id ? null : pane.pane_id;
-      if (state.selected) localStorage.setItem("qhud.selected", state.selected);
-      else localStorage.removeItem("qhud.selected");
       render();
+      store.set("qhud.selected", state.selected);
     });
     return tile;
   }
