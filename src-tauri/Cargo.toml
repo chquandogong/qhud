@@ -1,6 +1,6 @@
 [package]
 name = "qhud"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2024"
 rust-version = "1.88"
 license = "MIT"
@@ -16,6 +16,7 @@ tauri-plugin-window-state = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 toml = "1"
+tauri-plugin-single-instance = "2"
 # Observe pipeline is reused wholesale from the qmonster TUI. Pinned to
 # the exact rev this bridge was written against; bump deliberately and
 # re-run the contract tests in src/view.rs when you do.

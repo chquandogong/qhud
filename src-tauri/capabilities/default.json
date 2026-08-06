@@ -6,6 +6,7 @@
   "permissions": [
     "core:default",
     "core:window:allow-cursor-position",
+    "core:webview:allow-set-webview-zoom",
     "core:window:allow-set-position",
     "core:window:allow-set-size",
     "window-state:default"

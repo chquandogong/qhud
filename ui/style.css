@@ -172,14 +172,30 @@ body {
   border-radius: 4px 0 0 4px;
   transition: width 450ms cubic-bezier(0.22, 0.61, 0.36, 1);
 }
-.q-chip[data-sev="good"] .q-fill { background: var(--good); }
-.q-chip[data-sev="concern"] .q-fill { background: var(--concern); }
-.q-chip[data-sev="warn"] .q-fill { background: var(--warn); }
-.q-chip[data-sev="crit"] .q-fill { background: var(--crit); }
-.q-chip[data-sev="good"] .q-val { color: #7bd089; }
-.q-chip[data-sev="concern"] .q-val { color: #e1c873; }
-.q-chip[data-sev="warn"] .q-val { color: #f0a564; }
-.q-chip[data-sev="crit"] .q-val { color: #ff7d74; }
+.q-chip[data-sev="good"] .q-fill {
+  background: var(--good);
+}
+.q-chip[data-sev="concern"] .q-fill {
+  background: var(--concern);
+}
+.q-chip[data-sev="warn"] .q-fill {
+  background: var(--warn);
+}
+.q-chip[data-sev="crit"] .q-fill {
+  background: var(--crit);
+}
+.q-chip[data-sev="good"] .q-val {
+  color: #7bd089;
+}
+.q-chip[data-sev="concern"] .q-val {
+  color: #e1c873;
+}
+.q-chip[data-sev="warn"] .q-val {
+  color: #f0a564;
+}
+.q-chip[data-sev="crit"] .q-val {
+  color: #ff7d74;
+}
 .q-val {
   font-family: var(--mono);
   font-size: 11px;
@@ -201,7 +217,9 @@ body {
   flex: none;
   min-width: 30px;
 }
-.q-reset.soon { color: var(--warn); }
+.q-reset.soon {
+  color: var(--warn);
+}
 
 /* workspace badge next to the pane label */
 .sess {
@@ -590,6 +608,12 @@ body {
 }
 .meta.stale::after {
   content: " · stalled";
+}
+/* pinned above windows for a peek (tray / SIGUSR1) */
+.meta.pinned::before {
+  content: "pinned · ";
+  color: var(--accent);
+  font-weight: 600;
 }
 
 @keyframes pulse {

@@ -265,7 +265,6 @@
     patchGauges(tile, pane);
   }
 
-
   // ---- provider quota strip (account-scoped facts, D-011) ---------
 
   function buildQuotaRow(provider) {
@@ -279,7 +278,12 @@
       track.append(el("span", "q-fill"));
       const val = el("span", "q-val");
       val.append(document.createTextNode(""), el("i", null, "%"));
-      chip.append(el("span", "q-label", win.toUpperCase()), track, val, el("span", "q-reset"));
+      chip.append(
+        el("span", "q-label", win.toUpperCase()),
+        track,
+        val,
+        el("span", "q-reset"),
+      );
       row.append(chip);
     }
     return row;
@@ -297,7 +301,10 @@
     const reset = chip.querySelector(".q-reset");
     if (g.reset_unix) {
       reset.dataset.resetUnix = g.reset_unix;
-      reset.classList.toggle("soon", g.reset_unix * 1000 - Date.now() < 60 * 60000);
+      reset.classList.toggle(
+        "soon",
+        g.reset_unix * 1000 - Date.now() < 60 * 60000,
+      );
       reset.textContent = fmtReset(g.reset_unix);
     } else {
       delete reset.dataset.resetUnix;
@@ -317,7 +324,8 @@
         quotasEl.append(row);
       }
       row.title = q.from_label
-        ? `freshest reading: ${q.from_label}` + (q.session ? ` @${q.session}` : "")
+        ? `freshest reading: ${q.from_label}` +
+          (q.session ? ` @${q.session}` : "")
         : "";
       patchQuotaChip(row.querySelector('[data-win="5h"]'), q.h5);
       patchQuotaChip(row.querySelector('[data-win="7d"]'), q.d7);
@@ -407,7 +415,9 @@
       const b = reset.querySelector("b");
       if (b) b.textContent = fmtReset(Number(reset.dataset.resetUnix));
     }
-    for (const reset of quotasEl.querySelectorAll(".q-reset[data-reset-unix]")) {
+    for (const reset of quotasEl.querySelectorAll(
+      ".q-reset[data-reset-unix]",
+    )) {
       reset.textContent = fmtReset(Number(reset.dataset.resetUnix));
     }
     for (const sp of tilesEl.querySelectorAll(".elapsed[data-base-secs]")) {
@@ -436,6 +446,36 @@
       } catch {}
     };
     window.__qhudBeacon = crumb;
+
+    // Font size: Ctrl+wheel over the widget zooms the whole page
+    // (pointer-only — the widget never takes keyboard focus), persisted
+    // across restarts. Range 70–160%.
+    const webview =
+      tauri.webview && tauri.webview.getCurrentWebview
+        ? tauri.webview.getCurrentWebview()
+        : null;
+    let zoom = parseFloat(store.get("qhud.zoom")) || 1;
+    const applyZoom = (z) => {
+      zoom = Math.min(1.6, Math.max(0.7, Math.round(z * 10) / 10));
+      if (webview) webview.setZoom(zoom).catch(() => {});
+      store.set("qhud.zoom", String(zoom));
+      crumb("zoom:" + zoom.toFixed(1));
+    };
+    if (webview && zoom !== 1) applyZoom(zoom);
+    window.addEventListener(
+      "wheel",
+      (e) => {
+        if (!e.ctrlKey) return;
+        e.preventDefault();
+        applyZoom(zoom + (e.deltaY < 0 ? 0.1 : -0.1));
+      },
+      { passive: false },
+    );
+
+    // Layer peek indicator (tray "Pin above windows" / SIGUSR1).
+    tauri.event.listen("qhud://layer", ({ payload }) => {
+      metaEl.classList.toggle("pinned", !!payload);
+    });
 
     tauri.event.listen("qhud://report", ({ payload }) => {
       state.payload = payload;
@@ -532,15 +572,57 @@
       generated_at_ms: Date.now(),
       poll_secs: 2,
       quotas: [
-        { provider: "agy", from_label: "agy:1:research", session: "demo",
-          h5: { pct: 8, source: "providerofficial", reset_unix: now + 13200, of_tokens: null },
-          d7: { pct: 3, source: "providerofficial", reset_unix: now + 518400, of_tokens: null } },
-        { provider: "claude", from_label: "claude:1:main", session: "demo",
-          h5: { pct: 88, source: "providerofficial", reset_unix: now + 2820, of_tokens: null },
-          d7: { pct: 31, source: "providerofficial", reset_unix: now + 363600, of_tokens: null } },
-        { provider: "codex", from_label: "codex:1:review", session: "demo",
-          h5: { pct: 61, source: "providerofficial", reset_unix: now + 3900, of_tokens: null },
-          d7: { pct: 44, source: "providerofficial", reset_unix: now + 432000, of_tokens: null } },
+        {
+          provider: "agy",
+          from_label: "agy:1:research",
+          session: "demo",
+          h5: {
+            pct: 8,
+            source: "providerofficial",
+            reset_unix: now + 13200,
+            of_tokens: null,
+          },
+          d7: {
+            pct: 3,
+            source: "providerofficial",
+            reset_unix: now + 518400,
+            of_tokens: null,
+          },
+        },
+        {
+          provider: "claude",
+          from_label: "claude:1:main",
+          session: "demo",
+          h5: {
+            pct: 88,
+            source: "providerofficial",
+            reset_unix: now + 2820,
+            of_tokens: null,
+          },
+          d7: {
+            pct: 31,
+            source: "providerofficial",
+            reset_unix: now + 363600,
+            of_tokens: null,
+          },
+        },
+        {
+          provider: "codex",
+          from_label: "codex:1:review",
+          session: "demo",
+          h5: {
+            pct: 61,
+            source: "providerofficial",
+            reset_unix: now + 3900,
+            of_tokens: null,
+          },
+          d7: {
+            pct: 44,
+            source: "providerofficial",
+            reset_unix: now + 432000,
+            of_tokens: null,
+          },
+        },
       ],
       summary: { panes: 3, conflicts: 1, max_5h_pct: 88 },
       panes: [
