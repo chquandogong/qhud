@@ -38,6 +38,32 @@
 `.deb` packaging · upstream ObserveSnapshot facade + unpin · GNOME
 Shell extension layer · tile→pane focus jump. See DASHBOARD.
 
+## Cycle 2 — v0.1.1 → v0.3.x (2026-08-05 → 06)
+
+### What worked
+
+- **Evidence-first debugging under user pressure**: every "still
+  broken" report converged in one or two instrumented rounds because
+  observability was built before theories (title beacons → stderr
+  breadcrumbs → compositor-path injection).
+- **User critique as design input**: "두 개 값이 서로 달라 의미가
+  없다" produced D-011 (scope-correct display) — a better product than
+  the mockup it replaced.
+
+### What to fix next cycle
+
+- **The synthetic-verification blind spot cost three false "fixed"
+  claims** (XTEST bypasses Mutter picking). Corrective action, already
+  enforced: interaction claims require compositor-path injection or a
+  human hand (TEST_PLAN protocol, R12).
+- **Platform reservations bite silently**: SIGUSR1 (JSC) segfault,
+  DING input theft, tao phantom frame, stale screenX/Y, proc-macro
+  asset caching. Corrective action: all recorded in the shared
+  `tauri-linux-pitfalls` memory and D-008/D-010/D-012 — check the
+  pitfall list before touching window/input code.
+- **Self-matching `pkill -f` killed our own shell twice** — use
+  bracket patterns (`[q]hud`) or exact `-x`.
+
 ## Evidence trail
 
 FEASIBILITY_REPORT (two spikes, xprop states) ·

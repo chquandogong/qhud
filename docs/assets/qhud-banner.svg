@@ -1,0 +1,63 @@
+<svg width="960" height="230" viewBox="0 0 960 230" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="qhud — ambient desktop HUD for AI CLI sessions">
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="-10%" r="90%">
+      <stop offset="0%" stop-color="#101822"/>
+      <stop offset="60%" stop-color="#0b0f14"/>
+    </radialGradient>
+    <linearGradient id="good" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#2e6b3a"/><stop offset="100%" stop-color="#4ba65a"/>
+    </linearGradient>
+    <linearGradient id="warn" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#8f5826"/><stop offset="100%" stop-color="#e08a3c"/>
+    </linearGradient>
+    <linearGradient id="crit" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#93362f"/><stop offset="100%" stop-color="#e5544b"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="1" y="1" width="958" height="228" rx="16" fill="url(#glow)" stroke="#1d2832" stroke-width="2"/>
+
+  <!-- wordmark -->
+  <circle cx="66" cy="78" r="7" fill="#46b8b0"/>
+  <circle cx="66" cy="78" r="13" fill="#46b8b0" opacity="0.18"/>
+  <text x="92" y="94" font-family="ui-monospace,'JetBrains Mono','Cascadia Code',Menlo,Consolas,monospace" font-size="46" font-weight="700" letter-spacing="1" fill="#e3ebf3">qhud</text>
+  <text x="228" y="92" font-family="system-ui,-apple-system,'Segoe UI',sans-serif" font-size="19" fill="#8c9aab">ambient desktop HUD for AI CLI sessions</text>
+
+  <text x="92" y="128" font-family="system-ui,-apple-system,'Segoe UI',sans-serif" font-size="14.5" fill="#5e6c7b">qmonster's second face — the observe pipeline, pinned to your wallpaper layer</text>
+
+  <!-- provider quota strip motif -->
+  <g font-family="ui-monospace,Menlo,Consolas,monospace" font-size="12" font-weight="700" letter-spacing="1">
+    <text x="92"  y="171" fill="#8c9aab">CLAUDE</text>
+    <rect x="168" y="161" width="420" height="11" rx="5.5" fill="#1c2731" stroke="#26333f"/>
+    <rect x="168" y="161" width="370" height="11" rx="5.5" fill="url(#crit)"/>
+    <text x="600" y="171" fill="#ff7d74">88%</text>
+    <text x="646" y="171" fill="#5e6c7b" font-weight="500">resets 47m</text>
+
+    <text x="92"  y="196" fill="#8c9aab">CODEX</text>
+    <rect x="168" y="186" width="420" height="11" rx="5.5" fill="#1c2731" stroke="#26333f"/>
+    <rect x="168" y="186" width="256" height="11" rx="5.5" fill="url(#warn)"/>
+    <text x="600" y="196" fill="#e1c873">61%</text>
+    <text x="646" y="196" fill="#5e6c7b" font-weight="500">resets 1h04m</text>
+  </g>
+
+  <!-- pane tile motif (right) -->
+  <g>
+    <rect x="742" y="146" width="170" height="62" rx="9" fill="#121a23" stroke="#2b8a84" stroke-width="1.5"/>
+    <rect x="742" y="158" width="3" height="38" rx="1.5" fill="#46b8b0"/>
+    <text x="756" y="168" font-family="ui-monospace,Menlo,Consolas,monospace" font-size="12" font-weight="700" fill="#e3ebf3">claude:1:main</text>
+    <text x="756" y="183" font-family="system-ui,sans-serif" font-size="9.5" fill="#5e6c7b">@dogu-3d-studio</text>
+    <rect x="756" y="190" width="110" height="8" rx="4" fill="#1c2731"/>
+    <rect x="756" y="190" width="70" height="8" rx="4" fill="url(#good)"/>
+    <text x="874" y="198" font-family="ui-monospace,monospace" font-size="10" font-weight="600" fill="#7bd089">64%</text>
+  </g>
+
+  <!-- status pill motif -->
+  <g>
+    <rect x="742" y="52" width="86" height="24" rx="7" fill="#16281c" stroke="#2f5b3a"/>
+    <circle cx="756" cy="64" r="4" fill="#4ba65a"/>
+    <text x="766" y="68" font-family="ui-monospace,monospace" font-size="10.5" font-weight="700" letter-spacing="1" fill="#9fe6ab">ACTIVE</text>
+    <rect x="742" y="84" width="128" height="24" rx="7" fill="#2b2416" stroke="#5d4c22"/>
+    <circle cx="756" cy="96" r="4" fill="#cda646"/>
+    <text x="766" y="100" font-family="ui-monospace,monospace" font-size="10.5" font-weight="700" letter-spacing="1" fill="#d9c890">IDLE STALE</text>
+  </g>
+</svg>

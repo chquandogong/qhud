@@ -754,5 +754,12 @@
     };
     state.receivedAt = Date.now();
     render();
+    // Keep the preview "fresh" so the stale watchdog doesn't flag a
+    // static page (screenshots and browser dev both use this path).
+    setInterval(() => {
+      state.payload.generated_at_ms = Date.now();
+      state.receivedAt = Date.now();
+      render();
+    }, 2000);
   }
 })();

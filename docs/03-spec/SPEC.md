@@ -1,6 +1,6 @@
-# SPEC — qhud v0.1
+# SPEC — qhud
 
-> Status: implemented · Date: 2026-08-05 · Owner: chquandogong
+> Status: living (implemented through v0.3.x) · Date: 2026-08-06 · Owner: chquandogong
 
 ## Functional requirements
 
