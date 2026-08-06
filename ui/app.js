@@ -118,6 +118,10 @@
       state.selected = state.selected === pane.pane_id ? null : pane.pane_id;
       render();
       store.set("qhud.selected", state.selected);
+      if (window.__qhudBeacon)
+        window.__qhudBeacon(
+          `sel:${state.selected || "none"}:${tile.classList.contains("selected") ? "R" : "-"}`,
+        );
     });
     return tile;
   }
@@ -357,6 +361,15 @@
       tauri.window.PhysicalPosition;
     const PhysicalSize =
       (tauri.dpi && tauri.dpi.PhysicalSize) || tauri.window.PhysicalSize;
+
+    // Stderr breadcrumbs (permanent, invisible): interaction events go
+    // to the Rust side so real-input behavior is verifiable from logs.
+    const crumb = (s) => {
+      try {
+        tauri.core.invoke("ui_event", { event: s }).catch(() => {});
+      } catch {}
+    };
+    window.__qhudBeacon = crumb;
 
     tauri.event.listen("qhud://report", ({ payload }) => {
       state.payload = payload;

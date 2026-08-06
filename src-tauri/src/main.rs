@@ -6,6 +6,14 @@ mod view;
 
 use tauri::Manager;
 
+/// Stderr breadcrumb for UI interactions. Invisible in the UI, but
+/// greppable in logs/journal — real-input verification depends on it
+/// (window-title beacons pollute WM_NAME; see D-010).
+#[tauri::command]
+fn ui_event(event: String) {
+    eprintln!("qhud ui: {event}");
+}
+
 fn main() {
     // GNOME on Wayland exposes no layer-shell to third-party apps, so
     // the desktop-widget layer (keep-below + sticky) and global window
@@ -23,6 +31,7 @@ fn main() {
     }
 
     tauri::Builder::default()
+        .invoke_handler(tauri::generate_handler![ui_event])
         .plugin(tauri_plugin_window_state::Builder::default().build())
         .setup(|app| {
             let win = app
