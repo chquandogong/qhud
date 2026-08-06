@@ -141,3 +141,23 @@ Format: context → options → decision → rationale → residual risk.
 - **Residual risk**: rAF loop costs one IPC round-trip per frame while
   dragging (negligible); `document.title` is not WM_NAME in Tauri —
   future debugging must use `setTitle`.
+
+## D-009 · Tile selection binds to pointerdown, not click
+
+- **Context**: after D-008, move/resize worked but selection still
+  didn't (user report, 2026-08-06).
+- **Finding**: this WebKitGTK/X11 webview delivers `pointerdown`
+  reliably (beacon-proven) but **never synthesizes `click`** from the
+  down/up pair — the selection handler simply never ran. Verified by
+  a beacon build: pointerdown-bound selection toggles and renders
+  (`sel:wC:p1:R → sel:none:- → sel:wD:p1:R`).
+- **Exoneration**: localStorage was a suspect (its backing directory
+  was absent) but writes work fine — the directory was missing only
+  because the click handler had never executed. Persistence is
+  nevertheless wrapped in try/catch and ordered after `render()`, so
+  storage can never gate the UI.
+- **Decision**: all widget interactions bind to pointer events
+  (`pointerdown`/`pointerup`), never to synthesized `click`.
+- **Residual risk**: pointerdown-selection fires even when the user
+  intended a drag — tiles are not drag surfaces (topbar/footer only),
+  so no conflict today; revisit if tiles ever become draggable.

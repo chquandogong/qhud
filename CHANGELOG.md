@@ -2,6 +2,21 @@
 
 All notable changes to qhud. Format: [Keep a Changelog](https://keepachangelog.com/), versioning: [SemVer](https://semver.org/).
 
+## [0.1.3] — 2026-08-06
+
+### Fixed
+
+- **Tile selection (click-to-expand) never fired** (D-009): this
+  WebKitGTK/X11 webview reliably delivers `pointerdown` but fails to
+  synthesize `click` from the down/up pair, so the selection handler
+  simply never ran. Selection now triggers on `pointerdown`
+  (beacon-verified end-to-end: select → deselect → reselect with
+  rendered state applied). localStorage was investigated and
+  exonerated — writes work; the storage directory was missing only
+  because the click handler had never executed. Persistence is now
+  try/catch-wrapped and ordered after `render()` regardless, so
+  storage can never gate the UI.
+
 ## [0.1.2] — 2026-08-05
 
 ### Fixed
