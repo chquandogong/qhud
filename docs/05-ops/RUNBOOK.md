@@ -40,6 +40,8 @@ cargo build --release          # binary at target/release/qhud
   send Unix signals to qhud — WebKitGTK reserves them (D-012).
 - Launching `qhud` while one is running is absorbed by the running
   instance (single-instance guard).
+- **Doubting a number?** `~/.local/bin/qhud --dump` prints the exact
+  payload the widget renders (one observe tick, pretty JSON).
 
 ## Autostart + app launcher (GNOME)
 

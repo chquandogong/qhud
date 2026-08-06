@@ -67,6 +67,22 @@ fn main() {
         }
     }
 
+    // Diagnostic mode (before single-instance, no GTK): print one
+    // observe payload — exactly what the widget renders — and exit.
+    if std::env::args().any(|a| a == "--dump") {
+        match poll::dump_once() {
+            Some(json) => println!("{json}"),
+            None => {
+                eprintln!("qhud: no live mux source — demo payload follows");
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&demo::payload()).unwrap_or_default()
+                );
+            }
+        }
+        return;
+    }
+
     tauri::Builder::default()
         // Single instance doubles as the peek IPC: `qhud --peek` from a
         // GNOME custom shortcut relays argv to the running widget and

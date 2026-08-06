@@ -147,9 +147,21 @@ pub fn payload(reports: &[PaneReport]) -> Payload {
 /// Collapses per-pane quota snapshots into one account-scoped reading
 /// per provider. Per window (5h/7d) the max percent wins: quota usage
 /// only grows within a window, so every pane's snapshot is a lower
-/// bound and the max is the freshest. Known limit: assumes one
-/// account per provider on this machine (SPEC scale envelope).
+/// bound and the max is the freshest. Snapshots whose reset instant
+/// has already passed belong to an EXPIRED window — their percent is
+/// meaningless now and must not outrank a fresh reading (an idle
+/// pane's 88% from yesterday would otherwise beat today's real 12%
+/// forever). Known limit: assumes one account per provider on this
+/// machine (SPEC scale envelope).
 pub fn provider_quotas(panes: &[PaneView]) -> Vec<ProviderQuota> {
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs();
+    // 90 s grace: a snapshot taken moments before its own reset is
+    // still honest about the *new* window for a beat.
+    let expired = |g: &Gauge| g.reset_unix.is_some_and(|t| t + 90 < now);
+
     let mut by_provider: std::collections::BTreeMap<String, ProviderQuota> =
         std::collections::BTreeMap::new();
     for pane in panes {
@@ -163,6 +175,7 @@ pub fn provider_quotas(panes: &[PaneView]) -> Vec<ProviderQuota> {
                 session: String::new(),
             });
         if let Some(g) = &pane.gauges.h5
+            && !expired(g)
             && entry.h5.as_ref().is_none_or(|cur| g.pct > cur.pct)
         {
             entry.h5 = Some(g.clone());
@@ -170,6 +183,7 @@ pub fn provider_quotas(panes: &[PaneView]) -> Vec<ProviderQuota> {
             entry.session = pane.session.clone();
         }
         if let Some(g) = &pane.gauges.d7
+            && !expired(g)
             && entry.d7.as_ref().is_none_or(|cur| g.pct > cur.pct)
         {
             entry.d7 = Some(g.clone());
@@ -425,5 +439,59 @@ mod tests {
         let codex = q.iter().find(|p| p.provider == "codex").unwrap();
         assert_eq!(codex.h5.as_ref().unwrap().pct, 40);
         assert!(codex.d7.is_none());
+    }
+
+    #[test]
+    fn provider_quotas_ignores_expired_windows() {
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
+        let gauge = |pct: u8, reset: u64| Gauge {
+            pct,
+            source: "test".into(),
+            reset_unix: Some(reset),
+            of_tokens: None,
+        };
+        // An idle pane still holds 88% from a window that reset an
+        // hour ago; the active pane reads 12% of the current window.
+        // The rollup must show 12, not resurrect yesterday's 88.
+        let stale = PaneView {
+            provider: "claude".into(),
+            label: "claude:1:main".into(),
+            gauges: Gauges {
+                ctx: None,
+                h5: Some(gauge(88, now - 3600)),
+                d7: None,
+            },
+            ..Default::default()
+        };
+        let fresh = PaneView {
+            provider: "claude".into(),
+            label: "claude:1:main*".into(),
+            gauges: Gauges {
+                ctx: None,
+                h5: Some(gauge(12, now + 3600)),
+                d7: None,
+            },
+            ..Default::default()
+        };
+        let q = provider_quotas(&[stale, fresh]);
+        let claude = q.iter().find(|p| p.provider == "claude").unwrap();
+        assert_eq!(claude.h5.as_ref().unwrap().pct, 12);
+        assert_eq!(claude.from_label, "claude:1:main*");
+
+        // All snapshots expired ⇒ the window is omitted entirely
+        // (showing nothing beats showing a lie).
+        let only_stale = PaneView {
+            provider: "codex".into(),
+            gauges: Gauges {
+                ctx: None,
+                h5: Some(gauge(70, now - 60000)),
+                d7: None,
+            },
+            ..Default::default()
+        };
+        assert!(provider_quotas(&[only_stale]).is_empty());
     }
 }

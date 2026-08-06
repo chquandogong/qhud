@@ -2,6 +2,22 @@
 
 All notable changes to qhud. Format: [Keep a Changelog](https://keepachangelog.com/), versioning: [SemVer](https://semver.org/).
 
+## [0.3.2] — 2026-08-06
+
+### Fixed
+
+- **Expired-window quota poisoning** (preemptive): the max-snapshot
+  rollup let an idle pane's pre-reset percentage outrank the fresh
+  post-reset reading forever. Snapshots whose reset instant has passed
+  are now excluded (90 s grace); if every snapshot is expired the
+  window is omitted rather than shown wrong. Unit-tested.
+
+### Added
+
+- `qhud --dump` — one-shot diagnostic printing the exact payload the
+  widget renders (pretty JSON), for "is this number right?" moments.
+  Documented in the RUNBOOK.
+
 ## [0.3.0] — 2026-08-06
 
 ### Added

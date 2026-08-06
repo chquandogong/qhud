@@ -77,6 +77,17 @@ pub fn run(app: AppHandle) {
     }
 }
 
+/// One-shot diagnostic: run a single observe tick and return the exact
+/// payload the widget would render, as pretty JSON (`qhud --dump`).
+pub fn dump_once() -> Option<String> {
+    let (mut ctx, backend) = build_live()?;
+    let (reports, _notices) =
+        event_loop::run_once_with_target(&mut ctx, Instant::now(), None).ok()?;
+    let mut payload = view::payload(&reports);
+    payload.backend = Some(backend.to_string());
+    serde_json::to_string_pretty(&payload).ok()
+}
+
 /// Builds a live observe context through qmonster's own mux-backend
 /// factory, so `[mux] backend` in the shared config keeps meaning the
 /// same thing in both frontends. One widget-specific twist (D-007):
