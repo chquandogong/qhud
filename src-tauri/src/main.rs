@@ -125,8 +125,15 @@ fn tray(app: &tauri::App) -> tauri::Result<()> {
     let mut builder = TrayIconBuilder::with_id("qhud-tray")
         .menu(&menu)
         .tooltip("qhud — AI CLI HUD");
-    if let Some(icon) = app.default_window_icon() {
-        builder = builder.icon(icon.clone());
+    // Light symbolic-style glyph: the app tile is dark and disappears
+    // against GNOME's dark top bar.
+    match tauri::image::Image::from_bytes(include_bytes!("../icons/tray.png")) {
+        Ok(icon) => builder = builder.icon(icon),
+        Err(_) => {
+            if let Some(icon) = app.default_window_icon() {
+                builder = builder.icon(icon.clone());
+            }
+        }
     }
     let pin_item = pin.clone();
     builder
