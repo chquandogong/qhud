@@ -2,6 +2,32 @@
 
 All notable changes to qhud. Format: [Keep a Changelog](https://keepachangelog.com/), versioning: [SemVer](https://semver.org/).
 
+## [0.1.4] — 2026-08-06
+
+### Fixed
+
+- **Real-mouse interaction was still dead on Ubuntu GNOME** while every
+  synthetic test passed: Ubuntu's Desktop Icons NG (DING) extension
+  window swallows real pointer input over the desktop layer, and
+  XTEST-based verification bypasses Mutter's surface picking entirely
+  — a methodology blind spot, now closed with compositor-path
+  injection via the Mutter RemoteDesktop API (D-010). A/B proven:
+  identical compositor-path clicks toggle selection with DING
+  disabled and vanish with it enabled. Reference machine runs with
+  DING disabled (its `~/Desktop` is empty); icon users: see RUNBOOK
+  and the companion-extension backlog item.
+
+### Added
+
+- Permanent stderr interaction breadcrumbs (`qhud ui: …` via a
+  `ui_event` command) — real-input behavior is now verifiable from
+  logs on any machine.
+
+### Changed
+
+- `core:window:allow-set-title` capability removed again (debug
+  beacons replaced by breadcrumbs).
+
 ## [0.1.3] — 2026-08-06
 
 ### Fixed

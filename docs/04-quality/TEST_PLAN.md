@@ -44,6 +44,20 @@ pending their first on-machine verification pass.
 re-verified pixel-exact on both monitors with the self-driven geometry
 implementation (synthetic-input evidence in DECISION_LOG D-008).
 
+## Input-verification protocol (mandatory since D-010)
+
+**XTEST (xdotool) alone is inadmissible for interaction claims** — it
+injects inside XWayland and bypasses Mutter's surface picking, which
+is exactly where real input was being stolen (D-010). Any "interaction
+works" claim requires **compositor-path injection**: Mutter
+RemoteDesktop absolute-pointer clicks (see the `rd_abs_click.py`
+technique recorded in D-010) or a human hand, confirmed via the
+`qhud ui:` stderr breadcrumbs.
+
+2026-08-06 (D-010, v0.1.4): compositor-path selection toggle
+round-trip verified (`sel:none:-` → `sel:wC:p3:R`) with DING disabled;
+identical clicks vanish with DING enabled (A/B).
+
 ## Non-regression invariants
 
 - No file under `~/.qmonster` is created/modified by qhud (R5):

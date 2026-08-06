@@ -161,3 +161,33 @@ Format: context → options → decision → rationale → residual risk.
 - **Residual risk**: pointerdown-selection fires even when the user
   intended a drag — tiles are not drag surfaces (topbar/footer only),
   so no conflict today; revisit if tiles ever become draggable.
+
+## D-010 · Ubuntu DING intercepts real pointer input; verification must use the compositor path
+
+- **Context**: after D-009, selection passed synthetic (XTEST) tests
+  but stayed dead for the user's real mouse (report, 2026-08-06).
+- **Methodology failure acknowledged**: xdotool/XTEST injects events
+  inside XWayland, **bypassing Mutter's surface picking** — the layer
+  where real input is routed. Every earlier "verified" pass shared
+  this blind spot.
+- **New instrument**: compositor-path injection via
+  `org.gnome.Mutter.RemoteDesktop` (+ ScreenCast stream for absolute
+  coordinates) — events enter Mutter exactly like hardware
+  (`scratchpad rd_abs_click.py`, one persistent D-Bus connection:
+  sessions die with their creator's connection).
+- **Finding (A/B proven)**: Ubuntu's **Desktop Icons NG (DING)**
+  extension window swallows all real pointer input over the widget:
+  DING off → compositor-path click toggles selection; DING on → the
+  identical click vanishes. XWayland's frozen pointer view over the
+  widget region independently confirmed a Wayland surface was being
+  picked instead of qhud.
+- **Disposition**: DING disabled on the reference machine
+  (`gnome-extensions disable ding@rastersoft.com`) — `~/Desktop` is
+  empty, so it rendered zero icons here. Operator can re-enable at the
+  cost of widget interaction (RUNBOOK row). Coexistence for
+  icon-users = companion GNOME Shell extension (backlog).
+- **Code change**: permanent stderr breadcrumbs
+  (`ui_event` command; `qhud ui: sel:…` lines) so real-input behavior
+  is verifiable from logs without polluting WM_NAME.
+- **Final evidence** (v0.1.4, compositor path, DING off):
+  `sel:none:-` → `sel:wC:p3:R` toggle round-trip in stderr.
