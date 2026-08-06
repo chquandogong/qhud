@@ -117,6 +117,103 @@ body {
   border-radius: 5px;
 }
 
+/* ---- provider quota strip (account-scoped, D-011) ---- */
+.quotas {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 7px 12px 7px;
+  border-bottom: 1px solid var(--line);
+}
+.q-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.q-prov {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--tx-mut);
+  width: 52px;
+  flex: none;
+}
+.q-chip {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex: 1;
+  min-width: 0;
+}
+.q-label {
+  font-family: var(--mono);
+  font-size: 8.5px;
+  font-weight: 600;
+  color: var(--tx-faint);
+  flex: none;
+}
+.q-track {
+  flex: 1;
+  min-width: 20px;
+  height: 7px;
+  border-radius: 4px;
+  background: var(--track);
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+}
+.q-fill {
+  display: block;
+  height: 100%;
+  width: 0;
+  border-radius: 4px 0 0 4px;
+  transition: width 450ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+.q-chip[data-sev="good"] .q-fill { background: var(--good); }
+.q-chip[data-sev="concern"] .q-fill { background: var(--concern); }
+.q-chip[data-sev="warn"] .q-fill { background: var(--warn); }
+.q-chip[data-sev="crit"] .q-fill { background: var(--crit); }
+.q-chip[data-sev="good"] .q-val { color: #7bd089; }
+.q-chip[data-sev="concern"] .q-val { color: #e1c873; }
+.q-chip[data-sev="warn"] .q-val { color: #f0a564; }
+.q-chip[data-sev="crit"] .q-val { color: #ff7d74; }
+.q-val {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  flex: none;
+}
+.q-val i {
+  font-style: normal;
+  font-size: 8px;
+  color: var(--tx-faint);
+  margin-left: 1px;
+}
+.q-reset {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--tx-faint);
+  white-space: nowrap;
+  flex: none;
+  min-width: 30px;
+}
+.q-reset.soon { color: var(--warn); }
+
+/* workspace badge next to the pane label */
+.sess {
+  font-size: 9.5px;
+  color: var(--tx-faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 92px;
+  flex: 0 1 auto;
+}
+
 /* ---- tiles ---- */
 .tiles {
   flex: 1;

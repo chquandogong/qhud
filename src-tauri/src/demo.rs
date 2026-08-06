@@ -25,6 +25,7 @@ pub fn payload() -> Payload {
 
     let claude = PaneView {
         pane_id: "%25".into(),
+        session: "demo".into(),
         label: "claude:1:main".into(),
         provider: "claude".into(),
         status: "active".into(),
@@ -69,6 +70,7 @@ pub fn payload() -> Payload {
 
     let codex = PaneView {
         pane_id: "%27".into(),
+        session: "demo".into(),
         label: "codex:1:review".into(),
         provider: "codex".into(),
         status: "stale".into(),
@@ -108,6 +110,7 @@ pub fn payload() -> Payload {
 
     let agy = PaneView {
         pane_id: "%28".into(),
+        session: "demo".into(),
         label: "agy:1:research".into(),
         provider: "agy".into(),
         status: "stale".into(),
@@ -145,6 +148,9 @@ pub fn payload() -> Payload {
         conflicts: Vec::new(),
     };
 
+    let panes = vec![claude, codex, agy];
+    let quotas = crate::view::provider_quotas(&panes);
+
     Payload {
         schema: SCHEMA_VERSION,
         source: "demo",
@@ -156,6 +162,7 @@ pub fn payload() -> Payload {
             conflicts: 1,
             max_5h_pct: Some(88),
         },
-        panes: vec![claude, codex, agy],
+        quotas,
+        panes,
     }
 }

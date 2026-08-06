@@ -28,8 +28,23 @@ pub struct Payload {
     pub backend: Option<String>,
     pub generated_at_ms: u64,
     pub poll_secs: u64,
+    /// Account-scoped quota rollup, one entry per provider (D-011).
+    /// 5h/7d windows are account facts, not pane facts: within a
+    /// window usage is monotonically increasing, so the max reading
+    /// across a provider's panes is the freshest snapshot.
+    pub quotas: Vec<ProviderQuota>,
     pub panes: Vec<PaneView>,
     pub summary: Summary,
+}
+
+#[derive(Serialize, Clone)]
+pub struct ProviderQuota {
+    pub provider: String,
+    pub h5: Option<Gauge>,
+    pub d7: Option<Gauge>,
+    /// Pane whose reading won (freshest snapshot) — shown as source.
+    pub from_label: String,
+    pub session: String,
 }
 
 #[derive(Serialize, Clone, Default)]
@@ -44,6 +59,9 @@ pub struct PaneView {
     pub pane_id: String,
     /// e.g. "claude:1:main" — provider:instance:role, mirroring the TUI.
     pub label: String,
+    /// Workspace/session the pane lives in (disambiguates identical
+    /// labels across workspaces, D-011).
+    pub session: String,
     pub provider: String,
     /// active | done | wait | limit | stale | dead (CSS class key)
     pub status: String,
@@ -103,12 +121,14 @@ pub fn payload(reports: &[PaneReport]) -> Payload {
         }
     }
 
+    let quotas = provider_quotas(&panes);
+
     let summary = Summary {
         panes: panes.len(),
         conflicts: seen_conflicts.len(),
-        max_5h_pct: panes
+        max_5h_pct: quotas
             .iter()
-            .filter_map(|p| p.gauges.h5.as_ref().map(|g| g.pct))
+            .filter_map(|q| q.h5.as_ref().map(|g| g.pct))
             .max(),
     };
 
@@ -118,9 +138,51 @@ pub fn payload(reports: &[PaneReport]) -> Payload {
         backend: None, // filled by the poll loop, which knows the mux
         generated_at_ms: now_ms(),
         poll_secs: 2,
+        quotas,
         panes,
         summary,
     }
+}
+
+/// Collapses per-pane quota snapshots into one account-scoped reading
+/// per provider. Per window (5h/7d) the max percent wins: quota usage
+/// only grows within a window, so every pane's snapshot is a lower
+/// bound and the max is the freshest. Known limit: assumes one
+/// account per provider on this machine (SPEC scale envelope).
+pub fn provider_quotas(panes: &[PaneView]) -> Vec<ProviderQuota> {
+    let mut by_provider: std::collections::BTreeMap<String, ProviderQuota> =
+        std::collections::BTreeMap::new();
+    for pane in panes {
+        let entry = by_provider
+            .entry(pane.provider.clone())
+            .or_insert_with(|| ProviderQuota {
+                provider: pane.provider.clone(),
+                h5: None,
+                d7: None,
+                from_label: String::new(),
+                session: String::new(),
+            });
+        if let Some(g) = &pane.gauges.h5
+            && entry.h5.as_ref().is_none_or(|cur| g.pct > cur.pct)
+        {
+            entry.h5 = Some(g.clone());
+            entry.from_label = pane.label.clone();
+            entry.session = pane.session.clone();
+        }
+        if let Some(g) = &pane.gauges.d7
+            && entry.d7.as_ref().is_none_or(|cur| g.pct > cur.pct)
+        {
+            entry.d7 = Some(g.clone());
+            if entry.h5.is_none() {
+                entry.from_label = pane.label.clone();
+                entry.session = pane.session.clone();
+            }
+        }
+    }
+    by_provider
+        .into_values()
+        .filter(|q| q.h5.is_some() || q.d7.is_some())
+        .collect()
 }
 
 pub fn now_ms() -> u64 {
@@ -178,6 +240,7 @@ fn pane_view(r: &PaneReport, labels: &HashMap<String, String>) -> PaneView {
     PaneView {
         pane_id: r.pane_id.clone(),
         label: label(r),
+        session: r.session_name.clone(),
         provider: provider_str(r.identity.identity.provider).to_string(),
         status: status.to_string(),
         status_label,
@@ -321,5 +384,46 @@ mod tests {
     fn short_truncates_with_ellipsis() {
         assert_eq!(short("cargo", 14), "cargo");
         assert_eq!(short("very-long-command-name", 8), "very-lo…");
+    }
+
+    fn pane(provider: &str, label: &str, h5: Option<u8>, d7: Option<u8>) -> PaneView {
+        let g = |pct: u8| Gauge {
+            pct,
+            source: "test".into(),
+            reset_unix: None,
+            of_tokens: None,
+        };
+        PaneView {
+            provider: provider.into(),
+            label: label.into(),
+            gauges: Gauges {
+                ctx: None,
+                h5: h5.map(g),
+                d7: d7.map(g),
+            },
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn provider_quotas_takes_max_snapshot_per_window() {
+        // Two claude panes: an idle one holding a stale (lower) quota
+        // snapshot and a fresh one — the account rollup must show the
+        // max, attributed to the fresher pane (D-011).
+        let panes = vec![
+            pane("claude", "claude:1:main", Some(61), Some(20)),
+            pane("claude", "claude:1:main*", Some(88), Some(31)),
+            pane("codex", "codex:1:review", Some(40), None),
+            pane("agy", "agy:1:research", None, None),
+        ];
+        let q = provider_quotas(&panes);
+        assert_eq!(q.len(), 2); // agy has no quota data → omitted
+        let claude = q.iter().find(|p| p.provider == "claude").unwrap();
+        assert_eq!(claude.h5.as_ref().unwrap().pct, 88);
+        assert_eq!(claude.d7.as_ref().unwrap().pct, 31);
+        assert_eq!(claude.from_label, "claude:1:main*");
+        let codex = q.iter().find(|p| p.provider == "codex").unwrap();
+        assert_eq!(codex.h5.as_ref().unwrap().pct, 40);
+        assert!(codex.d7.is_none());
     }
 }

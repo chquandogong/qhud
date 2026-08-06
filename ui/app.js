@@ -6,6 +6,7 @@
 
   const tilesEl = document.getElementById("tiles");
   const summaryEl = document.getElementById("summary");
+  const quotasEl = document.getElementById("quotas");
   const metaEl = document.getElementById("meta");
   const srcBadge = document.getElementById("srcBadge");
   const grip = document.getElementById("grip");
@@ -99,6 +100,7 @@
     const head = el("div", "head");
     head.append(
       el("span", "pane"),
+      el("span", "sess"),
       el("span", "conflict-mark", "⚠"),
       el("span", "ver"),
       el("span", "pill"),
@@ -144,11 +146,9 @@
 
   function patchGauges(tile, pane) {
     const wrap = tile.querySelector(".gauges");
-    const defs = [
-      ["ctx", pane.gauges.ctx],
-      ["5h", pane.gauges.h5],
-      ["7d", pane.gauges.d7],
-    ];
+    // Tiles show pane-scoped facts only; 5h/7d are account facts and
+    // live in the provider quota strip (D-011).
+    const defs = [["ctx", pane.gauges.ctx]];
     for (const [key, g] of defs) {
       let row = wrap.querySelector(`[data-key="${key}"]`);
       if (!g) {
@@ -227,6 +227,9 @@
     tile.classList.toggle("compact", !expanded);
 
     tile.querySelector(".pane").textContent = pane.label;
+    tile.querySelector(".sess").textContent = pane.session
+      ? "@" + pane.session
+      : "";
 
     const mark = tile.querySelector(".conflict-mark");
     mark.hidden = !(pane.conflicts && pane.conflicts.length);
@@ -262,6 +265,68 @@
     patchGauges(tile, pane);
   }
 
+
+  // ---- provider quota strip (account-scoped facts, D-011) ---------
+
+  function buildQuotaRow(provider) {
+    const row = el("div", "q-row");
+    row.dataset.provider = provider;
+    row.append(el("span", "q-prov", provider));
+    for (const win of ["5h", "7d"]) {
+      const chip = el("span", "q-chip");
+      chip.dataset.win = win;
+      const track = el("span", "q-track");
+      track.append(el("span", "q-fill"));
+      const val = el("span", "q-val");
+      val.append(document.createTextNode(""), el("i", null, "%"));
+      chip.append(el("span", "q-label", win.toUpperCase()), track, val, el("span", "q-reset"));
+      row.append(chip);
+    }
+    return row;
+  }
+
+  function patchQuotaChip(chip, g) {
+    if (!g) {
+      chip.hidden = true;
+      return;
+    }
+    chip.hidden = false;
+    chip.dataset.sev = sev(g.pct);
+    chip.querySelector(".q-fill").style.width = g.pct + "%";
+    chip.querySelector(".q-val").firstChild.nodeValue = g.pct;
+    const reset = chip.querySelector(".q-reset");
+    if (g.reset_unix) {
+      reset.dataset.resetUnix = g.reset_unix;
+      reset.classList.toggle("soon", g.reset_unix * 1000 - Date.now() < 60 * 60000);
+      reset.textContent = fmtReset(g.reset_unix);
+    } else {
+      delete reset.dataset.resetUnix;
+      reset.classList.remove("soon");
+      reset.textContent = "";
+    }
+  }
+
+  function renderQuotas(quotas) {
+    quotasEl.hidden = quotas.length === 0;
+    const alive = new Set();
+    for (const q of quotas) {
+      alive.add(q.provider);
+      let row = quotasEl.querySelector(`[data-provider="${q.provider}"]`);
+      if (!row) {
+        row = buildQuotaRow(q.provider);
+        quotasEl.append(row);
+      }
+      row.title = q.from_label
+        ? `freshest reading: ${q.from_label}` + (q.session ? ` @${q.session}` : "")
+        : "";
+      patchQuotaChip(row.querySelector('[data-win="5h"]'), q.h5);
+      patchQuotaChip(row.querySelector('[data-win="7d"]'), q.d7);
+    }
+    for (const row of [...quotasEl.children]) {
+      if (!alive.has(row.dataset.provider)) row.remove();
+    }
+  }
+
   // ---- top-level render -------------------------------------------
 
   function render() {
@@ -277,12 +342,10 @@
       `${p.summary.conflicts} conflict`,
     );
     summaryEl.append(conf);
-    if (p.summary.max_5h_pct != null) {
-      summaryEl.append(" · 5H ");
-      summaryEl.append(el("b", null, `${p.summary.max_5h_pct}%`));
-    }
 
     srcBadge.hidden = p.source !== "demo";
+
+    renderQuotas(p.quotas || []);
 
     // tiles (keyed patch, order = payload order)
     const alive = new Set();
@@ -343,6 +406,9 @@
     for (const reset of tilesEl.querySelectorAll(".g-reset[data-reset-unix]")) {
       const b = reset.querySelector("b");
       if (b) b.textContent = fmtReset(Number(reset.dataset.resetUnix));
+    }
+    for (const reset of quotasEl.querySelectorAll(".q-reset[data-reset-unix]")) {
+      reset.textContent = fmtReset(Number(reset.dataset.resetUnix));
     }
     for (const sp of tilesEl.querySelectorAll(".elapsed[data-base-secs]")) {
       sp.textContent = fmtElapsed(Number(sp.dataset.baseSecs));
@@ -465,10 +531,22 @@
       source: "demo",
       generated_at_ms: Date.now(),
       poll_secs: 2,
+      quotas: [
+        { provider: "agy", from_label: "agy:1:research", session: "demo",
+          h5: { pct: 8, source: "providerofficial", reset_unix: now + 13200, of_tokens: null },
+          d7: { pct: 3, source: "providerofficial", reset_unix: now + 518400, of_tokens: null } },
+        { provider: "claude", from_label: "claude:1:main", session: "demo",
+          h5: { pct: 88, source: "providerofficial", reset_unix: now + 2820, of_tokens: null },
+          d7: { pct: 31, source: "providerofficial", reset_unix: now + 363600, of_tokens: null } },
+        { provider: "codex", from_label: "codex:1:review", session: "demo",
+          h5: { pct: 61, source: "providerofficial", reset_unix: now + 3900, of_tokens: null },
+          d7: { pct: 44, source: "providerofficial", reset_unix: now + 432000, of_tokens: null } },
+      ],
       summary: { panes: 3, conflicts: 1, max_5h_pct: 88 },
       panes: [
         {
           pane_id: "%25",
+          session: "demo",
           label: "claude:1:main",
           provider: "claude",
           status: "active",
@@ -514,6 +592,7 @@
         },
         {
           pane_id: "%27",
+          session: "demo",
           label: "codex:1:review",
           provider: "codex",
           status: "stale",
@@ -552,6 +631,7 @@
         },
         {
           pane_id: "%28",
+          session: "demo",
           label: "agy:1:research",
           provider: "agy",
           status: "stale",
