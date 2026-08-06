@@ -7,10 +7,10 @@
 | ID    | Requirement                                                                                                                                              | Status                              |
 | ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------- |
 | FR-1  | Frameless, transparent, rounded widget window on the desktop layer: below all windows, sticky on all workspaces, absent from taskbar/pager               | done (verified via `_NET_WM_STATE`) |
-| FR-2  | User can drag-move the widget (top/footer bars) anywhere across monitors                                                                                 | done (`data-tauri-drag-region`)     |
-| FR-3  | User can resize via the ◢ grip; content reflows                                                                                                          | done (`startResizeDragging`)        |
+| FR-2  | User can drag-move the widget (top/footer bars) anywhere across monitors                                                                                 | done (self-driven, D-008)     |
+| FR-3  | User can resize via the ◢ grip; content reflows                                                                                                          | done (self-driven, D-008)        |
 | FR-4  | Position/size persist across restarts                                                                                                                    | done (`tauri-plugin-window-state`)  |
-| FR-5  | Poll qmonster pipeline every 2 s; render pane tiles with status pill + CTX/5H/7D gauges                                                                  | done                                |
+| FR-5  | Poll qmonster pipeline every 2 s; render pane tiles with status pill + CTX gauge; account-scoped 5H/7D quota strip per provider (D-011)                                                                  | done                                |
 | FR-6  | Click a tile → expand: config chips (model/effort/flags/branch/cwd/mem/cost) + conflict banner; click again → compact. Selection persists (localStorage) | done                                |
 | FR-7  | Severity bands on gauges: `<60` good · `60–74` concern · `75–84` warn · `≥85` crit (mockup legend)                                                       | done                                |
 | FR-8  | Reset countdowns (`resets 47m`) and idle-elapsed badges tick locally between polls                                                                       | done                                |
@@ -40,11 +40,18 @@ Emitted as Tauri event `qhud://report`; see `src-tauri/src/view.rs`.
   "schema": 1,
   "source": "live" | "demo",
   "backend": "herdr" | "tmux" | null,   // resolved mux backend; null in demo (additive, v0.1.1)
+  "quotas": [{                           // ACCOUNT-scoped rollup, one per provider (additive, v0.2.0 — D-011)
+    "provider": "claude",
+    "h5": { "pct": 88, "source": "providerofficial", "reset_unix": 1754500000, "of_tokens": null },
+    "d7": { "pct": 31, "source": "providerofficial", "reset_unix": 1754800000, "of_tokens": null },
+    "from_label": "claude:1:main", "session": "~"   // freshest snapshot's pane
+  }],
   "generated_at_ms": 0,
   "poll_secs": 2,
   "summary": { "panes": 3, "conflicts": 1, "max_5h_pct": 88 },
   "panes": [{
     "pane_id": "%25",
+    "session": "~",                    // workspace label (additive, v0.2.0)
     "label": "claude:1:main",          // provider:instance:role
     "provider": "claude",
     "status": "active|done|wait|limit|stale|dead",
@@ -66,7 +73,10 @@ Emitted as Tauri event `qhud://report`; see `src-tauri/src/view.rs`.
 }
 ```
 
-Contract rules: pressures leave the backend as integer percents;
+Contract rules: **facts render at the scope they are true** — 5h/7d
+quota is account-scoped (provider strip; per-pane `gauges.h5/d7`
+stay in the payload but tiles do not render them); CTX/status are
+pane-scoped. Pressures leave the backend as integer percents;
 reset instants as unix seconds (frontend owns countdown text); the
 webview never sees qmonster types.
 

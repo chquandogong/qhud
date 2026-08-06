@@ -191,3 +191,31 @@ Format: context → options → decision → rationale → residual risk.
   is verifiable from logs without polluting WM_NAME.
 - **Final evidence** (v0.1.4, compositor path, DING off):
   `sel:none:-` → `sel:wC:p3:R` toggle round-trip in stderr.
+
+## D-011 · Scope-correct display: quota is an account fact, shown once per provider
+
+- **Context**: operator critique (2026-08-06) — two `claude:1:main`
+  tiles showed *different* 5H/7D values. Correct: 5h/7d windows are
+  **account**-scoped, but v0.1 rendered each pane's sidefile snapshot
+  as if quota were pane-scoped. Idle sessions hold stale snapshots, so
+  the same account showed divergent numbers — misleading, and the
+  duplicate labels were indistinguishable. The original mockup itself
+  had this semantic error; porting it faithfully preserved it.
+- **Decision**: display facts at the scope they are true.
+  1. **Provider quota strip** (one row per provider, under the top
+     bar): 5H/7D gauges from the freshest snapshot. Freshness rule:
+     within a quota window usage only grows, so the **max percent
+     across a provider's panes is the freshest reading** (each pane's
+     snapshot is a lower bound). Source pane attributed via tooltip.
+  2. **Tiles show pane facts only**: status pill + CTX (+ expanded
+     config/conflicts). Per-pane quota rows removed.
+  3. **Workspace badge** (`@workspace`) disambiguates identical
+     labels across workspaces.
+- **Payload**: schema v1 additive — `quotas[]` (provider, h5, d7,
+  from_label, session), `panes[].session`.
+- **Known limits**: assumes one account per provider on the machine
+  (multi-account would need account identity from the provider
+  surfaces — not exposed today); rollup unit-tested
+  (`provider_quotas_takes_max_snapshot_per_window`).
+- **Evidence**: live compositor-path selection re-verified on the new
+  layout (`sel:wC:p1:R`); README screenshots regenerated.

@@ -2,6 +2,20 @@
 
 All notable changes to qhud. Format: [Keep a Changelog](https://keepachangelog.com/), versioning: [SemVer](https://semver.org/).
 
+## [0.2.0] — 2026-08-06
+
+### Changed
+
+- **Information architecture rebuilt around fact scope** (D-011, from
+  operator feedback): 5h/7d quota windows are account facts and now
+  render once per provider in a quota strip (freshest-snapshot rollup
+  — max percent wins, since usage within a window only grows). Tiles
+  show pane facts only (status + CTX + expanded detail) and gain a
+  `@workspace` badge so identical labels are distinguishable. Top-bar
+  summary simplified (quota lives in the strip).
+- Payload schema v1 additive fields: `quotas[]`, `panes[].session`.
+- README screenshots regenerated for the new layout.
+
 ## [0.1.4] — 2026-08-06
 
 ### Fixed

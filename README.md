@@ -43,9 +43,12 @@ park it on a spare corner of any monitor and glance.
   Antigravity), signals and cross-pane conflict findings all upstream.
 - **Observe-only by contract** — no writes to `~/.qmonster`, no
   notifications, no network. The TUI stays the single writer.
-- **Mockup-faithful UI** — dark tile dashboard with severity-banded
-  gauges (`<60` ok · `60–74` concern · `75–84` warn · `≥85` crit),
-  click-to-expand config + conflict detail.
+- **Scope-correct display** — account facts once: a per-provider
+  5H/7D quota strip using the freshest snapshot across panes;
+  pane facts per tile: status pill, CTX gauge, `@workspace` badge,
+  click-to-expand config + conflict detail. Severity bands from the
+  reference mockup (`<60` ok · `60–74` concern · `75–84` warn ·
+  `≥85` crit).
 - **Drag anywhere, resize, remembered** — multi-monitor position and
   size persist across restarts.
 - **Demo mode** — no tmux? The widget renders the reference mockup
