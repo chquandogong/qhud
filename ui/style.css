@@ -799,3 +799,13 @@ body {
   max-width: none;
   flex: 0 1 auto;
 }
+
+/* A scoped (per-model) gauge can only come from the on-disk cache, never the
+   live statusline — dim it so it cannot pass for a current reading. */
+.q-chip.stale {
+  opacity: 0.6;
+}
+.q-chip.stale .q-label::after {
+  content: "*";
+  color: var(--concern);
+}

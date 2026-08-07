@@ -598,6 +598,19 @@
         row.append(chip);
       }
       patchQuotaChip(chip, { pct: x.pct, reset_unix: x.reset_unix });
+      // Per-model windows exist ONLY in Claude's on-disk cache, which
+      // refreshes when Claude Code fetches — not every prompt like the
+      // statusline. So a scoped gauge can never be live, and sitting
+      // unmarked beside live 5H/7D it reads as current (observed: Fable
+      // showed a 27h-old 5% while /usage said 22%). Carry its age.
+      chip.classList.add("stale");
+      const age = row.dataset.cacheAge;
+      const rst = chip.querySelector(".q-reset");
+      if (age) {
+        delete rst.dataset.resetUnix; // a 27h-old countdown is not credible
+        rst.classList.remove("soon");
+        rst.textContent = `~${age} old`;
+      }
     }
     for (const chip of [...row.querySelectorAll('[data-win^="m:"]')]) {
       if (!seen.has(chip.dataset.win)) chip.remove();
@@ -660,6 +673,8 @@
       ageEl.textContent = showAge ? `~${row.dataset.cacheAge} old` : "";
       ageEl.hidden = !showAge;
 
+      patchScopedChips(row, q.scoped || []);
+
       const lines = [];
       if (q.origin === "cache") {
         lines.push(
@@ -696,7 +711,7 @@
       row.title = lines.join("\n");
       patchQuotaChip(row.querySelector('[data-win="5h"]'), q.h5);
       patchQuotaChip(row.querySelector('[data-win="7d"]'), q.d7);
-      patchScopedChips(row, q.scoped || []);
+
     }
     for (const row of [...quotasEl.children]) {
       if (row.dataset.pkey || row.dataset.wsid) continue; // owned by other renderers
