@@ -71,8 +71,11 @@ struct UsageBody {
     plan_type: Option<String>,
     #[serde(default)]
     rate_limit: Option<RateLimit>,
+    /// Explicitly `null` on some plans, so this must be an Option:
+    /// `#[serde(default)]` covers an absent field, NOT an explicit null, and
+    /// a null here used to fail the whole parse and report "no data".
     #[serde(default)]
-    additional_rate_limits: Vec<AdditionalLimit>,
+    additional_rate_limits: Option<Vec<AdditionalLimit>>,
     #[serde(default)]
     credits: Option<Credits>,
 }
@@ -139,6 +142,7 @@ pub fn parse_usage(account_id: &str, body: &str) -> Option<WorkspaceUsage> {
     windows.extend(
         parsed
             .additional_rate_limits
+            .unwrap_or_default()
             .into_iter()
             .filter_map(|a| a.rate_limit)
             .flat_map(RateLimit::windows),
@@ -152,56 +156,43 @@ pub fn parse_usage(account_id: &str, body: &str) -> Option<WorkspaceUsage> {
     })
 }
 
+// Live shape (verified 2026-08-07): `accounts` is an ARRAY of entries, each
+// carrying its own `id` and `plan_type`, with `structure: "workspace"`. It is
+// NOT a map keyed by account id.
 #[derive(Deserialize)]
 struct AccountsBody {
     #[serde(default)]
-    accounts: std::collections::HashMap<String, AccountEntry>,
-    #[serde(default)]
-    account_ordering: Vec<String>,
+    accounts: Vec<AccountEntry>,
 }
 
 #[derive(Deserialize)]
 struct AccountEntry {
     #[serde(default)]
-    account: Option<AccountInner>,
-}
-
-#[derive(Deserialize)]
-struct AccountInner {
+    id: Option<String>,
+    #[serde(default)]
+    plan_type: Option<String>,
+    #[serde(default)]
+    structure: Option<String>,
+    /// Workspace display name, when the server supplies one.
     #[serde(default)]
     name: Option<String>,
+    #[serde(default)]
+    title: Option<String>,
 }
 
-/// Parses `/wham/accounts/check` into `(account_id, display name)` pairs.
-pub fn parse_accounts(body: &str) -> Vec<(String, Option<String>)> {
+/// Parses `/wham/accounts/check` into one entry per workspace.
+///
+/// Returns `(account_id, display name, plan_type)`: the plan comes straight
+/// from this call, so a workspace's plan is known without a second request.
+pub fn parse_accounts(body: &str) -> Vec<(String, Option<String>, Option<String>)> {
     let Ok(parsed) = serde_json::from_str::<AccountsBody>(body) else {
         return Vec::new();
     };
-    // Honour the server's ordering, then append anything it omitted so a
-    // workspace can never be silently dropped from the list.
-    let mut out: Vec<(String, Option<String>)> = Vec::new();
-    let name_of = |id: &String| {
-        parsed
-            .accounts
-            .get(id)
-            .and_then(|e| e.account.as_ref())
-            .and_then(|a| a.name.clone())
-    };
-    for id in &parsed.account_ordering {
-        if parsed.accounts.contains_key(id) {
-            out.push((id.clone(), name_of(id)));
-        }
-    }
-    let mut extras: Vec<&String> = parsed
+    parsed
         .accounts
-        .keys()
-        .filter(|k| !parsed.account_ordering.contains(k))
-        .collect();
-    extras.sort();
-    for id in extras {
-        out.push((id.clone(), name_of(id)));
-    }
-    out
+        .into_iter()
+        .filter_map(|a| Some((a.id?, a.name.or(a.title), a.plan_type)))
+        .collect()
 }
 
 /// Reads the access token and default workspace out of `~/.codex/auth.json`.
@@ -279,26 +270,50 @@ pub async fn fetch_all_workspaces() -> Result<Vec<WorkspaceUsage>, String> {
     // Enumeration is best-effort: if it fails we still report the default
     // workspace rather than showing nothing.
     let mut targets = match get(&client, ACCOUNTS_URL, &token, default_account.as_deref()).await {
-        Ok(body) => parse_accounts(&body),
-        Err(_) => Vec::new(),
+        Ok(body) => {
+            let found = parse_accounts(&body);
+            if found.is_empty() {
+                let preview: String = body.chars().take(300).collect();
+                eprintln!("qhud: accounts/check listed no workspace; body: {preview}");
+            }
+            found
+        }
+        Err(e) => {
+            eprintln!("qhud: accounts/check failed ({e}); falling back to default account");
+            Vec::new()
+        }
     };
     if targets.is_empty() {
         let id = default_account
             .clone()
             .ok_or("auth.json has no account_id — run `codex login`")?;
-        targets.push((id, None));
+        targets.push((id, None, None));
     }
 
     let mut out = Vec::new();
     let mut last_err = None;
-    for (id, name) in targets {
+    for (id, name, plan) in targets {
         match get(&client, USAGE_URL, &token, Some(&id)).await {
-            Ok(body) => {
-                if let Some(mut usage) = parse_usage(&id, &body) {
+            Ok(body) => match parse_usage(&id, &body) {
+                Some(mut usage) => {
                     usage.name = name;
+                    // accounts/check already told us the plan; keep it when
+                    // the usage body omits it.
+                    if usage.plan_type.is_none() {
+                        usage.plan_type = plan;
+                    }
                     out.push(usage);
                 }
-            }
+                // A 200 whose body will not parse is NOT "no data" — the
+                // schema is undocumented and churns, so say what came back
+                // instead of reporting an empty result.
+                None => {
+                    let preview: String = body.chars().take(400).collect();
+                    last_err = Some(format!(
+                        "workspace {id}: HTTP 200 but body did not parse; first 400 chars: {preview}"
+                    ));
+                }
+            },
             Err(e) => last_err = Some(e),
         }
     }
@@ -376,24 +391,44 @@ mod tests {
     }
 
     #[test]
-    fn parse_accounts_lists_every_workspace() {
-        // One login, two workspaces — the case the operator asked about.
-        let body = r#"{"accounts":{
-            "aaa":{"account":{"account_id":"aaa","name":"Personal"}},
-            "bbb":{"account":{"account_id":"bbb","name":"DOGU Business"}}},
-          "account_ordering":["aaa","bbb"],"default_account_id":"aaa"}"#;
+    fn parse_accounts_lists_every_workspace_with_its_plan() {
+        // LIVE shape (2026-08-07): an ARRAY of entries each carrying its own
+        // id and plan_type. It was previously modelled as a map keyed by id,
+        // which deserialized to nothing — so the fetch silently fell back to
+        // one default workspace and reported that as the whole truth.
+        let body = r#"{"accounts":[
+            {"id":"aaa","account_user_role":"account-owner","structure":"workspace",
+             "plan_type":"team","is_zdr":false},
+            {"id":"bbb","structure":"workspace","plan_type":"plus","name":"Personal"}]}"#;
 
         let got = parse_accounts(body);
 
         assert_eq!(got.len(), 2, "both workspaces must be offered");
-        assert!(
-            got.iter()
-                .any(|(id, n)| id == "aaa" && n.as_deref() == Some("Personal"))
+        assert_eq!(got[0].0, "aaa");
+        assert_eq!(
+            got[0].2.as_deref(),
+            Some("team"),
+            "plan comes from this call"
         );
-        assert!(
-            got.iter()
-                .any(|(id, n)| id == "bbb" && n.as_deref() == Some("DOGU Business"))
-        );
+        assert_eq!(got[1].1.as_deref(), Some("Personal"));
+        assert_eq!(got[1].2.as_deref(), Some("plus"));
+    }
+
+    #[test]
+    fn usage_parses_when_additional_rate_limits_is_explicitly_null() {
+        // Regression: #[serde(default)] covers an ABSENT field, not an
+        // explicit null. A null here failed the whole parse, and the fetch
+        // reported "no workspace returned usage" for a perfectly good 200.
+        let body = r#"{"plan_type":"team","additional_rate_limits":null,
+          "rate_limit":{"primary_window":{"used_percent":0,
+            "limit_window_seconds":604800,"reset_at":1786696100},
+            "secondary_window":null}}"#;
+
+        let u = parse_usage("acct", body).expect("a null extras list is still valid");
+
+        assert_eq!(u.plan_type.as_deref(), Some("team"));
+        assert_eq!(u.windows.len(), 1);
+        assert_eq!(u.windows[0].label, "weekly");
     }
 
     #[test]
