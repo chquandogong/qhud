@@ -67,6 +67,13 @@ pub fn window_label(seconds: u64) -> String {
 
 #[derive(Deserialize)]
 struct UsageBody {
+    /// The account the SERVER says this body describes. Compared against the
+    /// account we asked for: if `chatgpt-account-id` is ignored or the token
+    /// is not authorized for that workspace, the server answers with the
+    /// default context and we would render one workspace's numbers twice
+    /// under two different labels — worse than showing one.
+    #[serde(default)]
+    account_id: Option<String>,
     #[serde(default)]
     plan_type: Option<String>,
     #[serde(default)]
@@ -134,6 +141,16 @@ impl RateLimit {
 /// Parses a `/wham/usage` body.
 pub fn parse_usage(account_id: &str, body: &str) -> Option<WorkspaceUsage> {
     let parsed: UsageBody = serde_json::from_str(body).ok()?;
+    if let Some(got) = parsed.account_id.as_deref()
+        && got != account_id
+    {
+        eprintln!(
+            "qhud: SCOPE MISMATCH — asked for workspace {account_id} but the body \
+             describes {got}; chatgpt-account-id was not honoured, so this \
+             reading is dropped rather than mislabelled"
+        );
+        return None;
+    }
     let mut windows: Vec<UsageWindow> = parsed
         .rate_limit
         .into_iter()
@@ -358,6 +375,26 @@ mod tests {
     #[test]
     fn unknown_window_duration_degrades_to_minutes_not_a_wrong_guess() {
         assert_eq!(window_label(7_200), "120m");
+    }
+
+    #[test]
+    fn usage_is_dropped_when_the_body_describes_another_workspace() {
+        // The server may ignore chatgpt-account-id and answer with the default
+        // context. Accepting that would render one workspace's numbers under
+        // another's label — verified live: asking for 3f13fa37 returned a body
+        // for 04090c67, with reset timestamps 1s apart instead of days.
+        let body = r#"{"account_id":"other","plan_type":"team",
+          "rate_limit":{"primary_window":{"used_percent":0,
+            "limit_window_seconds":604800,"reset_at":1786698607}}}"#;
+
+        assert!(
+            parse_usage("asked-for", body).is_none(),
+            "a mislabelled reading is worse than a missing one"
+        );
+        assert!(
+            parse_usage("other", body).is_some(),
+            "a matching account_id still parses"
+        );
     }
 
     #[test]
