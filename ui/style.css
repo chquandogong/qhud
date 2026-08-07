@@ -142,6 +142,23 @@ body {
   width: 52px;
   flex: none;
 }
+/* A cache-sourced row is dimmed and carries its age, so an old snapshot
+   is visibly not a live reading. */
+.q-row[data-origin="cache"] {
+  opacity: 0.66;
+}
+.q-age {
+  font-family: var(--mono);
+  font-size: 8.5px;
+  color: var(--tx-mut);
+  opacity: 0.8;
+  flex: none;
+  white-space: nowrap;
+}
+.q-age[hidden] {
+  display: none;
+}
+
 /* Account the row belongs to. Truncates rather than pushing the gauges
    around — two logins on one provider must stay tellable apart even in a
    narrow widget. */

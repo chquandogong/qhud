@@ -270,7 +270,11 @@
   function buildQuotaRow(provider) {
     const row = el("div", "q-row");
     row.dataset.provider = provider;
-    row.append(el("span", "q-prov", provider), el("span", "q-acct"));
+    row.append(
+      el("span", "q-prov", provider),
+      el("span", "q-acct"),
+      el("span", "q-age"),
+    );
     for (const win of ["5h", "7d"]) {
       const chip = el("span", "q-chip");
       chip.dataset.win = win;
@@ -329,7 +333,39 @@
       acctEl.textContent = q.account?.display || "";
       acctEl.hidden = !q.account?.display;
 
+      // A cache-sourced row is NOT a live reading. Mark it on the row and
+      // say how old it is, so a stale number can never pass for current.
+      row.dataset.origin = q.origin || "pane";
+      if (q.cache_fetched_at_ms) {
+        const ageMin = Math.round((Date.now() - q.cache_fetched_at_ms) / 60000);
+        row.dataset.cacheAge =
+          ageMin < 90 ? `${ageMin}m` : `${Math.round(ageMin / 60)}h`;
+      } else {
+        delete row.dataset.cacheAge;
+      }
+      // Only a cache-ORIGIN row wears the age badge. On a live row the
+      // snapshot merely contributes per-model windows, so badging it
+      // would wrongly imply the visible gauges are stale.
+      const ageEl = row.querySelector(".q-age");
+      const showAge = q.origin === "cache" && row.dataset.cacheAge;
+      ageEl.textContent = showAge ? `~${row.dataset.cacheAge} old` : "";
+      ageEl.hidden = !showAge;
+
       const lines = [];
+      if (q.origin === "cache") {
+        lines.push(
+          `no CLI running — from Claude's on-disk snapshot, ${row.dataset.cacheAge} old`,
+        );
+      } else if (q.cache_fetched_at_ms) {
+        lines.push(
+          `per-model windows from snapshot, ${row.dataset.cacheAge} old`,
+        );
+      }
+      for (const s of q.scoped || []) {
+        if (s.kind === "weekly_scoped" && s.scope) {
+          lines.push(`weekly [${s.scope}]: ${s.pct}%`);
+        }
+      }
       if (q.account) {
         const a = q.account;
         lines.push(

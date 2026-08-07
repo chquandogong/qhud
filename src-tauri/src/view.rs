@@ -49,6 +49,19 @@ pub struct ProviderQuota {
     /// `None` when the provider's identity file is absent or unreadable.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub account: Option<crate::accounts::AccountLabel>,
+    /// `"pane"` when a live mux pane fed this row, `"cache"` when it came
+    /// from Claude's on-disk snapshot with no CLI running (additive,
+    /// v0.4.0). A cache row must never be mistaken for a live one.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub origin: Option<&'static str>,
+    /// When the on-disk snapshot was last refreshed by the provider's own
+    /// CLI. Present whenever cache data contributed anything to this row.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cache_fetched_at_ms: Option<u64>,
+    /// Per-model / per-surface windows. Only the cache carries these; the
+    /// statusLine feed has no equivalent.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub scoped: Vec<crate::usage_cache::ScopedLimit>,
 }
 
 #[derive(Serialize, Clone, Default)]
@@ -178,6 +191,9 @@ pub fn provider_quotas(panes: &[PaneView]) -> Vec<ProviderQuota> {
                 from_label: String::new(),
                 session: String::new(),
                 account: None,
+                origin: Some("pane"),
+                cache_fetched_at_ms: None,
+                scoped: Vec::new(),
             });
         if let Some(g) = &pane.gauges.h5
             && !expired(g)
@@ -202,6 +218,48 @@ pub fn provider_quotas(panes: &[PaneView]) -> Vec<ProviderQuota> {
         .into_values()
         .filter(|q| q.h5.is_some() || q.d7.is_some())
         .collect()
+}
+
+/// Folds Claude's on-disk snapshot into the quota strip.
+///
+/// Rules, in order of importance:
+///  1. A live pane reading is never overridden. Within a window usage
+///     only grows, and the statusline is refreshed every prompt, so the
+///     pane number is at least as current as the cache.
+///  2. The per-model `scoped` windows are attached regardless — only the
+///     cache has them.
+///  3. If Claude contributed **no** pane at all, synthesize a row from
+///     the cache marked `origin: "cache"`. This is the whole point: the
+///     numbers survive with no CLI running.
+pub fn attach_usage_cache(payload: &mut Payload, cache: Option<&crate::usage_cache::CachedUsage>) {
+    let Some(cache) = cache else { return };
+    let to_gauge = |w: &crate::usage_cache::CachedWindow| Gauge {
+        pct: w.pct,
+        source: "providercache".to_string(),
+        reset_unix: w.reset_unix,
+        of_tokens: None,
+    };
+
+    if let Some(row) = payload.quotas.iter_mut().find(|q| q.provider == "claude") {
+        row.cache_fetched_at_ms = Some(cache.fetched_at_ms);
+        row.scoped = cache.scoped.clone();
+        return;
+    }
+    if cache.five_hour.is_none() && cache.seven_day.is_none() {
+        return;
+    }
+    payload.quotas.push(ProviderQuota {
+        provider: "claude".to_string(),
+        h5: cache.five_hour.as_ref().map(to_gauge),
+        d7: cache.seven_day.as_ref().map(to_gauge),
+        from_label: String::new(),
+        session: String::new(),
+        account: None,
+        origin: Some("cache"),
+        cache_fetched_at_ms: Some(cache.fetched_at_ms),
+        scoped: cache.scoped.clone(),
+    });
+    payload.quotas.sort_by(|a, b| a.provider.cmp(&b.provider));
 }
 
 /// Stamps each quota row with the account that owns it. Kept out of
@@ -418,6 +476,87 @@ mod tests {
     fn short_truncates_with_ellipsis() {
         assert_eq!(short("cargo", 14), "cargo");
         assert_eq!(short("very-long-command-name", 8), "very-lo…");
+    }
+
+    fn cache(h5: u8, d7: u8) -> crate::usage_cache::CachedUsage {
+        use crate::usage_cache::{CachedWindow, ScopedLimit};
+        crate::usage_cache::CachedUsage {
+            fetched_at_ms: 1_785_996_526_168,
+            account_id: Some("acct-1".into()),
+            five_hour: Some(CachedWindow {
+                pct: h5,
+                reset_unix: Some(1_786_011_600),
+            }),
+            seven_day: Some(CachedWindow {
+                pct: d7,
+                reset_unix: Some(1_786_557_600),
+            }),
+            scoped: vec![ScopedLimit {
+                kind: "weekly_scoped".into(),
+                scope: Some("Fable".into()),
+                pct: 5,
+                reset_unix: None,
+            }],
+        }
+    }
+
+    fn payload_of(panes: Vec<PaneView>) -> Payload {
+        Payload {
+            schema: SCHEMA_VERSION,
+            source: "live",
+            backend: None,
+            generated_at_ms: 0,
+            poll_secs: 2,
+            quotas: provider_quotas(&panes),
+            panes,
+            summary: Summary::default(),
+        }
+    }
+
+    #[test]
+    fn cache_fills_claude_when_no_pane_is_running() {
+        // The reason this exists: close every CLI and the strip would
+        // otherwise go blank even though quota is still consumed.
+        let mut p = payload_of(vec![pane("codex", "codex:1:main", Some(40), None)]);
+        assert!(!p.quotas.iter().any(|q| q.provider == "claude"));
+
+        attach_usage_cache(&mut p, Some(&cache(20, 3)));
+
+        let claude = p.quotas.iter().find(|q| q.provider == "claude").unwrap();
+        assert_eq!(claude.origin, Some("cache"));
+        assert_eq!(claude.h5.as_ref().unwrap().pct, 20);
+        assert_eq!(claude.h5.as_ref().unwrap().reset_unix, Some(1_786_011_600));
+        assert_eq!(claude.cache_fetched_at_ms, Some(1_785_996_526_168));
+        assert_eq!(p.quotas[0].provider, "claude", "rows stay provider-sorted");
+    }
+
+    #[test]
+    fn cache_never_overrides_a_live_pane_reading() {
+        // Cache was 20% when Claude Code last fetched; the pane says 36%
+        // now. Within a window usage only grows, so the pane wins.
+        let mut p = payload_of(vec![pane("claude", "claude:1:main", Some(36), Some(12))]);
+
+        attach_usage_cache(&mut p, Some(&cache(20, 3)));
+
+        let claude = p.quotas.iter().find(|q| q.provider == "claude").unwrap();
+        assert_eq!(claude.h5.as_ref().unwrap().pct, 36, "live reading survives");
+        assert_eq!(claude.origin, Some("pane"));
+        // ...but the per-model window only the cache has is still attached,
+        // along with the cache's own freshness stamp.
+        assert_eq!(claude.scoped.len(), 1);
+        assert_eq!(claude.scoped[0].scope.as_deref(), Some("Fable"));
+        assert_eq!(claude.cache_fetched_at_ms, Some(1_785_996_526_168));
+    }
+
+    #[test]
+    fn absent_cache_changes_nothing() {
+        let mut p = payload_of(vec![pane("claude", "claude:1:main", Some(36), None)]);
+        let before = p.quotas.len();
+
+        attach_usage_cache(&mut p, None);
+
+        assert_eq!(p.quotas.len(), before);
+        assert!(p.quotas[0].cache_fetched_at_ms.is_none());
     }
 
     fn pane(provider: &str, label: &str, h5: Option<u8>, d7: Option<u8>) -> PaneView {

@@ -21,6 +21,7 @@ tauri-plugin-single-instance = "2"
 # the exact rev this bridge was written against; bump deliberately and
 # re-run the contract tests in src/view.rs when you do.
 qmonster = { git = "https://github.com/chquandogong/qmonster", rev = "eff5f637a2e922ffd99d3e8de09fb34471d92a62" }
+chrono = { version = "0.4.45", default-features = false, features = ["std", "serde"] }
 
 [profile.release]
 strip = true
