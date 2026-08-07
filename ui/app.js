@@ -381,7 +381,16 @@
       const wins = (w.windows || []).filter((x) => x.used_percent != null);
       row.append(
         el("span", "q-prov", "↳"),
-        el("span", "q-acct", w.name || w.account_id.slice(0, 8)),
+        el(
+          "span",
+          "q-acct",
+          // A hex id prefix is not a label a human can act on. Registry name
+          // wins, then whatever accounts/check supplied, and the id is only a
+          // last resort.
+          (state.payload?.workspace_names || {})[w.account_id] ||
+            w.name ||
+            w.account_id.slice(0, 8),
+        ),
       );
       for (const x of wins) {
         const chip = el("span", "q-chip");

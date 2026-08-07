@@ -42,6 +42,9 @@ pub struct KnownAccount {
 #[derive(Debug, Clone, Default)]
 pub struct Registry {
     pub labels: HashMap<String, String>,
+    /// account_id -> human workspace name. `accounts/check` omits the name
+    /// for some workspaces, which otherwise render as a hex id prefix.
+    pub workspace_names: HashMap<String, String>,
     pub known: Vec<KnownAccount>,
     pub forgotten: HashSet<String>,
 }
@@ -69,6 +72,8 @@ pub fn parse(json: &str) -> Registry {
         #[serde(default)]
         labels: HashMap<String, String>,
         #[serde(default)]
+        workspace_names: HashMap<String, String>,
+        #[serde(default)]
         known: Vec<KnownAccount>,
         #[serde(default)]
         forgotten: Vec<String>,
@@ -76,6 +81,7 @@ pub fn parse(json: &str) -> Registry {
     let raw: Raw = serde_json::from_str(json).unwrap_or_default();
     Registry {
         labels: raw.labels,
+        workspace_names: raw.workspace_names,
         known: raw.known,
         forgotten: raw.forgotten.into_iter().collect(),
     }

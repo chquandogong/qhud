@@ -41,6 +41,10 @@ pub struct Payload {
     /// but qhud cannot read it without an operator-approved re-auth.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub account_placeholders: Vec<crate::registry::Placeholder>,
+    /// account_id -> human workspace name, so a fetched Codex workspace does
+    /// not render as a hex id prefix (additive, v0.4.1).
+    #[serde(skip_serializing_if = "std::collections::HashMap::is_empty")]
+    pub workspace_names: std::collections::HashMap<String, String>,
 }
 
 #[derive(Serialize, Clone)]
@@ -165,6 +169,7 @@ pub fn payload(reports: &[PaneReport]) -> Payload {
         panes,
         summary,
         account_placeholders: Vec::new(),
+        workspace_names: std::collections::HashMap::new(),
     }
 }
 
@@ -287,6 +292,7 @@ pub fn attach_placeholders(
         })
         .collect();
     payload.account_placeholders = crate::registry::placeholders(reg, &keys);
+    payload.workspace_names = reg.workspace_names.clone();
 }
 
 /// Stamps each quota row with the account that owns it. Kept out of
@@ -538,6 +544,7 @@ mod tests {
             panes,
             summary: Summary::default(),
             account_placeholders: Vec::new(),
+            workspace_names: std::collections::HashMap::new(),
         }
     }
 
