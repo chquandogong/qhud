@@ -409,6 +409,14 @@
       after.after(row);
       after = row;
     }
+    // Report what was actually appended: the fetch succeeding in Rust does
+    // not prove the workspace rows rendered (the pixels are unverifiable from
+    // outside the webview, D-010).
+    window.__TAURI__?.core?.invoke("ui_event", {
+      event: `codex-ws-rows: ${codexFetch.rows.length} fetched, ${
+        quotasEl.querySelectorAll("[data-wsid]").length
+      } rendered`,
+    });
   }
 
   quotasEl.addEventListener("pointerdown", async (e) => {
@@ -440,6 +448,12 @@
       ? "see tooltip →"
       : "needs re-auth";
   });
+
+  // Non-pointer trigger for the Codex fetch, relayed from `qhud --fetch-codex`
+  // (a keep-below widget cannot receive synthesized clicks, D-010).
+  window.__TAURI__?.event
+    ?.listen("qhud://fetch-codex", () => fetchCodexWorkspaces())
+    .catch(() => {});
 
   quotasEl.addEventListener("pointerdown", (e) => {
     // pointerdown, not click: a keep-below widget never receives synthesized

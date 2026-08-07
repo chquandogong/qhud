@@ -141,6 +141,13 @@ fn main() {
         .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
             if argv.iter().any(|a| a == "--peek") {
                 toggle_layer(app);
+            } else if argv.iter().any(|a| a == "--fetch-codex") {
+                // Same argv-relay trick as --peek (D-012): pointer input
+                // cannot be synthesized into a keep-below widget, so the
+                // click-only Codex fetch needs a non-pointer trigger. Also
+                // bindable to a GNOME shortcut.
+                let _ = app.emit("qhud://fetch-codex", ());
+                eprintln!("qhud ui: fetch-codex relayed");
             } else {
                 eprintln!("qhud: already running (second launch absorbed)");
             }
