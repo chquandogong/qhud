@@ -1,191 +1,189 @@
-<p align="center">
+<div align="center">
   <img src="docs/assets/qhud-banner.svg" alt="qhud — ambient desktop HUD for AI CLI sessions" width="100%">
-</p>
+</div>
 
-<p align="center">
-  <a href="https://github.com/chquandogong/qhud/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/chquandogong/qhud/actions/workflows/ci.yml/badge.svg"></a>
+<div align="center">
   <a href="https://github.com/chquandogong/qhud/releases"><img alt="GitHub release" src="https://img.shields.io/github/v/release/chquandogong/qhud?display_name=tag&sort=semver"></a>
   <a href="LICENSE"><img alt="License" src="https://img.shields.io/github/license/chquandogong/qhud"></a>
   <img alt="Rust 1.88+" src="https://img.shields.io/badge/Rust-1.88%2B-b7410e?logo=rust">
   <img alt="Tauri 2" src="https://img.shields.io/badge/Tauri-2-24C8DB?logo=tauri&logoColor=white">
   <a href="https://github.com/chquandogong/qmonster"><img alt="qmonster family" src="https://img.shields.io/badge/family-qmonster-46b8b0"></a>
-</p>
+</div>
 
-<p align="center">
-  <a href="#quick-start">Quick Start</a>
-  · <a href="#controls">Controls</a>
-  · <a href="#how-it-stays-on-the-desktop-layer">How It Works</a>
-  · <a href="#known-limits">Known Limits</a>
-  · <a href="https://github.com/chquandogong/qhud/releases">Releases</a>
-  · <a href="#documentation">Docs</a>
-</p>
+## What it is
 
-qhud pins a small, glanceable widget to your **desktop background
-layer** — below every window, above the wallpaper, on every workspace
-— showing the health of the AI CLIs running in your tmux/herdr panes.
-It is a second frontend for
-[qmonster](https://github.com/chquandogong/qmonster): the same observe
-pipeline, zero terminal footprint. Park it on a spare corner of a
-monitor and glance, like a wall clock for quota pressure.
+A small always-there panel on your desktop wallpaper that answers one
+question without you switching to anything: **how much room is left on each
+AI CLI account, and when does it reset?**
 
-<p align="center">
+If you run Claude Code, Codex and Antigravity side by side — and especially
+if you hold more than one account per provider — the answer normally lives
+in three different TUIs behind three different keystrokes. qhud puts it in
+one place, below your windows, always visible.
+
+It is a second frontend for [qmonster](https://github.com/chquandogong/qmonster):
+the observation pipeline is qmonster's, re-rendered as a desktop widget.
+
+<div align="center">
   <img src="docs/assets/widget-compact.png" width="330" alt="qhud compact — provider quota strip and per-pane status + CTX tiles">
   &nbsp;&nbsp;
   <img src="docs/assets/widget-expanded.png" width="330" alt="qhud expanded — selected pane shows model/effort/flags/cwd config and a cross-pane conflict banner">
-</p>
+</div>
 
-## Why
+## What it shows
 
-Quota pressure bites precisely when you are _not_ looking at the
-monitor pane. A TUI answers questions when you visit it; a HUD answers
-them while you work. One glance gives you: **which account is close to
-its 5h/7d limit and when it resets · which pane is waiting for
-approval · whose context window is filling · who is editing the same
-file.**
-
-## Features
-
-- **True desktop-layer widget** — keep-below + sticky + skip-taskbar,
-  verified against GNOME Mutter (Wayland session, via XWayland).
-- **Scope-correct display** — facts render at the scope they are true:
-  a per-provider **5H/7D quota strip** (account facts, freshest
-  snapshot wins) up top; **status pill + CTX gauge** per pane tile with
-  an `@workspace` badge; click a tile for model/effort/flags/cwd/cost
-  and cross-pane conflict detail.
-- **The qmonster pipeline, unmodified** — links the crate directly:
-  identity resolution, provider parsing (Claude / Codex / Gemini /
-  Antigravity), tmux **and herdr** backends, cross-pane conflict
-  findings — all upstream.
-- **Observe-only by contract** — no writes to `~/.qmonster`, no
-  notifications, no network. The TUI stays the single writer.
-- **Layer peek** — `Ctrl+Alt+Q` (or tray → _Pin above windows_, or
-  `qhud --peek`) flips the widget above everything for a look, then
-  back to the wallpaper layer.
-- **Zoom, drag, resize, remembered** — Ctrl+wheel scales the UI
-  70–160%; position, size, and zoom persist across restarts and
-  reboots. Single-instance guarded.
-- **Demo mode** — no mux server? The widget renders reference data
-  with a `DEMO` badge and re-probes for live panes every 10 s.
-- **15 MB single binary** — Tauri 2, static frontend, no bundler, no
-  node_modules.
-
-## Quick start
-
-```bash
-# release binary
-gh release download --repo chquandogong/qhud --pattern '*linux-x86_64.tar.gz'
-tar -xzf qhud-v*-linux-x86_64.tar.gz && ./qhud-v*/qhud &
-
-# or from source
-sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev \
-  libayatana-appindicator3-dev librsvg2-dev pkg-config
-git clone https://github.com/chquandogong/qhud && cd qhud
-cargo build --release && ./target/release/qhud &
+```
+CLAUDE
+  chquan@dogu.xyz     team (max_5x)                    ⟳
+    5H        ███░░░░░░░   8%   resets 2h10m
+    7D        ██░░░░░░░░  15%   resets 5d
+    Fable wk  ██░░░░░░░░  22%   resets 5d
+CODEX
+  chquan17@gmail.com  ChatGPT Pro 5x                 1 ws
+    ↳ personal        ████████░░  80%   resets 3d
+AGY
+  chquan17@gmail.com  Google AI Pro
+    5h        ░░░░░░░░░░   0%   resets 4h
+⌵ 4 accounts need auth
 ```
 
-Have qmonster set up already? qhud reads the same
-`~/.qmonster/config/qmonster.toml` (read-only) and observes the same
-panes — `[mux] backend` (`auto`/`tmux`/`herdr`) means the same thing in
-both frontends. No config? Defaults apply.
+Provider is the outer axis — it is what you pick when deciding where to run
+the next task. Under it sits the account (with its plan), and under that one
+gauge per window. Below the live rows, accounts you have connected before but
+that have no usable credential right now collapse into one line: their quota
+is still being consumed, so hiding them would be a lie of omission.
 
-Autostart, app-grid entry, and the peek keyboard shortcut: see the
-[RUNBOOK](docs/05-ops/RUNBOOK.md).
+Per-pane tiles underneath show status, context pressure, model, effort,
+branch, cwd, memory, cost, and cross-pane file conflicts.
 
-## Controls
+## Where the numbers come from
 
-| Action                | How                                                                    |
-| --------------------- | ---------------------------------------------------------------------- |
-| Move                  | drag the top or bottom bar                                             |
-| Resize                | drag the ◢ grip (bottom-right)                                         |
-| Expand a pane         | click its tile; click again to collapse                                |
-| Font size             | **Ctrl + wheel** over the widget (70–160%, remembered)                 |
-| Peek above windows    | tray → _Pin above windows_, or `qhud --peek`, or bind a shortcut to it |
-| Hide / recover / quit | tray → _Show/Hide_ · _Reset position_ · _Quit qhud_                    |
+This is the part worth reading, because the honest answer differs per
+provider and the failure modes are not obvious.
 
-The tray icon is the small light gauge glyph at the **right end of the
-GNOME top bar**. Do not send Unix signals to qhud — WebKitGTK reserves
-them (see D-012).
+| Provider                      | Source                                       | Freshness           |
+| ----------------------------- | -------------------------------------------- | ------------------- |
+| Claude 5H / 7D                | statusLine JSON the CLI already writes       | live, every prompt  |
+| Claude per-model (e.g. Fable) | `GET /api/oauth/usage` on ⟳                  | only when you click |
+| Codex                         | `/wham/usage`, on request                    | only when you ask   |
+| Antigravity                   | the CLI's own loopback RPC — no token at all | live while agy runs |
+| Accounts, plans, tiers        | local files the CLIs keep in cleartext       | live                |
 
-## How it stays on the desktop layer
+**The 2-second poll loop never opens a socket and never touches a
+credential.** Exactly one affordance reaches the network — the ⟳ button —
+and it never runs an OAuth refresh grant, because rotating a refresh token
+out from under your CLI is how you lose a login.
 
-GNOME's Wayland compositor has no widget-layer protocol for
-third-party apps (`wlr-layer-shell` is
-[unimplemented in Mutter](https://gitlab.gnome.org/GNOME/mutter/-/work_items/973)),
-and native Wayland windows cannot even position themselves globally.
-qhud therefore forces the X11 backend (XWayland) and uses the EWMH
-states Mutter _does_ honor — the same mechanism Conky-style widgets
-have used for years:
+Claude's per-model windows need that button because nothing else can produce
+them: the statusLine feed does not carry them, and nothing qhud can run
+refreshes the CLI's on-disk cache (verified — not `--version`, not `doctor`,
+not even a real headless `--print`). That cache only moves when you open
+`/usage` yourself, which is precisely when you do not need a widget.
 
-```text
-_NET_WM_STATE(ATOM) = _NET_WM_STATE_SKIP_PAGER, _NET_WM_STATE_SKIP_TASKBAR,
-                      _NET_WM_STATE_BELOW, _NET_WM_STATE_STICKY
-_NET_WM_DESKTOP(CARDINAL) = 4294967295        # every workspace
+## What it cannot do
+
+Stated plainly, because a widget that hides its blind spots is worse than
+one that admits them.
+
+- **One live login per provider.** All three store a single active
+  credential, and `codex login` revokes the previous token. Two accounts of
+  one provider cannot be shown at once through the CLI-credential path.
+- **Codex will not re-scope a token to another workspace.** The
+  `chatgpt-account-id` header is ignored; a response describing a different
+  workspace is dropped rather than mislabelled.
+- **Per-model windows are only current right after ⟳.**
+- **Wire plan values are not display names.** `prolite` is your _ChatGPT Pro
+  5x_, `team` is _ChatGPT Business_. Display names come from your own
+  registry file and are never derived from the wire value.
+
+## Install
+
+Prebuilt Linux x86_64 tarball from
+[Releases](https://github.com/chquandogong/qhud/releases):
+
+```sh
+tar xzf qhud-*-linux-x86_64.tar.gz
+install -Dm755 qhud ~/.local/bin/qhud
+qhud
 ```
 
-Because compositor-side interactive move/resize is unreliable for
-keep-below XWayland windows, qhud drives its own geometry from global
-cursor position — the full story (and four upstream quirks it works
-around) is in [D-008](docs/02-decisions/DECISION_LOG.md). On X11
-sessions this all works natively; on wlroots/KDE you may prefer
-`QHUD_NO_X11_FORCE=1` and your compositor's own layering rules.
+From source (Rust 1.88+, a WebKitGTK dev environment, and
+[qmonster](https://github.com/chquandogong/qmonster)'s own prerequisites):
 
-## Known limits
+```sh
+cargo build --release --manifest-path src-tauri/Cargo.toml
+install -Dm755 target/release/qhud ~/.local/bin/qhud
+```
 
-- **Ubuntu's Desktop Icons NG (DING) extension swallows real mouse
-  input over the desktop layer** — if the widget ignores clicks,
-  `gnome-extensions disable ding@rastersoft.com`
-  ([D-010](docs/02-decisions/DECISION_LOG.md); a companion-extension
-  coexistence path is on the backlog).
-- One account per provider is assumed for the quota strip (provider
-  surfaces don't expose account identity).
-- The widget appears as a window in the GNOME overview (accepted
-  XWayland quirk).
-- Linux x86_64 only today.
+Autostart and an app-grid entry: see [RUNBOOK](docs/05-ops/RUNBOOK.md).
 
-## Relationship to qmonster
+## Using it
 
-|         | qmonster                                                        | qhud                                  |
-| ------- | --------------------------------------------------------------- | ------------------------------------- |
-| Surface | ratatui TUI in a tmux pane                                      | desktop widget on the wallpaper layer |
-| Role    | operating console: alerts, recommendations, settings, snapshots | ambient meters: glanceability only    |
-| Writes  | owns `~/.qmonster` (sqlite audit, archives)                     | **none** (NoopSink)                   |
-| Data    | qmonster observe pipeline                                       | same crate, pinned rev                |
+| Action                 | How                                                 |
+| ---------------------- | --------------------------------------------------- |
+| Move / resize          | drag the top or footer bar; ◢ grip to resize        |
+| Zoom                   | Ctrl+wheel over the widget (70–160%, persisted)     |
+| Expand a pane          | click its tile                                      |
+| Peek above windows     | tray → _Pin above windows_, or `qhud --peek`        |
+| Refresh Claude usage   | the ⟳ on the Claude row, or `qhud --refresh-claude` |
+| Fetch Codex workspaces | click the Codex row, or `qhud --fetch-codex`        |
+| Forget an account      | ✕ on its collapsed row                              |
 
-## Documentation
+The widget takes no keyboard focus and is pointer-only by design. Every
+network path also has a CLI trigger, because a keep-below window cannot
+receive synthesized pointer input — which also makes those triggers
+bindable to GNOME shortcuts.
 
-Decision-traceable docs (Quetzalcoatl layout) under [`docs/`](docs/):
-[PROJECT_BRIEF](docs/00-overview/PROJECT_BRIEF.md) ·
-[DASHBOARD](docs/00-overview/DASHBOARD.md) ·
-[FEASIBILITY](docs/01-discovery/FEASIBILITY_REPORT.md) ·
-[DECISION_LOG](docs/02-decisions/DECISION_LOG.md) (D-001…D-012) ·
-[ALTERNATIVES](docs/02-decisions/ALTERNATIVES.md) ·
-[CROSS_VALIDATION_LOG](docs/02-decisions/CROSS_VALIDATION_LOG.md) ·
-[SPEC](docs/03-spec/SPEC.md) ·
-[ARCHITECTURE](docs/03-spec/ARCHITECTURE.md) ·
-[RISK_REGISTER](docs/04-quality/RISK_REGISTER.md) ·
-[TEST_PLAN](docs/04-quality/TEST_PLAN.md) ·
-[RUNBOOK](docs/05-ops/RUNBOOK.md) ·
-[RETRO](docs/05-ops/RETRO.md)
+## Accounts and plans
 
-Every release ships a Linux tarball with sha256 and SLSA build
-provenance — verify with
-`gh attestation verify qhud-vX.Y.Z-linux-x86_64.tar.gz --owner chquandogong`.
+Display names live in `~/.config/qhud/accounts.json`, **outside this
+repository on purpose** — it holds your emails and account ids, and this
+repo is public. It sets labels and plan text, lists accounts that have ever
+connected (so they can appear as placeholders), and records the ones you
+have dismissed. Schema and rules: [RUNBOOK](docs/05-ops/RUNBOOK.md).
 
-## Roadmap
+## When a number looks wrong
 
-- Click a tile → focus that pane in your terminal.
-- Upstream versioned observe-snapshot export shared by TUI + HUD
-  (today: pinned crate rev).
-- GNOME Shell extension layer: overview-clean pinning + DING
-  coexistence.
-- Windows (WorkerW) / macOS (desktop window level) backends.
+```sh
+qhud --dump                                   # the exact payload being rendered
+QMONSTER_SIDEFILE_DIAG=1 qhud --dump 2>&1 >/dev/null   # why attribution declined
+qhud --claude-usage        qhud --codex-usage  # each fetch, standalone
+```
+
+The widget also reports what it built to stderr — the structure it rendered,
+the text of every row, and any frontend exception. That exists because the
+pixels are not verifiable from outside the webview (`scrot` cannot capture
+XWayland-composited windows), so **the absence of an error is not proof
+anything painted**.
+
+## Design notes
+
+Decisions and their reasoning live in
+[DECISION_LOG](docs/02-decisions/DECISION_LOG.md). The ones that will bite
+you if you change this code:
+
+- **D-008** — all window geometry is self-driven; compositor interactive ops
+  are not used.
+- **D-010** — Ubuntu's desktop-icons extension intercepts real pointer
+  input, so input must be verified through the compositor path.
+- **D-011** — facts render at the scope where they are true: quota is an
+  account fact, not a pane fact.
+- **D-012** — **never install Unix signal handlers** in a Tauri/WebKitGTK
+  process. JavaScriptCore reserves SIGUSR1 for thread suspension; hooking it
+  segfaults the webview.
+- **D-013 / D-014** — account identity is read locally only; "no network"
+  became "passive by default, network only on request".
+
+Architecture: [ARCHITECTURE](docs/03-spec/ARCHITECTURE.md) ·
+Requirements and payload contract: [SPEC](docs/03-spec/SPEC.md) ·
+History: [CHANGELOG](CHANGELOG.md)
 
 ## Scope
 
-qhud renders; it never acts. No actuation, no notifications, no
-telemetry. Single-user, local, observe-only — the same conservative
-contract as qmonster.
+One workstation, 1–12 AI panes, GNOME/Wayland via XWayland as the primary
+target. Other desktops are best-effort. Beyond ~12 panes the interaction
+model should change rather than be stretched.
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+[MIT](LICENSE)
