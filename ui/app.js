@@ -276,22 +276,19 @@
       el("span", "q-plan"),
       el("span", "q-age"),
     );
-    for (const win of ["5h", "7d"]) {
-      const chip = el("span", "q-chip");
-      chip.dataset.win = win;
-      const track = el("span", "q-track");
-      track.append(el("span", "q-fill"));
-      const val = el("span", "q-val");
-      val.append(document.createTextNode(""), el("i", null, "%"));
-      chip.append(
-        el("span", "q-label", win.toUpperCase()),
-        track,
-        val,
-        el("span", "q-reset"),
-      );
-      row.append(chip);
-    }
+    for (const win of ["5h", "7d"]) row.append(buildChip(win, win.toUpperCase()));
     return row;
+  }
+
+  function buildChip(win, label) {
+    const chip = el("span", "q-chip");
+    chip.dataset.win = win;
+    const track = el("span", "q-track");
+    track.append(el("span", "q-fill"));
+    const val = el("span", "q-val");
+    val.append(document.createTextNode(""), el("i", null, "%"));
+    chip.append(el("span", "q-label", label), track, val, el("span", "q-reset"));
+    return chip;
   }
 
   function patchQuotaChip(chip, g) {
@@ -550,6 +547,26 @@
     return h;
   }
 
+  // Per-model windows (Claude reports a separate pool for Fable) are their
+  // own gauges, not a tooltip footnote: they run out independently.
+  function patchScopedChips(row, scoped) {
+    const want = scoped.filter((x) => x.kind === "weekly_scoped" && x.scope);
+    const seen = new Set();
+    for (const x of want) {
+      const key = "m:" + x.scope;
+      seen.add(key);
+      let chip = row.querySelector(`[data-win="${CSS.escape(key)}"]`);
+      if (!chip) {
+        chip = buildChip(key, `${x.scope} wk`);
+        row.append(chip);
+      }
+      patchQuotaChip(chip, { pct: x.pct, reset_unix: x.reset_unix });
+    }
+    for (const chip of [...row.querySelectorAll('[data-win^="m:"]')]) {
+      if (!seen.has(chip.dataset.win)) chip.remove();
+    }
+  }
+
   function renderQuotas(quotas) {
     quotasEl.hidden = quotas.length === 0;
     const alive = new Set();
@@ -577,10 +594,10 @@
       if (q.account?.plan) bits.push(q.account.plan);
       else if (q.account?.org_type) bits.push(shortPlan(q.account.org_type));
       for (const t of q.account?.tiers || []) {
-        if (t.kind === "user") bits.push(shortTier(t.tier));
+        if (t.kind === "user") bits.push(`(${shortTier(t.tier)})`);
       }
       if (codexPlan.get(q.provider)) bits.push(codexPlan.get(q.provider));
-      planEl.textContent = bits.join(" · ");
+      planEl.textContent = bits.join(" ");
       planEl.hidden = bits.length === 0;
 
       // A cache-sourced row is NOT a live reading. Mark it on the row and
@@ -637,6 +654,7 @@
       row.title = lines.join("\n");
       patchQuotaChip(row.querySelector('[data-win="5h"]'), q.h5);
       patchQuotaChip(row.querySelector('[data-win="7d"]'), q.d7);
+      patchScopedChips(row, q.scoped || []);
     }
     for (const row of [...quotasEl.children]) {
       if (row.dataset.pkey || row.dataset.wsid) continue; // owned by other renderers
@@ -678,7 +696,9 @@
         window.__TAURI__?.core?.invoke("ui_event", {
           event: `strip: ${quotasEl.querySelectorAll(".q-sect").length} sections, ${
             quotasEl.querySelectorAll(".q-row").length
-          } rows, more=${quotasEl.querySelector(".q-more") ? 1 : 0}`,
+          } rows, ${quotasEl.querySelectorAll(".q-chip").length} gauges (${
+            quotasEl.querySelectorAll('[data-win^="m:"]').length
+          } per-model), more=${quotasEl.querySelector(".q-more") ? 1 : 0}`,
         });
       }
     } catch (err) {

@@ -766,3 +766,36 @@ body {
 .q-more:hover {
   opacity: 1;
 }
+
+/* ---- narrow-width layout (v0.4.1) --------------------------------
+   The widget is ~520 device px and the operator runs it at 160% zoom, so
+   the real budget is ~325 CSS px. Account + plan + gauge + reset on one
+   line does not fit at that width — text was being cut. Give each job its
+   own line instead of competing for the same row. */
+.q-row {
+  flex-wrap: wrap;
+  row-gap: 2px;
+}
+/* Line 1: identity. Line 2+: one gauge each, full width. */
+.q-row .q-acct {
+  max-width: none;
+  flex: 0 1 auto;
+}
+.q-row .q-chip {
+  flex: 1 0 100%;
+  padding-left: 10px;
+}
+/* Window label wide enough for "Fable wk", not just "5H". */
+.q-chip .q-label {
+  min-width: 46px;
+  flex: none;
+}
+.q-reset {
+  min-width: 42px;
+  text-align: right;
+}
+/* The account line should not be starved by the plan chip. */
+.q-plan {
+  max-width: none;
+  flex: 0 1 auto;
+}
