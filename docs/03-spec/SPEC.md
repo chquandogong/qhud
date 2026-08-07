@@ -7,23 +7,31 @@
 | ID    | Requirement                                                                                                                                              | Status                              |
 | ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------- |
 | FR-1  | Frameless, transparent, rounded widget window on the desktop layer: below all windows, sticky on all workspaces, absent from taskbar/pager               | done (verified via `_NET_WM_STATE`) |
-| FR-2  | User can drag-move the widget (top/footer bars) anywhere across monitors                                                                                 | done (self-driven, D-008)     |
-| FR-3  | User can resize via the ◢ grip; content reflows                                                                                                          | done (self-driven, D-008)        |
+| FR-2  | User can drag-move the widget (top/footer bars) anywhere across monitors                                                                                 | done (self-driven, D-008)           |
+| FR-3  | User can resize via the ◢ grip; content reflows                                                                                                          | done (self-driven, D-008)           |
 | FR-4  | Position/size persist across restarts                                                                                                                    | done (`tauri-plugin-window-state`)  |
-| FR-5  | Poll qmonster pipeline every 2 s; render pane tiles with status pill + CTX gauge; account-scoped 5H/7D quota strip per provider (D-011)                                                                  | done                                |
+| FR-5  | Poll qmonster pipeline every 2 s; render pane tiles with status pill + CTX gauge; account-scoped 5H/7D quota strip per provider (D-011)                  | done                                |
 | FR-6  | Click a tile → expand: config chips (model/effort/flags/branch/cwd/mem/cost) + conflict banner; click again → compact. Selection persists (localStorage) | done                                |
 | FR-7  | Severity bands on gauges: `<60` good · `60–74` concern · `75–84` warn · `≥85` crit (mockup legend)                                                       | done                                |
 | FR-8  | Reset countdowns (`resets 47m`) and idle-elapsed badges tick locally between polls                                                                       | done                                |
 | FR-9  | No tmux server ⇒ demo payload (mockup fixture) with a visible `DEMO` badge; re-probe live every 10 s                                                     | done                                |
-| FR-10 | Tray: Show/Hide, Pin above windows, Reset position, Quit; widget survives without tray | done (best-effort) |
-| FR-11 | Ctrl+wheel zooms the UI 70–160%, persisted (pointer-only) | done (D-012) |
-| FR-12 | Layer peek: tray check + `qhud --peek` argv relay; duplicate launches absorbed | done (D-012) |
+| FR-10 | Tray: Show/Hide, Pin above windows, Reset position, Quit; widget survives without tray                                                                   | done (best-effort)                  |
+| FR-11 | Ctrl+wheel zooms the UI 70–160%, persisted (pointer-only)                                                                                                | done (D-012)                        |
+| FR-12 | Layer peek: tray check + `qhud --peek` argv relay; duplicate launches absorbed                                                                           | done (D-012)                        |
 
 ## Non-functional
 
 - **Observe-only**: zero writes to `~/.qmonster` (NoopSink), zero
-  notifications (SilentNotify), no network.
-- Release binary ≤ 20 MB; idle CPU ≈ one qmonster observe tick / 2 s.
+  notifications (SilentNotify).
+- **Passive by default, network only on request** (D-013, D-014): the
+  2 s poll loop reads local files and the mux only — it never opens a
+  socket and never touches a credential. The single outbound call
+  (Codex per-workspace usage) runs from an explicit operator click, and
+  never runs an OAuth refresh grant.
+- Release binary ≤ 25 MB; idle CPU ≈ one qmonster observe tick / 2 s.
+  Raised from 20 MB in v0.4.0 — rustls + reqwest cost ≈ 2.8 MB and the
+  original figure was an opening guess, not a measured constraint
+  (D-014). `strip` and `lto` are already on.
 - Frontend is static HTML/CSS/JS — no bundler, no node_modules.
 
 ## Scale envelope

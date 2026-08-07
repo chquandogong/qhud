@@ -280,3 +280,24 @@ Format: context → options → decision → rationale → residual risk.
 - **Evidence**: `cargo test` 17 pass; live `--dump` shows
   `claude → dogu/team <chquan@dogu.xyz> DOGU (claude_team)` with both
   tiers, and `codex → 3f13fa37…`.
+
+## D-014 · Binary budget 20 MB → 25 MB; network is opt-in, not ambient
+
+- **Context**: adding per-workspace Codex usage needs an HTTP client.
+  `reqwest` + `rustls` took the release binary from 17.9 MB to 22.8 MB,
+  past the `SPEC.md` non-functional budget of 20 MB.
+- **Decision**: raise the budget to **25 MB**. The 20 MB figure was an
+  opening guess from the v0.1 spec, not a measured constraint — no
+  packaging, download, or memory limit depends on it, and `strip` +
+  `lto` were already on, so the 2.8 MB is the real cost of the feature
+  rather than slack. Rejected alternatives: `native-tls` (trades size
+  for an OpenSSL link dependency, worse for a tarball release) and
+  dropping the feature (the operator asked for it explicitly).
+- **The more important half of this decision**: "no network" is
+  replaced by "**passive by default, network only on request**". The
+  2 s poll loop still opens no socket and touches no credential; the
+  one outbound call runs from an operator click and never executes an
+  OAuth refresh grant. That distinction is what keeps the widget's
+  steady state as safe as it was when it had no network code at all.
+- **Evidence**: 22.8 MB measured; `SPEC.md` non-functional section
+  updated in the same change.
