@@ -1,6 +1,6 @@
 # PROJECT_BRIEF — qhud
 
-> Status: active · Date: 2026-08-05 · Owner: chquandogong
+> Status: active · Date: 2026-08-07 · Owner: chquandogong
 
 ## Problem
 

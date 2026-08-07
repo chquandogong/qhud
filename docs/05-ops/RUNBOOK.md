@@ -1,6 +1,6 @@
 # RUNBOOK
 
-> Status: living · Date: 2026-08-05 · Owner: chquandogong
+> Status: living · Date: 2026-08-07 · Owner: chquandogong
 
 ## Install
 
@@ -42,6 +42,31 @@ cargo build --release          # binary at target/release/qhud
   instance (single-instance guard).
 - **Doubting a number?** `~/.local/bin/qhud --dump` prints the exact
   payload the widget renders (one observe tick, pretty JSON).
+- **A quota row lost its cost or reset countdown?** Sidefile attribution
+  declines silently in three places by design. Name which one:
+  `QMONSTER_SIDEFILE_DIAG=1 qhud --dump 2>&1 >/dev/null` reports
+  no-cwd-match, the 60 s same-cwd ambiguity guard, or a descendant-CLI
+  mismatch.
+- **Is the widget actually rendering?** It reports what it built, to
+  stderr — `strip: N sections, M rows, K gauges`, the rendered text of
+  every row (`labels(...)`), and `js-error …` for any frontend
+  exception. The pixels are unverifiable from outside the webview
+  (`scrot` cannot capture XWayland-composited windows, D-010), so these
+  breadcrumbs are the verification, not a nicety. An absent error is
+  **not** proof anything painted.
+- **Fetch paths without clicking** (a keep-below widget does not receive
+  synthesized pointer input, D-010):
+  `qhud --refresh-claude` and `qhud --fetch-codex` relay to the running
+  widget through the single-instance channel — bindable to a shortcut.
+  `qhud --claude-usage` and `qhud --codex-usage` run the same fetches
+  standalone and print JSON.
+- **Accounts and plans** live in `~/.config/qhud/accounts.json`,
+  deliberately outside this public repo. `labels` / `plans` /
+  `workspace_names` / `workspace_plans` set display text; `known[]`
+  lists ever-connected accounts; `forgotten` hides a placeholder (never
+  a live account). Display names are operator-supplied and must never be
+  "corrected" from a wire `plan_type` — `prolite` is shown as ChatGPT
+  Pro 5x, `team` as ChatGPT Business.
 
 ## Autostart + app launcher (GNOME)
 

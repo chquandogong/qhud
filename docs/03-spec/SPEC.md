@@ -1,6 +1,6 @@
 # SPEC — qhud
 
-> Status: living (implemented through v0.3.x) · Date: 2026-08-06 · Owner: chquandogong
+> Status: living (implemented through v0.4.0) · Date: 2026-08-07 · Owner: chquandogong
 
 ## Functional requirements
 
@@ -18,6 +18,12 @@
 | FR-10 | Tray: Show/Hide, Pin above windows, Reset position, Quit; widget survives without tray                                                                   | done (best-effort)                  |
 | FR-11 | Ctrl+wheel zooms the UI 70–160%, persisted (pointer-only)                                                                                                | done (D-012)                        |
 | FR-12 | Layer peek: tray check + `qhud --peek` argv relay; duplicate launches absorbed                                                                           | done (D-012)                        |
+| FR-13 | Every quota row names the account it belongs to (email/id, org, plan, and both tiers of a team seat), read from local files only | done (D-013) |
+| FR-14 | Provider-grouped strip: provider as section header, account+plan on the identity line, one gauge line per window | done (v0.4.0) |
+| FR-15 | Ever-connected accounts with no live credential render as dimmed dated placeholders, collapsed behind one line, dismissable; a live credential is never hidden | done (D-013) |
+| FR-16 | Claude per-model usage refreshes on an explicit ⟳ (or `--refresh-claude`), never on a timer and never via the OAuth refresh grant | done (D-014) |
+| FR-17 | Codex per-workspace quota on explicit request; a response describing a different workspace is dropped, not mislabelled | done (v0.4.0) |
+| FR-18 | Wrong output is visible from outside the webview: the widget reports its rendered structure, text and gauge counts; every fetch path has a CLI trigger | done (v0.4.0) |
 
 ## Non-functional
 
@@ -50,8 +56,21 @@ Emitted as Tauri event `qhud://report`; see `src-tauri/src/view.rs`.
   "schema": 1,
   "source": "live" | "demo",
   "backend": "herdr" | "tmux" | null,   // resolved mux backend; null in demo (additive, v0.1.1)
+  "workspace_names": {"<account_id>": "personal"},          // additive, v0.4.0
+  "workspace_plans": {"<account_id>": "ChatGPT Business"},  // additive, v0.4.0
+  "account_placeholders": [{             // ever-connected, no live credential (additive, v0.4.0 — D-013)
+    "provider": "codex", "key": "<id-or-email>", "label": "…", "plan": "…", "hint": "how to restore it"
+  }],
   "quotas": [{                           // ACCOUNT-scoped rollup, one per provider (additive, v0.2.0 — D-011)
     "provider": "claude",
+    "account": {                         // additive, v0.4.0 — D-013; omitted when unknown
+      "display": "chquan@dogu.xyz", "email": "…", "account_id": "…",
+      "org": "DOGU", "org_type": "claude_team", "plan": "team (max_5x)",
+      "tiers": [{"kind": "org", "tier": "…"}, {"kind": "user", "tier": "…"}]
+    },
+    "origin": "pane" | "cache",          // additive, v0.4.0 — a cache row must not pass for live
+    "cache_fetched_at_ms": 0,            // additive, v0.4.0 — freshness of the on-disk snapshot
+    "scoped": [{"kind": "weekly_scoped", "scope": "Fable", "pct": 22, "reset_unix": 0}],
     "h5": { "pct": 88, "source": "providerofficial", "reset_unix": 1754500000, "of_tokens": null },
     "d7": { "pct": 31, "source": "providerofficial", "reset_unix": 1754800000, "of_tokens": null },
     "from_label": "claude:1:main", "session": "~"   // freshest snapshot's pane

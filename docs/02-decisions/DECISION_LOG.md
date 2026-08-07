@@ -1,6 +1,6 @@
 # DECISION_LOG
 
-> Status: living · Date: 2026-08-05 · Owner: chquandogong
+> Status: living · Date: 2026-08-07 · Owner: chquandogong
 
 Format: context → options → decision → rationale → residual risk.
 

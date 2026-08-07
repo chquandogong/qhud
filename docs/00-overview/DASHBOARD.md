@@ -1,6 +1,6 @@
 # DASHBOARD — qhud
 
-> Status: v0.3.x shipped · Date: 2026-08-06 · Owner: chquandogong
+> Status: v0.4.0 shipped · Date: 2026-08-07 · Owner: chquandogong
 > Single source of truth = this git repo. This board is the handoff
 > surface: read it first when resuming work on another session/agent.
 

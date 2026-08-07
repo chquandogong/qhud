@@ -2,6 +2,85 @@
 
 All notable changes to qhud. Format: [Keep a Changelog](https://keepachangelog.com/), versioning: [SemVer](https://semver.org/).
 
+## [0.4.0] — 2026-08-07
+
+Quota you can trust: the numbers now match what the providers' own
+screens say, and where they cannot, the widget says so instead of
+guessing.
+
+### Fixed
+
+- **Quota attribution was silently broken for any pane running an MCP
+  plugin child.** `current_path` followed the pane's foreground
+  descendant, so a Claude pane with a `bun`/`node` plugin child reported
+  the plugin's cache directory. Provider sidefiles are matched to a pane
+  by exact cwd equality, so the match failed and every sidefile-only
+  signal was dropped: `cost_usd`, both reset timestamps, and
+  `context_window_size`. **FR-8's `resets 47m` countdown was marked done
+  but had no timestamp to count down from.** Fixed upstream in qmonster
+  (`eff5f63`, `f5c9ed6`, `6a21c44`) across three layers — the cwd itself,
+  the fallback order for when `pane process-info` fails, and a
+  process-confirmation gate that excluded `pane_pid` even when herdr
+  reports the agent process directly as the pane pid.
+- **Statusline sidefiles were written truncate-in-place**, so the 2 s
+  poller could read a torn file and lose cost/reset for that tick. The
+  operator's statusline scripts now write temp+rename.
+- **A per-model window showed a 27-hour-old value as if live** (Fable 5%
+  against an actual 22%). Per-chip provenance is now distinct from row
+  provenance.
+
+### Added
+
+- **Account identity on every quota row** (D-013). Read from files the
+  CLIs already keep in cleartext — no network, no token use, and the
+  credential fields themselves are never opened. A Claude team seat
+  carries two quota-bearing tiers (org pool and member seat), so both
+  are surfaced.
+- **Provider-grouped layout.** Provider is the outer axis as a section
+  header; account and plan sit on the identity line; each window gets
+  its own gauge line. Eight accounts across three providers do not fit
+  one row each at the widget's real width.
+- **A registry of accounts that have ever connected**
+  (`~/.config/qhud/accounts.json`, deliberately outside this public
+  repo). Accounts with no live credential render as dimmed, dated
+  placeholders — their quota is still ticking — collapsed behind one
+  line and dismissable. A live credential is never hidden.
+- **Claude usage refresh (⟳)** — the only affordance that reaches the
+  network, on click, never on a timer, and never running the OAuth
+  refresh grant. It exists because nothing else can produce the
+  per-model windows: the statusLine feed has none, and nothing qhud can
+  run refreshes Claude's on-disk cache.
+- **Codex per-workspace quota**, click-triggered. One login can own
+  several workspaces with separate pools.
+- **Diagnostics that make wrong output visible from outside the
+  webview**, since `scrot` cannot capture XWayland-composited windows
+  (D-010): `QMONSTER_SIDEFILE_DIAG=1` names which of three silent
+  attribution declines fired; the widget reports the structure, the
+  rendered text, and the gauge counts it actually built; and
+  `--claude-usage` / `--codex-usage` / `--fetch-codex` /
+  `--refresh-claude` expose each path without synthesizing pointer
+  input.
+
+### Changed
+
+- **"No network" becomes "passive by default, network only on request"**
+  (D-014). The 2 s poll loop still opens no socket and touches no
+  credential. Binary budget raised 20 → 25 MB; actual 22.9 MB.
+
+### Known limits
+
+- **One live login per provider.** All three store a single active
+  credential; `codex login` revokes the previous token, so parked
+  credential files answer 401. Showing two accounts of one provider at
+  once is not possible through the CLI-credential path.
+- **Codex will not re-scope a token to another workspace.**
+  `chatgpt-account-id` is ignored; a body describing a different
+  workspace is dropped rather than mislabelled.
+- **Per-model windows are only current right after ⟳.**
+- Wire `plan_type` values are not display names (`prolite` is shown as
+  ChatGPT Pro 5x, `team` as ChatGPT Business). Display names come from
+  the registry and must never be "corrected" from a wire value.
+
 ## [0.3.2] — 2026-08-06
 
 ### Fixed

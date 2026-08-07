@@ -1,6 +1,6 @@
 # ASSUMPTIONS
 
-> Status: living · Date: 2026-08-05 · Owner: chquandogong
+> Status: living · Date: 2026-08-07 · Owner: chquandogong
 
 | #   | Assumption                                                                           | Status             | Evidence / revisit trigger                                                                       |
 | --- | ------------------------------------------------------------------------------------ | ------------------ | ------------------------------------------------------------------------------------------------ |
