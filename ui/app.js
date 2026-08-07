@@ -457,9 +457,34 @@
   // Shown dimmed and numberless: their quota is still ticking, so hiding
   // them would be a lie of omission, but reading it needs a re-auth the
   // operator has to approve. Click for the guidance; ✕ to stop showing it.
+  let ghostsOpen = store.get("qhud.ghostsOpen") === "1";
+
   function renderPlaceholders(list) {
     for (const row of [...quotasEl.querySelectorAll(".q-row[data-pkey]")]) {
       row.remove();
+    }
+    quotasEl.querySelector(".q-more")?.remove();
+    if (list.length === 0) {
+      quotasEl.hidden = quotasEl.children.length === 0;
+      return;
+    }
+    // One summary line instead of N rows: these accounts have no live
+    // credential, so they carry no numbers and should not cost N lines of a
+    // desktop widget. Click to expand.
+    const more = el("div", "q-more");
+    more.textContent = `${ghostsOpen ? "⌃" : "⌵"} ${list.length} account${
+      list.length === 1 ? "" : "s"
+    } need auth`;
+    more.addEventListener("pointerdown", (e) => {
+      e.stopPropagation();
+      ghostsOpen = !ghostsOpen;
+      store.set("qhud.ghostsOpen", ghostsOpen ? "1" : null);
+      renderPlaceholders(list);
+    });
+    quotasEl.append(more);
+    if (!ghostsOpen) {
+      quotasEl.hidden = quotasEl.children.length === 0;
+      return;
     }
     for (const p of list) {
       const row = el("div", "q-row q-ghost");
@@ -512,16 +537,32 @@
       : "needs re-auth";
   });
 
+  // Provider is the OUTER axis: it is what the operator picks when deciding
+  // where to run the next task, it matches the pane vocabulary
+  // (claude:1:main), and there are exactly three of them — so the widget's
+  // scan path and height stay stable as accounts multiply.
+  function providerHeader(provider) {
+    let h = quotasEl.querySelector(`.q-sect[data-sect="${provider}"]`);
+    if (!h) {
+      h = el("div", "q-sect", provider);
+      h.dataset.sect = provider;
+    }
+    return h;
+  }
+
   function renderQuotas(quotas) {
     quotasEl.hidden = quotas.length === 0;
     const alive = new Set();
     for (const q of quotas) {
       alive.add(q.provider);
-      let row = quotasEl.querySelector(`[data-provider="${q.provider}"]`);
+      let row = quotasEl.querySelector(`.q-row[data-provider="${q.provider}"]`);
       if (!row) {
         row = buildQuotaRow(q.provider);
-        quotasEl.append(row);
+        quotasEl.append(providerHeader(q.provider), row);
       }
+      // The provider name lives in the section header now, so the row's own
+      // slot carries the ACCOUNT — the thing that actually differs per row.
+      row.querySelector(".q-prov").textContent = "";
       // Whose quota this is. Without it two logins on one provider are
       // indistinguishable; the chip stays empty when no account is known.
       const acctEl = row.querySelector(".q-acct");
@@ -599,7 +640,11 @@
     }
     for (const row of [...quotasEl.children]) {
       if (row.dataset.pkey || row.dataset.wsid) continue; // owned by other renderers
-      if (!alive.has(row.dataset.provider)) row.remove();
+      if (row.dataset.sect) {
+        if (!alive.has(row.dataset.sect)) row.remove();
+        continue;
+      }
+      if (row.dataset.provider && !alive.has(row.dataset.provider)) row.remove();
     }
   }
 
@@ -621,8 +666,24 @@
 
     srcBadge.hidden = p.source !== "demo";
 
-    renderQuotas(p.quotas || []);
-    renderPlaceholders(p.account_placeholders || []);
+    try {
+      renderQuotas(p.quotas || []);
+      renderPlaceholders(p.account_placeholders || []);
+      // Positive confirmation that the strip painted. Absence of a JS error
+      // is NOT proof the strip rendered — the pixels are unverifiable from
+      // outside the webview (scrot cannot capture XWayland-composited
+      // windows, D-010), so emit what was actually built.
+      if (!window.__qhudStripLogged) {
+        window.__qhudStripLogged = true;
+        window.__TAURI__?.core?.invoke("ui_event", {
+          event: `strip: ${quotasEl.querySelectorAll(".q-sect").length} sections, ${
+            quotasEl.querySelectorAll(".q-row").length
+          } rows, more=${quotasEl.querySelector(".q-more") ? 1 : 0}`,
+        });
+      }
+    } catch (err) {
+      reportJsError("renderQuotas", err);
+    }
 
     // tiles (keyed patch, order = payload order)
     const alive = new Set();
@@ -695,6 +756,23 @@
   }, 1000);
 
   // ---- wiring ------------------------------------------------------
+
+  // Frontend exceptions used to be invisible from outside the webview, so a
+  // render-time throw looked identical to "the payload is fine" — that is how
+  // a broken quota strip shipped once. Route them to stderr via ui_event.
+  // Function declaration, not a const: it is referenced from render(),
+  // which is defined earlier in the file.
+  function reportJsError(what, err) {
+    const msg = `js-error ${what}: ${err && (err.stack || err.message || err)}`;
+    try {
+      window.__TAURI__?.core?.invoke("ui_event", { event: msg });
+    } catch {}
+    try {
+      console.error(msg);
+    } catch {}
+  }
+  window.addEventListener("error", (e) => reportJsError("onerror", e.error || e.message));
+  window.addEventListener("unhandledrejection", (e) => reportJsError("rejection", e.reason));
 
   document.addEventListener("contextmenu", (e) => e.preventDefault());
 

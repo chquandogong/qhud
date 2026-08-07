@@ -730,3 +730,39 @@ body {
 .q-plan[hidden] {
   display: none;
 }
+
+/* Provider section header. Provider is the outer axis (see renderQuotas),
+   so it gets a heading rather than repeating on every row. */
+.q-sect {
+  font-family: var(--mono);
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 1.1px;
+  text-transform: uppercase;
+  color: var(--tx-faint);
+  margin-top: 2px;
+}
+.q-sect:first-child {
+  margin-top: 0;
+}
+/* With the provider in the header, the row's own slot is the account. */
+.q-row .q-acct {
+  max-width: 132px;
+  opacity: 0.95;
+  font-style: normal;
+}
+.q-row .q-prov:empty {
+  width: 10px;
+}
+/* Collapsed summary for accounts with no live credential. */
+.q-more {
+  font-family: var(--mono);
+  font-size: 8.5px;
+  color: var(--tx-faint);
+  cursor: pointer;
+  padding: 1px 0 0 10px;
+  opacity: 0.75;
+}
+.q-more:hover {
+  opacity: 1;
+}
