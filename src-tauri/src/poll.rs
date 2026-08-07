@@ -11,7 +11,7 @@ use qmonster::notify::desktop::NotifyBackend;
 use qmonster::store::sink::NoopSink;
 use qmonster::tmux::TmuxSource;
 
-use crate::{accounts, demo, usage_cache, view};
+use crate::{accounts, demo, registry, usage_cache, view};
 
 const POLL: Duration = Duration::from_secs(2);
 const LIVE_RETRY: Duration = Duration::from_secs(10);
@@ -58,7 +58,9 @@ pub fn run(app: AppHandle) {
                         let mut payload = view::payload(&reports);
                         payload.backend = Some((*backend).to_string());
                         view::attach_usage_cache(&mut payload, usage_cache::detect().as_ref());
-                        view::attach_accounts(&mut payload, &accounts::detect_all());
+                        let active = accounts::detect_all();
+                        view::attach_accounts(&mut payload, &active);
+                        view::attach_placeholders(&mut payload, &registry::load(), &active);
                         Some(payload)
                     }
                     Err(e) => {
@@ -88,7 +90,9 @@ pub fn dump_once() -> Option<String> {
     let mut payload = view::payload(&reports);
     payload.backend = Some(backend.to_string());
     view::attach_usage_cache(&mut payload, usage_cache::detect().as_ref());
-    view::attach_accounts(&mut payload, &accounts::detect_all());
+    let active = accounts::detect_all();
+    view::attach_accounts(&mut payload, &active);
+    view::attach_placeholders(&mut payload, &registry::load(), &active);
     serde_json::to_string_pretty(&payload).ok()
 }
 

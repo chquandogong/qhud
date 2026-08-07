@@ -4,6 +4,7 @@ mod accounts;
 mod codex_usage;
 mod demo;
 mod poll;
+mod registry;
 mod usage_cache;
 mod view;
 
@@ -34,6 +35,16 @@ async fn fetch_codex_workspaces() -> Result<Vec<codex_usage::WorkspaceUsage>, St
         Err(e) => eprintln!("qhud: codex fetch failed: {e}"),
     }
     out
+}
+
+/// Records "I no longer use this account" so its placeholder stops
+/// appearing. Only suppresses placeholders — a live credential always
+/// shows, because silently hiding an account in active use is worse than
+/// showing one the operator tried to dismiss (see registry rule 1).
+#[tauri::command]
+fn forget_account(provider: String, key: String) -> Result<(), String> {
+    eprintln!("qhud ui: forget-account {provider}:{key}");
+    registry::forget_and_save(&provider, &key)
 }
 
 /// Current layer: false = desktop layer (keep-below, the default),
@@ -115,7 +126,11 @@ fn main() {
                 eprintln!("qhud: already running (second launch absorbed)");
             }
         }))
-        .invoke_handler(tauri::generate_handler![ui_event, fetch_codex_workspaces])
+        .invoke_handler(tauri::generate_handler![
+            ui_event,
+            fetch_codex_workspaces,
+            forget_account
+        ])
         .plugin(tauri_plugin_window_state::Builder::default().build())
         .setup(|app| {
             let win = app

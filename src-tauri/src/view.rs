@@ -35,6 +35,12 @@ pub struct Payload {
     pub quotas: Vec<ProviderQuota>,
     pub panes: Vec<PaneView>,
     pub summary: Summary,
+    /// Accounts that have connected before but have no live credential
+    /// now (additive, v0.4.0). Rendered as dimmed, numberless rows: their
+    /// quota is still ticking, so hiding them would be a lie of omission,
+    /// but qhud cannot read it without an operator-approved re-auth.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub account_placeholders: Vec<crate::registry::Placeholder>,
 }
 
 #[derive(Serialize, Clone)]
@@ -158,6 +164,7 @@ pub fn payload(reports: &[PaneReport]) -> Payload {
         quotas,
         panes,
         summary,
+        account_placeholders: Vec::new(),
     }
 }
 
@@ -260,6 +267,26 @@ pub fn attach_usage_cache(payload: &mut Payload, cache: Option<&crate::usage_cac
         scoped: cache.scoped.clone(),
     });
     payload.quotas.sort_by(|a, b| a.provider.cmp(&b.provider));
+}
+
+/// Adds the known-but-not-live account rows, using the live accounts the
+/// caller already detected to decide what counts as "not live".
+pub fn attach_placeholders(
+    payload: &mut Payload,
+    reg: &crate::registry::Registry,
+    active: &[(String, crate::accounts::AccountLabel)],
+) {
+    let keys: Vec<(String, String)> = active
+        .iter()
+        .filter_map(|(provider, a)| {
+            // Same key precedence accounts::apply_labels uses: id, else email.
+            a.account_id
+                .clone()
+                .or_else(|| a.email.clone())
+                .map(|k| (provider.clone(), k))
+        })
+        .collect();
+    payload.account_placeholders = crate::registry::placeholders(reg, &keys);
 }
 
 /// Stamps each quota row with the account that owns it. Kept out of
@@ -510,6 +537,7 @@ mod tests {
             quotas: provider_quotas(&panes),
             panes,
             summary: Summary::default(),
+            account_placeholders: Vec::new(),
         }
     }
 

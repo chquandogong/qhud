@@ -678,3 +678,27 @@ body {
     transition: none;
   }
 }
+
+/* Known-but-not-live account: visible, clearly inert, dismissable. */
+.q-row.q-ghost {
+  opacity: 0.45;
+  font-style: italic;
+}
+.q-row.q-ghost.q-open {
+  opacity: 0.72;
+}
+.q-forget {
+  font-family: var(--mono);
+  font-size: 9px;
+  line-height: 1;
+  color: var(--tx-mut);
+  background: none;
+  border: 0;
+  padding: 2px 4px;
+  cursor: pointer;
+  flex: none;
+  opacity: 0.6;
+}
+.q-forget:hover {
+  opacity: 1;
+}

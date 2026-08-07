@@ -374,8 +374,66 @@
   quotasEl.addEventListener("pointerdown", (e) => {
     // pointerdown, not click: a keep-below widget never receives synthesized
     // clicks reliably (D-009).
+    if (e.target.closest?.(".q-row[data-pkey]")) return; // ghost rows have their own handler
     const row = e.target.closest?.('[data-provider="codex"]');
     if (row) fetchCodexWorkspaces();
+  });
+
+  // Accounts that have connected before but have no live credential now.
+  // Shown dimmed and numberless: their quota is still ticking, so hiding
+  // them would be a lie of omission, but reading it needs a re-auth the
+  // operator has to approve. Click for the guidance; ✕ to stop showing it.
+  function renderPlaceholders(list) {
+    for (const row of [...quotasEl.querySelectorAll(".q-row[data-pkey]")]) {
+      row.remove();
+    }
+    for (const p of list) {
+      const row = el("div", "q-row q-ghost");
+      row.dataset.pkey = `${p.provider}:${p.key}`;
+      row.append(
+        el("span", "q-prov", p.provider),
+        el("span", "q-acct", p.label || p.key),
+        el("span", "q-age", "needs re-auth"),
+      );
+      const dismiss = el("button", "q-forget", "✕");
+      dismiss.title = "stop showing this account";
+      row.append(dismiss);
+      row.title = `${p.label || p.key} — no stored credential.\n\n${
+        p.hint || "sign in again to make it live"
+      }`;
+      quotasEl.append(row);
+    }
+    quotasEl.hidden = quotasEl.children.length === 0;
+  }
+
+  quotasEl.addEventListener("pointerdown", async (e) => {
+    const ghost = e.target.closest?.(".q-row[data-pkey]");
+    if (!ghost) return;
+    const [provider, ...rest] = ghost.dataset.pkey.split(":");
+    const key = rest.join(":");
+    if (e.target.classList?.contains("q-forget")) {
+      // Explicit dismissal — persisted, so it stays gone across restarts.
+      try {
+        await window.__TAURI__?.core?.invoke("forget_account", {
+          provider,
+          key,
+        });
+        ghost.remove();
+      } catch (err) {
+        ghost.querySelector(".q-age").textContent = "dismiss failed";
+        ghost.title = String(err);
+      }
+      return;
+    }
+    // A plain click surfaces the guidance rather than doing anything: the
+    // action it describes needs a token refresh or a re-login, which is
+    // the operator's call, not the widget's.
+    ghost.classList.toggle("q-open");
+    ghost.querySelector(".q-age").textContent = ghost.classList.contains(
+      "q-open",
+    )
+      ? "see tooltip →"
+      : "needs re-auth";
   });
 
   function renderQuotas(quotas) {
@@ -450,6 +508,7 @@
       patchQuotaChip(row.querySelector('[data-win="7d"]'), q.d7);
     }
     for (const row of [...quotasEl.children]) {
+      if (row.dataset.pkey) continue; // ghost row, owned by renderPlaceholders
       if (!alive.has(row.dataset.provider)) row.remove();
     }
   }
@@ -473,6 +532,7 @@
     srcBadge.hidden = p.source !== "demo";
 
     renderQuotas(p.quotas || []);
+    renderPlaceholders(p.account_placeholders || []);
 
     // tiles (keyed patch, order = payload order)
     const alive = new Set();
