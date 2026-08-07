@@ -23,6 +23,7 @@ tauri-plugin-single-instance = "2"
 qmonster = { git = "https://github.com/chquandogong/qmonster", rev = "6a21c447f41dd366e6ea7e08fb3e8545a03396d5" }
 chrono = { version = "0.4.45", default-features = false, features = ["std", "serde"] }
 reqwest = { version = "0.13.4", default-features = false, features = ["json", "rustls", "charset"] }
+tokio = { version = "1.53.1", features = ["rt-multi-thread"] }
 
 [profile.release]
 strip = true

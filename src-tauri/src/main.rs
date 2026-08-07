@@ -114,6 +114,25 @@ fn main() {
         return;
     }
 
+    // Diagnostic twin of the CODEX row click: runs the exact same
+    // fetch_all_workspaces() the UI invokes, so the network path can be
+    // verified without synthesizing pointer input into a keep-below widget
+    // (D-010: real input must go through the compositor).
+    if std::env::args().any(|a| a == "--codex-usage") {
+        let rt = match tokio::runtime::Runtime::new() {
+            Ok(rt) => rt,
+            Err(e) => {
+                eprintln!("qhud: runtime: {e}");
+                return;
+            }
+        };
+        match rt.block_on(codex_usage::fetch_all_workspaces()) {
+            Ok(w) => println!("{}", serde_json::to_string_pretty(&w).unwrap_or_default()),
+            Err(e) => eprintln!("qhud: codex usage failed: {e}"),
+        }
+        return;
+    }
+
     tauri::Builder::default()
         // Single instance doubles as the peek IPC: `qhud --peek` from a
         // GNOME custom shortcut relays argv to the running widget and

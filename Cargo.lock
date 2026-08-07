@@ -3476,6 +3476,7 @@ dependencies = [
  "tauri-build",
  "tauri-plugin-single-instance",
  "tauri-plugin-window-state",
+ "tokio",
  "toml 1.1.4+spec-1.1.0",
 ]
 
