@@ -702,3 +702,31 @@ body {
 .q-forget:hover {
   opacity: 1;
 }
+
+/* One Codex workspace (personal / business) under its login. Indented so
+   the parent-child relationship reads without a second heading. */
+.q-row.q-ws {
+  padding-left: 8px;
+  opacity: 0.9;
+}
+.q-row.q-ws .q-prov {
+  width: 44px;
+  color: var(--tx-faint);
+  letter-spacing: 0;
+}
+/* Plan / seat, inline: the strip should answer "whose quota, what plan"
+   without needing a pointer on it. */
+.q-plan {
+  font-family: var(--mono);
+  font-size: 8.5px;
+  color: var(--accent);
+  opacity: 0.85;
+  flex: none;
+  white-space: nowrap;
+  max-width: 96px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.q-plan[hidden] {
+  display: none;
+}

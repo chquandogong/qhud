@@ -273,6 +273,7 @@
     row.append(
       el("span", "q-prov", provider),
       el("span", "q-acct"),
+      el("span", "q-plan"),
       el("span", "q-age"),
     );
     for (const win of ["5h", "7d"]) {
@@ -321,6 +322,17 @@
   // its token, so they cost no extra auth — but fetching them leaves the
   // machine, so it happens on an explicit click and never on the timer.
   const codexFetch = { state: "idle", rows: [], error: null };
+  // provider -> plan string learned from an on-demand fetch.
+  const codexPlan = new Map();
+
+  // Provider words are long and the strip is ~520px; shorten without
+  // inventing meaning.
+  const shortPlan = (s) =>
+    ({ claude_team: "team", claude_max: "max", claude_pro: "pro" })[s] || s;
+  const shortTier = (s) =>
+    String(s)
+      .replace(/^default_/, "")
+      .replace(/^claude_/, "");
 
   async function fetchCodexWorkspaces() {
     if (codexFetch.state === "loading") return;
@@ -339,11 +351,15 @@
     renderCodexExtra();
   }
 
+  // Render each Codex workspace as its OWN row. One login owns several
+  // workspaces (personal + business) with separate quota, so collapsing
+  // them into a tooltip hid the very thing the fetch is for.
   function renderCodexExtra() {
-    const row = quotasEl.querySelector('[data-provider="codex"]');
-    if (!row) return;
-    const acctEl = row.querySelector(".q-acct");
-    const ageEl = row.querySelector(".q-age");
+    for (const r of [...quotasEl.querySelectorAll("[data-wsid]")]) r.remove();
+    const anchor = quotasEl.querySelector('[data-provider="codex"]');
+    if (!anchor) return;
+    const ageEl = anchor.querySelector(".q-age");
+
     if (codexFetch.state === "loading") {
       ageEl.hidden = false;
       ageEl.textContent = "fetching…";
@@ -352,58 +368,50 @@
     if (codexFetch.state === "error") {
       ageEl.hidden = false;
       ageEl.textContent = "fetch failed";
-      row.title = `${codexFetch.error}\n\nclick to retry`;
+      anchor.title = `${codexFetch.error}\n\nclick to retry`;
       return;
     }
-    if (codexFetch.state === "done") {
-      const lines = codexFetch.rows.map((w) => {
-        const wins = (w.windows || [])
-          .map((x) => `${x.label} ${x.used_percent}%`)
-          .join("  ");
-        return `${w.name || w.account_id}${w.plan_type ? ` (${w.plan_type})` : ""}: ${wins}`;
-      });
-      ageEl.hidden = false;
-      ageEl.textContent = `${codexFetch.rows.length} workspace${
-        codexFetch.rows.length === 1 ? "" : "s"
-      }`;
-      row.title = lines.join("\n") + "\n\nclick to refresh";
-      acctEl.hidden = false;
-    }
-  }
+    if (codexFetch.state !== "done") return;
 
-  quotasEl.addEventListener("pointerdown", (e) => {
-    // pointerdown, not click: a keep-below widget never receives synthesized
-    // clicks reliably (D-009).
-    if (e.target.closest?.(".q-row[data-pkey]")) return; // ghost rows have their own handler
-    const row = e.target.closest?.('[data-provider="codex"]');
-    if (row) fetchCodexWorkspaces();
-  });
+    ageEl.hidden = codexFetch.rows.length === 0;
+    ageEl.textContent = `${codexFetch.rows.length} ws`;
+    // The signed-in login's plan, shown inline on the codex row itself.
+    const plan = codexFetch.rows.find((w) => w.plan_type)?.plan_type;
+    if (plan) codexPlan.set("codex", plan);
 
-  // Accounts that have connected before but have no live credential now.
-  // Shown dimmed and numberless: their quota is still ticking, so hiding
-  // them would be a lie of omission, but reading it needs a re-auth the
-  // operator has to approve. Click for the guidance; ✕ to stop showing it.
-  function renderPlaceholders(list) {
-    for (const row of [...quotasEl.querySelectorAll(".q-row[data-pkey]")]) {
-      row.remove();
-    }
-    for (const p of list) {
-      const row = el("div", "q-row q-ghost");
-      row.dataset.pkey = `${p.provider}:${p.key}`;
+    let after = anchor;
+    for (const w of codexFetch.rows) {
+      const row = el("div", "q-row q-ws");
+      row.dataset.wsid = w.account_id;
+      const wins = (w.windows || []).filter((x) => x.used_percent != null);
       row.append(
-        el("span", "q-prov", p.provider),
-        el("span", "q-acct", p.label || p.key),
-        el("span", "q-age", "needs re-auth"),
+        el("span", "q-prov", "↳"),
+        el("span", "q-acct", w.name || w.account_id.slice(0, 8)),
+        el("span", "q-plan", w.plan_type || ""),
       );
-      const dismiss = el("button", "q-forget", "✕");
-      dismiss.title = "stop showing this account";
-      row.append(dismiss);
-      row.title = `${p.label || p.key} — no stored credential.\n\n${
-        p.hint || "sign in again to make it live"
-      }`;
-      quotasEl.append(row);
+      for (const x of wins) {
+        const chip = el("span", "q-chip");
+        chip.dataset.sev = sev(x.used_percent);
+        const track = el("span", "q-track");
+        track.append(el("span", "q-fill"));
+        track.querySelector(".q-fill").style.width = x.used_percent + "%";
+        const val = el("span", "q-val");
+        val.append(document.createTextNode(x.used_percent), el("i", null, "%"));
+        const reset = el("span", "q-reset");
+        if (x.reset_unix) {
+          reset.dataset.resetUnix = x.reset_unix;
+          reset.textContent = fmtReset(x.reset_unix);
+        }
+        chip.append(el("span", "q-label", x.label), track, val, reset);
+        row.append(chip);
+      }
+      if (wins.length === 0) row.append(el("span", "q-age", "no window"));
+      if (w.credits_balance) {
+        row.title = `credits ${w.credits_balance}`;
+      }
+      after.after(row);
+      after = row;
     }
-    quotasEl.hidden = quotasEl.children.length === 0;
   }
 
   quotasEl.addEventListener("pointerdown", async (e) => {
@@ -451,6 +459,19 @@
       const acctEl = row.querySelector(".q-acct");
       acctEl.textContent = q.account?.display || "";
       acctEl.hidden = !q.account?.display;
+
+      // Plan / seat, inline rather than tooltip-only: "whose quota and on
+      // what plan" is the question the strip exists to answer, and hover
+      // does not work on a keep-below widget you are not pointing at.
+      const planEl = row.querySelector(".q-plan");
+      const bits = [];
+      if (q.account?.org_type) bits.push(shortPlan(q.account.org_type));
+      for (const t of q.account?.tiers || []) {
+        if (t.kind === "user") bits.push(shortTier(t.tier));
+      }
+      if (codexPlan.get(q.provider)) bits.push(codexPlan.get(q.provider));
+      planEl.textContent = bits.join(" · ");
+      planEl.hidden = bits.length === 0;
 
       // A cache-sourced row is NOT a live reading. Mark it on the row and
       // say how old it is, so a stale number can never pass for current.
@@ -508,7 +529,7 @@
       patchQuotaChip(row.querySelector('[data-win="7d"]'), q.d7);
     }
     for (const row of [...quotasEl.children]) {
-      if (row.dataset.pkey) continue; // ghost row, owned by renderPlaceholders
+      if (row.dataset.pkey || row.dataset.wsid) continue; // owned by other renderers
       if (!alive.has(row.dataset.provider)) row.remove();
     }
   }
