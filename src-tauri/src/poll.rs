@@ -11,7 +11,7 @@ use qmonster::notify::desktop::NotifyBackend;
 use qmonster::store::sink::NoopSink;
 use qmonster::tmux::TmuxSource;
 
-use crate::{demo, view};
+use crate::{accounts, demo, view};
 
 const POLL: Duration = Duration::from_secs(2);
 const LIVE_RETRY: Duration = Duration::from_secs(10);
@@ -57,6 +57,7 @@ pub fn run(app: AppHandle) {
                     Ok((reports, _notices)) => {
                         let mut payload = view::payload(&reports);
                         payload.backend = Some((*backend).to_string());
+                        view::attach_accounts(&mut payload, &accounts::detect_all());
                         Some(payload)
                     }
                     Err(e) => {
@@ -85,6 +86,7 @@ pub fn dump_once() -> Option<String> {
         event_loop::run_once_with_target(&mut ctx, Instant::now(), None).ok()?;
     let mut payload = view::payload(&reports);
     payload.backend = Some(backend.to_string());
+    view::attach_accounts(&mut payload, &accounts::detect_all());
     serde_json::to_string_pretty(&payload).ok()
 }
 

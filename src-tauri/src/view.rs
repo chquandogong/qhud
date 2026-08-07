@@ -45,6 +45,10 @@ pub struct ProviderQuota {
     /// Pane whose reading won (freshest snapshot) — shown as source.
     pub from_label: String,
     pub session: String,
+    /// Which signed-in account this row belongs to (additive, v0.4.0).
+    /// `None` when the provider's identity file is absent or unreadable.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub account: Option<crate::accounts::AccountLabel>,
 }
 
 #[derive(Serialize, Clone, Default)]
@@ -173,6 +177,7 @@ pub fn provider_quotas(panes: &[PaneView]) -> Vec<ProviderQuota> {
                 d7: None,
                 from_label: String::new(),
                 session: String::new(),
+                account: None,
             });
         if let Some(g) = &pane.gauges.h5
             && !expired(g)
@@ -197,6 +202,21 @@ pub fn provider_quotas(panes: &[PaneView]) -> Vec<ProviderQuota> {
         .into_values()
         .filter(|q| q.h5.is_some() || q.d7.is_some())
         .collect()
+}
+
+/// Stamps each quota row with the account that owns it. Kept out of
+/// `payload` so that stays a pure function of the reports; the poll loop
+/// and `--dump` each call this once per tick.
+pub fn attach_accounts(
+    payload: &mut Payload,
+    accounts: &[(String, crate::accounts::AccountLabel)],
+) {
+    for quota in &mut payload.quotas {
+        quota.account = accounts
+            .iter()
+            .find(|(provider, _)| *provider == quota.provider)
+            .map(|(_, acct)| acct.clone());
+    }
 }
 
 pub fn now_ms() -> u64 {

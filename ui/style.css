@@ -142,6 +142,23 @@ body {
   width: 52px;
   flex: none;
 }
+/* Account the row belongs to. Truncates rather than pushing the gauges
+   around — two logins on one provider must stay tellable apart even in a
+   narrow widget. */
+.q-acct {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--tx-mut);
+  opacity: 0.72;
+  max-width: 88px;
+  flex: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.q-acct[hidden] {
+  display: none;
+}
 .q-chip {
   display: flex;
   align-items: center;

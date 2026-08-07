@@ -270,7 +270,7 @@
   function buildQuotaRow(provider) {
     const row = el("div", "q-row");
     row.dataset.provider = provider;
-    row.append(el("span", "q-prov", provider));
+    row.append(el("span", "q-prov", provider), el("span", "q-acct"));
     for (const win of ["5h", "7d"]) {
       const chip = el("span", "q-chip");
       chip.dataset.win = win;
@@ -323,10 +323,32 @@
         row = buildQuotaRow(q.provider);
         quotasEl.append(row);
       }
-      row.title = q.from_label
-        ? `freshest reading: ${q.from_label}` +
-          (q.session ? ` @${q.session}` : "")
-        : "";
+      // Whose quota this is. Without it two logins on one provider are
+      // indistinguishable; the chip stays empty when no account is known.
+      const acctEl = row.querySelector(".q-acct");
+      acctEl.textContent = q.account?.display || "";
+      acctEl.hidden = !q.account?.display;
+
+      const lines = [];
+      if (q.account) {
+        const a = q.account;
+        lines.push(
+          `account: ${a.display || "unknown"}` +
+            (a.email && a.email !== a.display ? ` <${a.email}>` : ""),
+        );
+        if (a.org)
+          lines.push(`org: ${a.org}${a.org_type ? ` (${a.org_type})` : ""}`);
+        // A team seat carries an org pool AND the member's own seat, each
+        // with its own tier — collapsing them would hide a pool.
+        for (const t of a.tiers || []) lines.push(`${t.kind} tier: ${t.tier}`);
+      }
+      if (q.from_label) {
+        lines.push(
+          `freshest reading: ${q.from_label}` +
+            (q.session ? ` @${q.session}` : ""),
+        );
+      }
+      row.title = lines.join("\n");
       patchQuotaChip(row.querySelector('[data-win="5h"]'), q.h5);
       patchQuotaChip(row.querySelector('[data-win="7d"]'), q.d7);
     }
