@@ -166,5 +166,6 @@ pub fn payload() -> Payload {
         panes,
         account_placeholders: Vec::new(),
         workspace_names: std::collections::HashMap::new(),
+        workspace_plans: std::collections::HashMap::new(),
     }
 }

@@ -45,6 +45,9 @@ pub struct Payload {
     /// not render as a hex id prefix (additive, v0.4.1).
     #[serde(skip_serializing_if = "std::collections::HashMap::is_empty")]
     pub workspace_names: std::collections::HashMap<String, String>,
+    /// account_id -> display plan for a fetched workspace (additive, v0.4.1).
+    #[serde(skip_serializing_if = "std::collections::HashMap::is_empty")]
+    pub workspace_plans: std::collections::HashMap<String, String>,
 }
 
 #[derive(Serialize, Clone)]
@@ -170,6 +173,7 @@ pub fn payload(reports: &[PaneReport]) -> Payload {
         summary,
         account_placeholders: Vec::new(),
         workspace_names: std::collections::HashMap::new(),
+        workspace_plans: std::collections::HashMap::new(),
     }
 }
 
@@ -293,6 +297,7 @@ pub fn attach_placeholders(
         .collect();
     payload.account_placeholders = crate::registry::placeholders(reg, &keys);
     payload.workspace_names = reg.workspace_names.clone();
+    payload.workspace_plans = reg.workspace_plans.clone();
 }
 
 /// Stamps each quota row with the account that owns it. Kept out of
@@ -545,6 +550,7 @@ mod tests {
             summary: Summary::default(),
             account_placeholders: Vec::new(),
             workspace_names: std::collections::HashMap::new(),
+            workspace_plans: std::collections::HashMap::new(),
         }
     }
 
