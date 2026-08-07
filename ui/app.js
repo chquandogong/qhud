@@ -415,6 +415,7 @@
         quotasEl.querySelectorAll("[data-wsid]").length
       } rendered`,
     });
+    logLabels("after-codex-fetch");
   }
 
   quotasEl.addEventListener("pointerdown", async (e) => {
@@ -717,21 +718,7 @@
             quotasEl.querySelectorAll('[data-win^="m:"]').length
           } per-model), more=${quotasEl.querySelector(".q-more") ? 1 : 0}`,
         });
-        // The actual rendered text of every identity line. Counts cannot catch
-        // a duplicated tier or a wire enum leaking into a label; this can.
-        window.__TAURI__?.core?.invoke("ui_event", {
-          event:
-            "labels: " +
-            [...quotasEl.querySelectorAll(".q-row")]
-              .map((r) =>
-                [".q-prov", ".q-acct", ".q-plan"]
-                  .map((sel) => r.querySelector(sel)?.textContent || "")
-                  .filter(Boolean)
-                  .join("|"),
-              )
-              .filter(Boolean)
-              .join("  /  "),
-        });
+        logLabels("initial");
       }
     } catch (err) {
       reportJsError("renderQuotas", err);
@@ -814,6 +801,26 @@
   // a broken quota strip shipped once. Route them to stderr via ui_event.
   // Function declaration, not a const: it is referenced from render(),
   // which is defined earlier in the file.
+  // The actual rendered text of every row. Counts cannot catch a duplicated
+  // tier or a wire enum leaking into a label; this can. Fired again after the
+  // Codex fetch, because workspace rows are appended later than initial render.
+  function logLabels(tag) {
+    try {
+      const lines = [...quotasEl.querySelectorAll(".q-row")]
+        .map((r) =>
+          [".q-prov", ".q-acct", ".q-plan"]
+            .map((sel) => r.querySelector(sel)?.textContent || "")
+            .filter(Boolean)
+            .join("|"),
+        )
+        .filter(Boolean)
+        .join("  /  ");
+      window.__TAURI__?.core?.invoke("ui_event", {
+        event: `labels(${tag}): ${lines}`,
+      });
+    } catch {}
+  }
+
   function reportJsError(what, err) {
     const msg = `js-error ${what}: ${err && (err.stack || err.message || err)}`;
     try {
