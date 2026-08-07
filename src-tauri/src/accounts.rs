@@ -35,6 +35,10 @@ pub struct AccountLabel {
     /// Provider's own plan/seat words, e.g. `claude_team`, `prolite`.
     pub org_type: Option<String>,
     pub tiers: Vec<TierScope>,
+    /// Operator-supplied plan for a LIVE account whose provider does not
+    /// report one (agy exposes no plan locally at all). Mirrors the
+    /// `plan` a placeholder carries, so the strip reads the same either way.
+    pub plan: Option<String>,
     /// Precomputed `display()` so the frontend does not reimplement the
     /// label→email→id precedence in JS.
     #[serde(rename = "display")]
@@ -104,6 +108,7 @@ pub fn claude_account(config_json: &str) -> Option<AccountLabel> {
         org: acct.organization_name,
         org_type: acct.organization_type,
         tiers,
+        plan: None,
         display_name: None,
     })
 }
@@ -163,6 +168,18 @@ pub fn parse_inventory(inventory_json: &str) -> std::collections::HashMap<String
         .labels
 }
 
+/// Parses the `plans` map: `provider:key -> plan`.
+pub fn parse_plans(inventory_json: &str) -> std::collections::HashMap<String, String> {
+    #[derive(Deserialize, Default)]
+    struct Inv {
+        #[serde(default)]
+        plans: std::collections::HashMap<String, String>,
+    }
+    serde_json::from_str::<Inv>(inventory_json)
+        .unwrap_or_default()
+        .plans
+}
+
 /// Fills `account.label` from the inventory, keyed by `provider:account_id`
 /// and falling back to `provider:email` for providers that expose no id.
 pub fn apply_labels(
@@ -213,8 +230,16 @@ pub fn detect_all() -> Vec<(String, AccountLabel)> {
     let labels = read(".config/qhud/accounts.json")
         .map(|s| parse_inventory(&s))
         .unwrap_or_default();
+    let plans = read(".config/qhud/accounts.json")
+        .map(|s| parse_plans(&s))
+        .unwrap_or_default();
     for (provider, acct) in &mut found {
         apply_labels(provider, acct, &labels);
+        let keys = [acct.account_id.as_deref(), acct.email.as_deref()];
+        acct.plan = keys
+            .iter()
+            .flatten()
+            .find_map(|k| plans.get(&format!("{provider}:{k}")).cloned());
         acct.display_name = acct.display();
     }
     found
@@ -346,6 +371,15 @@ mod tests {
 
         assert!(parse_inventory("not json").is_empty());
         assert!(parse_inventory("{}").is_empty());
+    }
+
+    #[test]
+    fn plans_map_supplies_a_plan_for_providers_that_report_none() {
+        // agy exposes no plan locally, so without this the strip can never
+        // show one for a live agy account.
+        let plans = parse_plans(r#"{"plans":{"agy:me@x.com":"pro"}}"#);
+        assert_eq!(plans.get("agy:me@x.com").map(String::as_str), Some("pro"));
+        assert!(parse_plans("nope").is_empty());
     }
 
     #[test]

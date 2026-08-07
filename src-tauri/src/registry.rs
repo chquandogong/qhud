@@ -32,6 +32,11 @@ pub struct KnownAccount {
     /// What the operator must do to make this account live again.
     #[serde(default)]
     pub hint: Option<String>,
+    /// Plan/seat as the operator knows it (e.g. "pro", "free"). The
+    /// provider only reports this once a credential is live, so for an
+    /// account that needs re-auth this is the only way to show it at all.
+    #[serde(default)]
+    pub plan: Option<String>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -48,6 +53,7 @@ pub struct Placeholder {
     pub key: String,
     pub label: Option<String>,
     pub hint: Option<String>,
+    pub plan: Option<String>,
 }
 
 /// Composite key used by `labels` and `forgotten`.
@@ -97,6 +103,7 @@ pub fn placeholders(reg: &Registry, active: &[(String, String)]) -> Vec<Placehol
                 .cloned()
                 .or_else(|| k.label.clone()),
             hint: k.hint.clone(),
+            plan: k.plan.clone(),
         })
         .collect()
 }
@@ -206,6 +213,18 @@ mod tests {
             out[0].hint.as_deref().unwrap().contains("codex login"),
             "a placeholder must say how to restore the account"
         );
+    }
+
+    #[test]
+    fn placeholder_carries_the_operator_supplied_plan() {
+        // The provider only reports plan once a credential is live, so for
+        // an account needing re-auth the registry is the ONLY source.
+        let reg = parse(
+            r#"{"known":[{"provider":"codex","key":"zzz","label":"a@b.c",
+                          "plan":"pro"}]}"#,
+        );
+        let out = placeholders(&reg, &[]);
+        assert_eq!(out[0].plan.as_deref(), Some("pro"));
     }
 
     #[test]

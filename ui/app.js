@@ -444,6 +444,74 @@
       : "needs re-auth";
   });
 
+  quotasEl.addEventListener("pointerdown", (e) => {
+    // pointerdown, not click: a keep-below widget never receives synthesized
+    // clicks reliably (D-009).
+    if (e.target.closest?.(".q-row[data-pkey]")) return; // ghost rows have their own handler
+    if (e.target.closest?.(".q-row[data-wsid]")) return; // workspace rows are output, not a button
+    const row = e.target.closest?.('[data-provider="codex"]');
+    if (row) fetchCodexWorkspaces();
+  });
+
+  // Accounts that have connected before but have no live credential now.
+  // Shown dimmed and numberless: their quota is still ticking, so hiding
+  // them would be a lie of omission, but reading it needs a re-auth the
+  // operator has to approve. Click for the guidance; ✕ to stop showing it.
+  function renderPlaceholders(list) {
+    for (const row of [...quotasEl.querySelectorAll(".q-row[data-pkey]")]) {
+      row.remove();
+    }
+    for (const p of list) {
+      const row = el("div", "q-row q-ghost");
+      row.dataset.pkey = `${p.provider}:${p.key}`;
+      row.append(
+        el("span", "q-prov", p.provider),
+        el("span", "q-acct", p.label || p.key),
+        el("span", "q-plan", p.plan || ""),
+        el("span", "q-age", "needs re-auth"),
+      );
+      if (!p.plan) row.querySelector(".q-plan").hidden = true;
+      const dismiss = el("button", "q-forget", "✕");
+      dismiss.title = "stop showing this account";
+      row.append(dismiss);
+      row.title = `${p.label || p.key} — no stored credential.\n\n${
+        p.hint || "sign in again to make it live"
+      }`;
+      quotasEl.append(row);
+    }
+    quotasEl.hidden = quotasEl.children.length === 0;
+  }
+
+  quotasEl.addEventListener("pointerdown", async (e) => {
+    const ghost = e.target.closest?.(".q-row[data-pkey]");
+    if (!ghost) return;
+    const [provider, ...rest] = ghost.dataset.pkey.split(":");
+    const key = rest.join(":");
+    if (e.target.classList?.contains("q-forget")) {
+      // Explicit dismissal — persisted, so it stays gone across restarts.
+      try {
+        await window.__TAURI__?.core?.invoke("forget_account", {
+          provider,
+          key,
+        });
+        ghost.remove();
+      } catch (err) {
+        ghost.querySelector(".q-age").textContent = "dismiss failed";
+        ghost.title = String(err);
+      }
+      return;
+    }
+    // A plain click surfaces the guidance rather than doing anything: the
+    // action it describes needs a token refresh or a re-login, which is
+    // the operator's call, not the widget's.
+    ghost.classList.toggle("q-open");
+    ghost.querySelector(".q-age").textContent = ghost.classList.contains(
+      "q-open",
+    )
+      ? "see tooltip →"
+      : "needs re-auth";
+  });
+
   function renderQuotas(quotas) {
     quotasEl.hidden = quotas.length === 0;
     const alive = new Set();
@@ -465,7 +533,8 @@
       // does not work on a keep-below widget you are not pointing at.
       const planEl = row.querySelector(".q-plan");
       const bits = [];
-      if (q.account?.org_type) bits.push(shortPlan(q.account.org_type));
+      if (q.account?.plan) bits.push(q.account.plan);
+      else if (q.account?.org_type) bits.push(shortPlan(q.account.org_type));
       for (const t of q.account?.tiers || []) {
         if (t.kind === "user") bits.push(shortTier(t.tier));
       }
