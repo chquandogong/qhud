@@ -580,35 +580,17 @@
 
   // Per-model windows (Claude reports a separate pool for Fable) are their
   // own gauges, not a tooltip footnote: they run out independently.
-  function patchScopedChips(row, scoped) {
-    const want = scoped.filter((x) => x.kind === "weekly_scoped" && x.scope);
-    const seen = new Set();
-    for (const x of want) {
-      const key = "m:" + x.scope;
-      seen.add(key);
-      let chip = row.querySelector(`[data-win="${CSS.escape(key)}"]`);
-      if (!chip) {
-        chip = buildChip(key, `${x.scope} wk`);
-        row.append(chip);
-      }
-      patchQuotaChip(chip, { pct: x.pct, reset_unix: x.reset_unix });
-      // Per-model windows exist ONLY in Claude's on-disk cache, which
-      // refreshes when Claude Code fetches — not every prompt like the
-      // statusline. So a scoped gauge can never be live, and sitting
-      // unmarked beside live 5H/7D it reads as current (observed: Fable
-      // showed a 27h-old 5% while /usage said 22%). Carry its age.
-      chip.classList.add("stale");
-      const age = row.dataset.cacheAge;
-      const rst = chip.querySelector(".q-reset");
-      if (age) {
-        delete rst.dataset.resetUnix; // a 27h-old countdown is not credible
-        rst.classList.remove("soon");
-        rst.textContent = `~${age} old`;
-      }
-    }
-    for (const chip of [...row.querySelectorAll('[data-win^="m:"]')]) {
-      if (!seen.has(chip.dataset.win)) chip.remove();
-    }
+  // Per-model windows are NOT rendered as gauges. They exist only in
+  // ~/.claude.json:cachedUsageUtilization, which refreshes when the operator
+  // opens /usage — never on anything qhud can trigger (verified: --version,
+  // doctor, mcp list, and a real headless --print session all leave
+  // fetchedAtMs untouched). So the value is stale whenever the widget would be
+  // useful: it showed Fable at 5% while /usage said 22%. It survives in the
+  // row tooltip, dated, where it cannot pass for a live reading.
+  function scopedTooltipLines(scoped, age) {
+    return (scoped || [])
+      .filter((x) => x.kind === "weekly_scoped" && x.scope)
+      .map((x) => `${x.scope} weekly ${x.pct}%${age ? ` (snapshot ~${age} old)` : ""}`);
   }
 
   function renderQuotas(quotas) {
@@ -667,7 +649,6 @@
       ageEl.textContent = showAge ? `~${row.dataset.cacheAge} old` : "";
       ageEl.hidden = !showAge;
 
-      patchScopedChips(row, q.scoped || []);
 
       const lines = [];
       if (q.origin === "cache") {
@@ -679,11 +660,7 @@
           `per-model windows from snapshot, ${row.dataset.cacheAge} old`,
         );
       }
-      for (const s of q.scoped || []) {
-        if (s.kind === "weekly_scoped" && s.scope) {
-          lines.push(`weekly [${s.scope}]: ${s.pct}%`);
-        }
-      }
+      lines.push(...scopedTooltipLines(q.scoped, row.dataset.cacheAge));
       if (q.account) {
         const a = q.account;
         lines.push(
