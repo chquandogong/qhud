@@ -317,6 +317,67 @@
     }
   }
 
+  // Codex workspaces (personal / business) live behind ONE login and share
+  // its token, so they cost no extra auth — but fetching them leaves the
+  // machine, so it happens on an explicit click and never on the timer.
+  const codexFetch = { state: "idle", rows: [], error: null };
+
+  async function fetchCodexWorkspaces() {
+    if (codexFetch.state === "loading") return;
+    codexFetch.state = "loading";
+    codexFetch.error = null;
+    renderCodexExtra();
+    try {
+      const inv = window.__TAURI__?.core?.invoke;
+      if (!inv) throw new Error("not running under Tauri");
+      codexFetch.rows = await inv("fetch_codex_workspaces");
+      codexFetch.state = "done";
+    } catch (e) {
+      codexFetch.state = "error";
+      codexFetch.error = String(e);
+    }
+    renderCodexExtra();
+  }
+
+  function renderCodexExtra() {
+    const row = quotasEl.querySelector('[data-provider="codex"]');
+    if (!row) return;
+    const acctEl = row.querySelector(".q-acct");
+    const ageEl = row.querySelector(".q-age");
+    if (codexFetch.state === "loading") {
+      ageEl.hidden = false;
+      ageEl.textContent = "fetching…";
+      return;
+    }
+    if (codexFetch.state === "error") {
+      ageEl.hidden = false;
+      ageEl.textContent = "fetch failed";
+      row.title = `${codexFetch.error}\n\nclick to retry`;
+      return;
+    }
+    if (codexFetch.state === "done") {
+      const lines = codexFetch.rows.map((w) => {
+        const wins = (w.windows || [])
+          .map((x) => `${x.label} ${x.used_percent}%`)
+          .join("  ");
+        return `${w.name || w.account_id}${w.plan_type ? ` (${w.plan_type})` : ""}: ${wins}`;
+      });
+      ageEl.hidden = false;
+      ageEl.textContent = `${codexFetch.rows.length} workspace${
+        codexFetch.rows.length === 1 ? "" : "s"
+      }`;
+      row.title = lines.join("\n") + "\n\nclick to refresh";
+      acctEl.hidden = false;
+    }
+  }
+
+  quotasEl.addEventListener("pointerdown", (e) => {
+    // pointerdown, not click: a keep-below widget never receives synthesized
+    // clicks reliably (D-009).
+    const row = e.target.closest?.('[data-provider="codex"]');
+    if (row) fetchCodexWorkspaces();
+  });
+
   function renderQuotas(quotas) {
     quotasEl.hidden = quotas.length === 0;
     const alive = new Set();

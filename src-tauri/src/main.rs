@@ -1,6 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod accounts;
+mod codex_usage;
 mod demo;
 mod poll;
 mod usage_cache;
@@ -16,6 +17,23 @@ use tauri::{Emitter, Manager};
 #[tauri::command]
 fn ui_event(event: String) {
     eprintln!("qhud ui: {event}");
+}
+
+/// Fetches every Codex workspace's quota, on explicit operator request.
+///
+/// The ONLY outbound network call in qhud, and it is never on a timer —
+/// the poll loop stays passive. Reads the access token already on disk and
+/// never runs the refresh grant (Codex refresh tokens are single-use and
+/// rotated; a failed write-back would break `codex login`).
+#[tauri::command]
+async fn fetch_codex_workspaces() -> Result<Vec<codex_usage::WorkspaceUsage>, String> {
+    eprintln!("qhud ui: codex-workspace-fetch requested");
+    let out = codex_usage::fetch_all_workspaces().await;
+    match &out {
+        Ok(w) => eprintln!("qhud: codex fetch ok ({} workspaces)", w.len()),
+        Err(e) => eprintln!("qhud: codex fetch failed: {e}"),
+    }
+    out
 }
 
 /// Current layer: false = desktop layer (keep-below, the default),
@@ -97,7 +115,7 @@ fn main() {
                 eprintln!("qhud: already running (second launch absorbed)");
             }
         }))
-        .invoke_handler(tauri::generate_handler![ui_event])
+        .invoke_handler(tauri::generate_handler![ui_event, fetch_codex_workspaces])
         .plugin(tauri_plugin_window_state::Builder::default().build())
         .setup(|app| {
             let win = app

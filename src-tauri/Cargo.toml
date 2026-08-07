@@ -22,6 +22,7 @@ tauri-plugin-single-instance = "2"
 # re-run the contract tests in src/view.rs when you do.
 qmonster = { git = "https://github.com/chquandogong/qmonster", rev = "eff5f637a2e922ffd99d3e8de09fb34471d92a62" }
 chrono = { version = "0.4.45", default-features = false, features = ["std", "serde"] }
+reqwest = { version = "0.13.4", default-features = false, features = ["json", "rustls", "charset"] }
 
 [profile.release]
 strip = true
