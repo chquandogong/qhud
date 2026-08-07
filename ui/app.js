@@ -319,9 +319,6 @@
   // its token, so they cost no extra auth — but fetching them leaves the
   // machine, so it happens on an explicit click and never on the timer.
   const codexFetch = { state: "idle", rows: [], error: null };
-  // provider -> plan string learned from an on-demand fetch.
-  const codexPlan = new Map();
-
   // Provider words are long and the strip is ~520px; shorten without
   // inventing meaning.
   const shortPlan = (s) =>
@@ -373,8 +370,9 @@
     ageEl.hidden = codexFetch.rows.length === 0;
     ageEl.textContent = `${codexFetch.rows.length} ws`;
     // The signed-in login's plan, shown inline on the codex row itself.
-    const plan = codexFetch.rows.find((w) => w.plan_type)?.plan_type;
-    if (plan) codexPlan.set("codex", plan);
+    // Deliberately NOT lifting w.plan_type onto the parent row: it is a wire
+    // enum ('prolite', 'team'), not the name the operator sees. The display
+    // name comes from the registry via account.plan.
 
     let after = anchor;
     for (const w of codexFetch.rows) {
@@ -384,7 +382,6 @@
       row.append(
         el("span", "q-prov", "↳"),
         el("span", "q-acct", w.name || w.account_id.slice(0, 8)),
-        el("span", "q-plan", w.plan_type || ""),
       );
       for (const x of wins) {
         const chip = el("span", "q-chip");
@@ -403,9 +400,10 @@
         row.append(chip);
       }
       if (wins.length === 0) row.append(el("span", "q-age", "no window"));
-      if (w.credits_balance) {
-        row.title = `credits ${w.credits_balance}`;
-      }
+      const meta = [];
+      if (w.plan_type) meta.push(`plan_type (wire): ${w.plan_type}`);
+      if (w.credits_balance) meta.push(`credits ${w.credits_balance}`);
+      if (meta.length) row.title = meta.join("\n");
       after.after(row);
       after = row;
     }
@@ -605,12 +603,17 @@
       // does not work on a keep-below widget you are not pointing at.
       const planEl = row.querySelector(".q-plan");
       const bits = [];
-      if (q.account?.plan) bits.push(q.account.plan);
-      else if (q.account?.org_type) bits.push(shortPlan(q.account.org_type));
-      for (const t of q.account?.tiers || []) {
-        if (t.kind === "user") bits.push(`(${shortTier(t.tier)})`);
+      if (q.account?.plan) {
+        // An explicit plan string is already complete. Appending the derived
+        // tier here is what produced "team (max_5x) (max_5x)".
+        bits.push(q.account.plan);
+      } else {
+        if (q.account?.org_type) bits.push(shortPlan(q.account.org_type));
+        for (const t of q.account?.tiers || []) {
+          if (t.kind === "user") bits.push(`(${shortTier(t.tier)})`);
+        }
       }
-      if (codexPlan.get(q.provider)) bits.push(codexPlan.get(q.provider));
+
       planEl.textContent = bits.join(" ");
       planEl.hidden = bits.length === 0;
 
@@ -713,6 +716,21 @@
           } rows, ${quotasEl.querySelectorAll(".q-chip").length} gauges (${
             quotasEl.querySelectorAll('[data-win^="m:"]').length
           } per-model), more=${quotasEl.querySelector(".q-more") ? 1 : 0}`,
+        });
+        // The actual rendered text of every identity line. Counts cannot catch
+        // a duplicated tier or a wire enum leaking into a label; this can.
+        window.__TAURI__?.core?.invoke("ui_event", {
+          event:
+            "labels: " +
+            [...quotasEl.querySelectorAll(".q-row")]
+              .map((r) =>
+                [".q-prov", ".q-acct", ".q-plan"]
+                  .map((sel) => r.querySelector(sel)?.textContent || "")
+                  .filter(Boolean)
+                  .join("|"),
+              )
+              .filter(Boolean)
+              .join("  /  "),
         });
       }
     } catch (err) {
