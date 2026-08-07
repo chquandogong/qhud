@@ -809,3 +809,26 @@ body {
   content: "*";
   color: var(--concern);
 }
+
+/* Explicit refresh. The only affordance in the widget that reaches the
+   network, so it is deliberately a visible control rather than a hidden
+   gesture. */
+.q-refresh {
+  font-family: var(--mono);
+  font-size: 10px;
+  line-height: 1;
+  color: var(--accent);
+  background: none;
+  border: 0;
+  padding: 1px 3px;
+  cursor: pointer;
+  flex: none;
+  opacity: 0.7;
+}
+.q-refresh:hover {
+  opacity: 1;
+}
+.q-refresh.err {
+  color: var(--crit);
+  opacity: 1;
+}

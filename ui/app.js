@@ -276,6 +276,11 @@
       el("span", "q-plan"),
       el("span", "q-age"),
     );
+    if (provider === "claude") {
+      const btn = el("button", "q-refresh", "⟳");
+      btn.title = "fetch live usage, including per-model windows";
+      row.append(btn);
+    }
     for (const win of ["5h", "7d"]) row.append(buildChip(win, win.toUpperCase()));
     return row;
   }
@@ -319,6 +324,38 @@
   // its token, so they cost no extra auth — but fetching them leaves the
   // machine, so it happens on an explicit click and never on the timer.
   const codexFetch = { state: "idle", rows: [], error: null };
+  // Explicitly refreshed Claude usage. Only this can produce per-model windows
+  // (the statusline has none, and nothing qhud can run refreshes the on-disk
+  // cache), so it is a click, never a poll.
+  const claudeFetch = { state: "idle", data: null, error: null, at: 0 };
+
+  async function refreshClaudeUsage() {
+    if (claudeFetch.state === "loading") return;
+    claudeFetch.state = "loading";
+    claudeFetch.error = null;
+    render();
+    try {
+      const inv = window.__TAURI__?.core?.invoke;
+      if (!inv) throw new Error("not running under Tauri");
+      claudeFetch.data = await inv("fetch_claude_usage");
+      claudeFetch.at = Date.now();
+      claudeFetch.state = "done";
+    } catch (e) {
+      claudeFetch.state = "error";
+      claudeFetch.error = String(e);
+    }
+    render();
+    // The command succeeding does not prove the per-model gauges rendered —
+    // that distinction is exactly what let a wrong Fable value ship before.
+    if (claudeFetch.state === "done") {
+      window.__TAURI__?.core?.invoke("ui_event", {
+        event: `claude-refresh: ${(claudeFetch.data?.scoped || []).length} scoped fetched, ${
+          quotasEl.querySelectorAll('[data-win^="m:"]').length
+        } rendered`,
+      });
+      logLabels("after-claude-refresh");
+    }
+  }
   // Provider words are long and the strip is ~520px; shorten without
   // inventing meaning.
   const shortPlan = (s) =>
@@ -471,10 +508,17 @@
   window.__TAURI__?.event
     ?.listen("qhud://fetch-codex", () => fetchCodexWorkspaces())
     .catch(() => {});
+  window.__TAURI__?.event
+    ?.listen("qhud://refresh-claude", () => refreshClaudeUsage())
+    .catch(() => {});
 
   quotasEl.addEventListener("pointerdown", (e) => {
     // pointerdown, not click: a keep-below widget never receives synthesized
     // clicks reliably (D-009).
+    if (e.target.classList?.contains("q-refresh")) {
+      refreshClaudeUsage();
+      return;
+    }
     if (e.target.closest?.(".q-row[data-pkey]")) return; // ghost rows have their own handler
     if (e.target.closest?.(".q-row[data-wsid]")) return; // workspace rows are output, not a button
     const row = e.target.closest?.('[data-provider="codex"]');
@@ -593,6 +637,25 @@
       .map((x) => `${x.scope} weekly ${x.pct}%${age ? ` (snapshot ~${age} old)` : ""}`);
   }
 
+  // Per-model gauges, only ever from an explicit refresh — so no stale marker.
+  function patchLiveScoped(row, scoped) {
+    const want = scoped.filter((x) => x.kind === "weekly_scoped" && x.scope);
+    const seen = new Set();
+    for (const x of want) {
+      const key = "m:" + x.scope;
+      seen.add(key);
+      let chip = row.querySelector(`[data-win="${CSS.escape(key)}"]`);
+      if (!chip) {
+        chip = buildChip(key, `${x.scope} wk`);
+        row.append(chip);
+      }
+      patchQuotaChip(chip, { pct: x.pct, reset_unix: x.reset_unix });
+    }
+    for (const chip of [...row.querySelectorAll('[data-win^="m:"]')]) {
+      if (!seen.has(chip.dataset.win)) chip.remove();
+    }
+  }
+
   function renderQuotas(quotas) {
     quotasEl.hidden = quotas.length === 0;
     const alive = new Set();
@@ -680,8 +743,28 @@
         );
       }
       row.title = lines.join("\n");
-      patchQuotaChip(row.querySelector('[data-win="5h"]'), q.h5);
-      patchQuotaChip(row.querySelector('[data-win="7d"]'), q.d7);
+      // A live refresh outranks both the statusline and the cache: it is the
+      // newest reading and the only one carrying per-model windows.
+      let h5 = q.h5;
+      let d7 = q.d7;
+      let scoped = [];
+      if (q.provider === "claude" && claudeFetch.state === "done" && claudeFetch.data) {
+        const d = claudeFetch.data;
+        if (d.five_hour) h5 = { ...d.five_hour, source: "live" };
+        if (d.seven_day) d7 = { ...d.seven_day, source: "live" };
+        scoped = d.scoped || [];
+      }
+      patchQuotaChip(row.querySelector('[data-win="5h"]'), h5);
+      patchQuotaChip(row.querySelector('[data-win="7d"]'), d7);
+      patchLiveScoped(row, scoped);
+      if (q.provider === "claude") {
+        const b = row.querySelector(".q-refresh");
+        if (b) {
+          b.textContent = claudeFetch.state === "loading" ? "…" : "⟳";
+          b.classList.toggle("err", claudeFetch.state === "error");
+          if (claudeFetch.error) b.title = claudeFetch.error;
+        }
+      }
 
     }
     for (const row of [...quotasEl.children]) {

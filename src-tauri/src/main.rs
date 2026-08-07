@@ -180,6 +180,9 @@ fn main() {
         .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
             if argv.iter().any(|a| a == "--peek") {
                 toggle_layer(app);
+            } else if argv.iter().any(|a| a == "--refresh-claude") {
+                let _ = app.emit("qhud://refresh-claude", ());
+                eprintln!("qhud ui: refresh-claude relayed");
             } else if argv.iter().any(|a| a == "--fetch-codex") {
                 // Same argv-relay trick as --peek (D-012): pointer input
                 // cannot be synthesized into a keep-below widget, so the
@@ -194,6 +197,7 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             ui_event,
             fetch_codex_workspaces,
+            fetch_claude_usage,
             forget_account
         ])
         .plugin(tauri_plugin_window_state::Builder::default().build())
