@@ -3482,7 +3482,7 @@ dependencies = [
 [[package]]
 name = "qmonster"
 version = "3.2.0"
-source = "git+https://github.com/chquandogong/qmonster?rev=f5c9ed6e7eb94e9faa86e8982970ba5a9dfd62f4#f5c9ed6e7eb94e9faa86e8982970ba5a9dfd62f4"
+source = "git+https://github.com/chquandogong/qmonster?rev=6a21c447f41dd366e6ea7e08fb3e8545a03396d5#6a21c447f41dd366e6ea7e08fb3e8545a03396d5"
 dependencies = [
  "anyhow",
  "arboard",
