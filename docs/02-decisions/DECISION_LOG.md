@@ -245,3 +245,38 @@ Format: context → options → decision → rationale → residual risk.
 - **Evidence**: `--peek` round-trip verified — BELOW → ABOVE
   (`layer:pinned`) → BELOW+STICKY (`layer:below`), duplicate launch
   absorbed (1 process), no crash.
+
+## D-013 · Quota rows carry account identity; identity reads stay local
+
+- **Context**: operator holds several logins per provider on one
+  machine (two Google accounts for agy, two Codex credentials via
+  `auth.json` file-swap, a Claude team seat) and asked "whose quota is
+  this?" D-011's recorded known-limit claimed multi-account "would need
+  account identity from the provider surfaces — not exposed today."
+  That claim was **wrong**: every CLI persists its signed-in identity
+  in cleartext next to the credential.
+- **Decision**: read identity from local files only —
+  `~/.claude.json:oauthAccount`, `~/.codex/auth.json:tokens.account_id`,
+  `~/.gemini/google_accounts.json:active`. No network, no token use, and
+  the credential fields themselves are never opened. Absent or malformed
+  input degrades to "no label", never a failed tick.
+- **Two tiers, not one**: a Claude team seat carries an organization
+  pool *and* the member's own seat, each with its own rate-limit tier
+  (`organizationRateLimitTier` / `userRateLimitTier`). `tiers` is
+  therefore a list; collapsing it would hide a pool.
+- **Display names**: optional operator inventory at
+  `~/.config/qhud/accounts.json`, keyed
+  `<provider>:<account_id-or-email>`. Deliberately **outside** the repo
+  — qhud is a public repo and those keys are personal identifiers.
+  Unmapped accounts fall back to email, then account id.
+- **Payload**: schema v1 additive — `quotas[].account`, omitted when
+  unknown.
+- **Known limits**: labels the *active* account only. Showing every
+  account's remaining quota at once needs a per-account fetch, and for a
+  parked credential that means running the refresh grant — deferred, and
+  gated on explicit operator approval, because Codex refresh tokens are
+  single-use and rotated (a failed write-back breaks `codex login`).
+  Codex exposes no cleartext email, so its inventory key is a UUID.
+- **Evidence**: `cargo test` 17 pass; live `--dump` shows
+  `claude → dogu/team <chquan@dogu.xyz> DOGU (claude_team)` with both
+  tiers, and `codex → 3f13fa37…`.
