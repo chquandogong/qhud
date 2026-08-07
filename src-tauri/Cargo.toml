@@ -20,7 +20,7 @@ tauri-plugin-single-instance = "2"
 # Observe pipeline is reused wholesale from the qmonster TUI. Pinned to
 # the exact rev this bridge was written against; bump deliberately and
 # re-run the contract tests in src/view.rs when you do.
-qmonster = { git = "https://github.com/chquandogong/qmonster", rev = "aa2bd3906c7a868ff407ff623bd625766082ae17" }
+qmonster = { git = "https://github.com/chquandogong/qmonster", rev = "eff5f637a2e922ffd99d3e8de09fb34471d92a62" }
 
 [profile.release]
 strip = true
