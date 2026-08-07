@@ -372,13 +372,7 @@
     // The plan belongs to a WORKSPACE, not the login. Leaving it on the
     // account line made three rows for two workspaces, with the parent
     // duplicating the personal one and reading as a third account.
-    if (codexFetch.rows.length > 0) {
-      const p = anchor.querySelector(".q-plan");
-      if (p) {
-        p.textContent = "";
-        p.hidden = true;
-      }
-    }
+
     // The signed-in login's plan, shown inline on the codex row itself.
     // Deliberately NOT lifting w.plan_type onto the parent row: it is a wire
     // enum ('prolite', 'team'), not the name the operator sees. The display
