@@ -126,12 +126,15 @@ impl RawWindow {
     }
 }
 
-/// Reads `cachedUsageUtilization` out of a `~/.claude.json` body.
-pub fn parse_cached_usage(claude_json: &str) -> Option<CachedUsage> {
-    let cached = serde_json::from_str::<Wrapper>(claude_json)
-        .ok()?
-        .cached_usage_utilization?;
-    let util = cached.utilization?;
+/// Parses a bare `utilization` object — the shape `/api/oauth/usage` returns
+/// directly, which is also exactly what Claude Code caches. `fetched_at_ms` is
+/// supplied by the caller because a live response carries no timestamp.
+pub fn parse_utilization(json: &str, fetched_at_ms: u64) -> Option<CachedUsage> {
+    let util: Utilization = serde_json::from_str(json).ok()?;
+    Some(build(util, fetched_at_ms, None))
+}
+
+fn build(util: Utilization, fetched_at_ms: u64, account_id: Option<String>) -> CachedUsage {
     let scoped = util
         .limits
         .into_iter()
@@ -144,13 +147,22 @@ pub fn parse_cached_usage(claude_json: &str) -> Option<CachedUsage> {
             })
         })
         .collect();
-    Some(CachedUsage {
-        fetched_at_ms: cached.fetched_at_ms,
-        account_id: cached.account_uuid,
+    CachedUsage {
+        fetched_at_ms,
+        account_id,
         five_hour: util.five_hour.and_then(RawWindow::resolve),
         seven_day: util.seven_day.and_then(RawWindow::resolve),
         scoped,
-    })
+    }
+}
+
+/// Reads `cachedUsageUtilization` out of a `~/.claude.json` body.
+pub fn parse_cached_usage(claude_json: &str) -> Option<CachedUsage> {
+    let cached = serde_json::from_str::<Wrapper>(claude_json)
+        .ok()?
+        .cached_usage_utilization?;
+    let util = cached.utilization?;
+    Some(build(util, cached.fetched_at_ms, cached.account_uuid))
 }
 
 /// Reads the snapshot from `$HOME/.claude.json`. Best-effort: any

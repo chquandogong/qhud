@@ -1,6 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod accounts;
+mod claude_usage;
 mod codex_usage;
 mod demo;
 mod poll;
@@ -33,6 +34,29 @@ async fn fetch_codex_workspaces() -> Result<Vec<codex_usage::WorkspaceUsage>, St
     match &out {
         Ok(w) => eprintln!("qhud: codex fetch ok ({} workspaces)", w.len()),
         Err(e) => eprintln!("qhud: codex fetch failed: {e}"),
+    }
+    out
+}
+
+/// Explicit refresh for Claude's per-model usage windows.
+///
+/// The one place qhud sends a credential off the machine, and only from a
+/// click: the statusLine feed has no per-model windows, and nothing qhud can
+/// run refreshes ~/.claude.json's cache (verified: --version, doctor, mcp list,
+/// and a real headless --print all leave fetchedAtMs untouched). Never on a
+/// timer, and never runs the OAuth refresh grant.
+#[tauri::command]
+async fn fetch_claude_usage() -> Result<crate::usage_cache::CachedUsage, String> {
+    eprintln!("qhud ui: claude-usage-refresh requested");
+    let out = claude_usage::fetch(view::now_ms()).await;
+    match &out {
+        Ok(u) => eprintln!(
+            "qhud: claude usage ok (5h {:?}, 7d {:?}, {} scoped)",
+            u.five_hour.as_ref().map(|w| w.pct),
+            u.seven_day.as_ref().map(|w| w.pct),
+            u.scoped.len()
+        ),
+        Err(e) => eprintln!("qhud: claude usage failed: {e}"),
     }
     out
 }
@@ -118,6 +142,21 @@ fn main() {
     // fetch_all_workspaces() the UI invokes, so the network path can be
     // verified without synthesizing pointer input into a keep-below widget
     // (D-010: real input must go through the compositor).
+    if std::env::args().any(|a| a == "--claude-usage") {
+        let rt = match tokio::runtime::Runtime::new() {
+            Ok(rt) => rt,
+            Err(e) => {
+                eprintln!("qhud: runtime: {e}");
+                return;
+            }
+        };
+        match rt.block_on(claude_usage::fetch(view::now_ms())) {
+            Ok(u) => println!("{}", serde_json::to_string_pretty(&u).unwrap_or_default()),
+            Err(e) => eprintln!("qhud: claude usage failed: {e}"),
+        }
+        return;
+    }
+
     if std::env::args().any(|a| a == "--codex-usage") {
         let rt = match tokio::runtime::Runtime::new() {
             Ok(rt) => rt,

@@ -217,6 +217,67 @@ pub fn parse_accounts(body: &str) -> Vec<(String, Option<String>, Option<String>
 /// Read fresh on every call rather than cached: Codex rotates the token on
 /// its own schedule and a cached copy goes stale. Only these two fields are
 /// taken; the refresh token is never read, so it cannot be leaked or spent.
+/// Every codex credential on disk: the live `auth.json` plus any parked
+/// `auth.json.saved-*` / `auth.json.bak-*` / `auth.json.<name>` sibling.
+///
+/// This is what makes two workspaces visible at once. The server refuses to
+/// re-scope one token to another workspace (see the SCOPE MISMATCH guard), but
+/// each token reads its OWN workspace, so reading several files covers several
+/// workspaces with no refresh grant and no new credentials.
+fn read_all_auth() -> Vec<(String, Option<String>, String)> {
+    let Some(home) = std::env::var_os("HOME").map(std::path::PathBuf::from) else {
+        return Vec::new();
+    };
+    let dir = home.join(".codex");
+    let Ok(entries) = std::fs::read_dir(&dir) else {
+        return Vec::new();
+    };
+    let mut paths: Vec<std::path::PathBuf> = entries
+        .flatten()
+        .map(|e| e.path())
+        .filter(|p| {
+            p.file_name()
+                .and_then(|n| n.to_str())
+                .is_some_and(|n| n == "auth.json" || n.starts_with("auth.json."))
+        })
+        .collect();
+    // Deterministic order, with the live file first so it wins any dedupe.
+    paths.sort();
+    paths.sort_by_key(|p| p.file_name().and_then(|n| n.to_str()) != Some("auth.json"));
+
+    let mut out: Vec<(String, Option<String>, String)> = Vec::new();
+    for path in paths {
+        let Ok(body) = std::fs::read_to_string(&path) else {
+            continue;
+        };
+        let Ok(v) = serde_json::from_str::<serde_json::Value>(&body) else {
+            continue;
+        };
+        let tok = v
+            .pointer("/tokens/access_token")
+            .and_then(|t| t.as_str())
+            .filter(|t| !t.is_empty());
+        let acct = v
+            .pointer("/tokens/account_id")
+            .and_then(|t| t.as_str())
+            .map(str::to_string);
+        if let Some(tok) = tok
+            && let Some(acct) = acct.clone()
+            && !out
+                .iter()
+                .any(|(_, a, _)| a.as_deref() == Some(acct.as_str()))
+        {
+            let label = path
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("auth.json")
+                .to_string();
+            out.push((tok.to_string(), Some(acct), label));
+        }
+    }
+    out
+}
+
 fn read_auth() -> Result<(String, Option<String>), String> {
     let home = std::env::var_os("HOME")
         .map(std::path::PathBuf::from)
@@ -278,60 +339,59 @@ async fn get(
 /// One network round per workspace plus one to enumerate them. Invoked
 /// from an explicit operator gesture only — never from the poll loop.
 pub async fn fetch_all_workspaces() -> Result<Vec<WorkspaceUsage>, String> {
-    let (token, default_account) = read_auth()?;
+    let creds = read_all_auth();
+    if creds.is_empty() {
+        return Err("no usable ~/.codex/auth.json* credential — run `codex login`".into());
+    }
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(10))
         .build()
         .map_err(|e| format!("client build failed: {e}"))?;
 
-    // Enumeration is best-effort: if it fails we still report the default
-    // workspace rather than showing nothing.
-    let mut targets = match get(&client, ACCOUNTS_URL, &token, default_account.as_deref()).await {
-        Ok(body) => {
-            let found = parse_accounts(&body);
-            if found.is_empty() {
-                let preview: String = body.chars().take(300).collect();
-                eprintln!("qhud: accounts/check listed no workspace; body: {preview}");
-            }
-            found
-        }
-        Err(e) => {
-            eprintln!("qhud: accounts/check failed ({e}); falling back to default account");
-            Vec::new()
-        }
-    };
-    if targets.is_empty() {
-        let id = default_account
-            .clone()
-            .ok_or("auth.json has no account_id — run `codex login`")?;
-        targets.push((id, None, None));
-    }
-
+    eprintln!(
+        "qhud: codex credentials found: {}",
+        creds
+            .iter()
+            .map(|(_, a, f)| format!("{f}={}", a.as_deref().unwrap_or("?")))
+            .collect::<Vec<_>>()
+            .join(", ")
+    );
     let mut out = Vec::new();
     let mut last_err = None;
-    for (id, name, plan) in targets {
+    for (token, account_id, file) in creds {
+        let Some(id) = account_id else { continue };
+        // Names and plans come from this token's own accounts/check entry.
+        let (name, plan) = match get(&client, ACCOUNTS_URL, &token, Some(&id)).await {
+            Ok(body) => parse_accounts(&body)
+                .into_iter()
+                .find(|(aid, _, _)| *aid == id)
+                .map(|(_, n, p)| (n, p))
+                .unwrap_or((None, None)),
+            Err(_) => (None, None),
+        };
         match get(&client, USAGE_URL, &token, Some(&id)).await {
             Ok(body) => match parse_usage(&id, &body) {
                 Some(mut usage) => {
                     usage.name = name;
-                    // accounts/check already told us the plan; keep it when
-                    // the usage body omits it.
                     if usage.plan_type.is_none() {
                         usage.plan_type = plan;
                     }
                     out.push(usage);
                 }
-                // A 200 whose body will not parse is NOT "no data" — the
-                // schema is undocumented and churns, so say what came back
-                // instead of reporting an empty result.
                 None => {
-                    let preview: String = body.chars().take(400).collect();
+                    eprintln!(
+                        "qhud: codex {file} ({id}) dropped: body describes another workspace"
+                    );
+                    let preview: String = body.chars().take(200).collect();
                     last_err = Some(format!(
-                        "workspace {id}: HTTP 200 but body did not parse; first 400 chars: {preview}"
+                        "{file} ({id}): HTTP 200 but body did not describe this workspace; {preview}"
                     ));
                 }
             },
-            Err(e) => last_err = Some(e),
+            Err(e) => {
+                eprintln!("qhud: codex {file} ({id}) skipped: {e}");
+                last_err = Some(format!("{file}: {e}"));
+            }
         }
     }
     if out.is_empty() {
