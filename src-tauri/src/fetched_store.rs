@@ -23,12 +23,17 @@ pub const SCHEMA_VERSION: u32 = 1;
 pub struct FetchedStore {
     #[serde(default)]
     pub schema: u32,
-    /// Last successful Claude ⟳ (the full usage snapshot).
+    /// Last successful Claude ⟳ (the full usage snapshot) for the
+    /// DEFAULT account (~/.claude).
     #[serde(default)]
     pub claude: Option<CachedUsage>,
     /// Last successful Codex per-workspace fetch.
     #[serde(default)]
     pub codex: Option<CodexFetched>,
+    /// Per-account Claude ⟳ results for the extra config dirs (D-015),
+    /// keyed by the expanded config-dir path.
+    #[serde(default)]
+    pub claude_extras: std::collections::BTreeMap<String, CachedUsage>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -94,6 +99,16 @@ pub fn record_claude(usage: &CachedUsage) {
     record(|s| s.claude = Some(usage.clone()));
 }
 
+/// Records a ⟳ result for one of the extra Claude accounts (D-015),
+/// keyed by its expanded config-dir path.
+pub fn record_claude_extra(config_dir: &str, usage: &CachedUsage) {
+    let dir = config_dir.to_string();
+    let usage = usage.clone();
+    record(move |s| {
+        s.claude_extras.insert(dir, usage);
+    });
+}
+
 pub fn record_codex(workspaces: &[WorkspaceUsage], fetched_at_ms: u64) {
     record(|s| {
         s.codex = Some(CodexFetched {
@@ -136,6 +151,7 @@ mod tests {
                     credits_balance: None,
                 }],
             }),
+            claude_extras: std::collections::BTreeMap::new(),
         }
     }
 
@@ -160,6 +176,29 @@ mod tests {
             "temp files left behind: {leftovers:?}"
         );
         std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn extra_account_results_roundtrip_and_old_files_still_load() {
+        let mut store = sample();
+        store.claude_extras.insert(
+            "/home/u/claude-personal".into(),
+            CachedUsage {
+                fetched_at_ms: 99,
+                account_id: Some("acct-2".into()),
+                five_hour: None,
+                seven_day: None,
+                scoped: Vec::new(),
+                extra: None,
+            },
+        );
+
+        let json = serde_json::to_string(&store).unwrap();
+        assert_eq!(parse(&json), store, "extras survive the round-trip");
+
+        // A store written before claude_extras existed must still load.
+        let old = r#"{"schema":1,"claude":null,"codex":null}"#;
+        assert!(parse(old).claude_extras.is_empty());
     }
 
     #[test]

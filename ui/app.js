@@ -374,8 +374,13 @@
     // The command succeeding does not prove the per-model gauges rendered —
     // that distinction is exactly what let a wrong Fable value ship before.
     if (claudeFetch.state === "done") {
+      const rows = Array.isArray(claudeFetch.data) ? claudeFetch.data : [];
+      const scopedTotal = rows.reduce(
+        (n, r) => n + (r.usage?.scoped?.length || 0),
+        0,
+      );
       window.__TAURI__?.core?.invoke("ui_event", {
-        event: `claude-refresh: ${(claudeFetch.data?.scoped || []).length} scoped fetched, ${
+        event: `claude-refresh: ${rows.length} accounts, ${scopedTotal} scoped fetched, ${
           quotasEl.querySelectorAll('[data-win^="m:"]').length
         } rendered`,
       });
@@ -759,14 +764,44 @@
 
   function renderQuotas(quotas) {
     quotasEl.hidden = quotas.length === 0;
-    const alive = new Set();
+    const aliveProviders = new Set();
+    const aliveRows = new Set();
     for (const q of quotas) {
-      alive.add(q.provider);
-      let row = quotasEl.querySelector(`.q-row[data-provider="${q.provider}"]`);
+      // One row per (provider, account) — a provider may carry several
+      // accounts now (D-015), so the provider alone no longer keys a row.
+      const acctKey = q.account?.account_id || q.account?.email || "default";
+      aliveProviders.add(q.provider);
+      aliveRows.add(`${q.provider} ${acctKey}`);
+      let row = quotasEl.querySelector(
+        `.q-row[data-provider="${q.provider}"][data-acct="${CSS.escape(acctKey)}"]`,
+      );
       if (!row) {
         row = buildQuotaRow(q.provider);
-        quotasEl.append(providerHeader(q.provider), row);
+        row.dataset.acct = acctKey;
+        // Insert after the provider's last existing row so a second
+        // account never drags the section header out of place.
+        const section = providerHeader(q.provider);
+        if (!section.isConnected) quotasEl.append(section);
+        let anchor = section;
+        for (const r of quotasEl.querySelectorAll(
+          `.q-row[data-provider="${q.provider}"]`,
+        )) {
+          anchor = r;
+        }
+        anchor.after(row);
       }
+      // This account's slice of an in-session ⟳ (fetch_all returns one
+      // entry per account); everything below prefers it over the payload.
+      const liveFetch =
+        q.provider === "claude" &&
+        claudeFetch.state === "done" &&
+        Array.isArray(claudeFetch.data)
+          ? claudeFetch.data.find(
+              (r) =>
+                (r.account_id && r.account_id === q.account?.account_id) ||
+                (r.key === "default" && !q.account?.account_id),
+            )
+          : null;
       // The provider name lives in the section header now, so the row's own
       // slot carries the ACCOUNT — the thing that actually differs per row.
       row.querySelector(".q-prov").textContent = "";
@@ -800,12 +835,8 @@
       // result outranks the payload's snapshot copy. Hidden entirely for
       // plans that never enabled it, so it does not tax every account line.
       let extra = q.extra;
-      if (
-        q.provider === "claude" &&
-        claudeFetch.state === "done" &&
-        claudeFetch.data?.extra
-      ) {
-        extra = claudeFetch.data.extra;
+      if (liveFetch?.usage?.extra) {
+        extra = liveFetch.usage.extra;
       }
       const extraEl = row.querySelector(".q-extra");
       const showExtra = !!extra && (extra.enabled || extra.used_minor > 0);
@@ -895,19 +926,26 @@
       let h5 = q.h5;
       let d7 = q.d7;
       let scoped = [];
-      if (
-        q.provider === "claude" &&
-        claudeFetch.state === "done" &&
-        claudeFetch.data
-      ) {
-        const d = claudeFetch.data;
+      if (liveFetch) {
+        const d = liveFetch.usage;
         if (d.five_hour) h5 = { ...d.five_hour, source: "live" };
         if (d.seven_day) d7 = { ...d.seven_day, source: "live" };
         scoped = d.scoped || [];
+      } else if (q.origin === "fetched") {
+        // The row IS qhud's own ⟳ data (persisted); its per-model windows
+        // are the same thing the live refresh would show, and the row
+        // already wears the ⟳-age caption.
+        scoped = q.scoped || [];
       }
       patchQuotaChip(row.querySelector('[data-win="5h"]'), h5);
       patchQuotaChip(row.querySelector('[data-win="7d"]'), d7);
       patchLiveScoped(row, scoped);
+      // A signed-in account with no numbers at all (an extra account never
+      // ⟳'d, no cache): say what to do instead of rendering a bare name.
+      if (q.provider === "claude" && !h5 && !d7 && !showAge) {
+        ageEl.hidden = false;
+        ageEl.textContent = "no data — ⟳";
+      }
       if (q.provider === "claude") {
         const b = row.querySelector(".q-refresh");
         if (b) {
@@ -920,10 +958,15 @@
     for (const row of [...quotasEl.children]) {
       if (row.dataset.pkey || row.dataset.wsid) continue; // owned by other renderers
       if (row.dataset.sect) {
-        if (!alive.has(row.dataset.sect)) row.remove();
+        if (!aliveProviders.has(row.dataset.sect)) row.remove();
         continue;
       }
-      if (row.dataset.provider && !alive.has(row.dataset.provider))
+      if (
+        row.dataset.provider &&
+        !aliveRows.has(
+          `${row.dataset.provider} ${row.dataset.acct || "default"}`,
+        )
+      )
         row.remove();
     }
   }

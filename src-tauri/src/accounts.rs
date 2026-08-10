@@ -43,6 +43,11 @@ pub struct AccountLabel {
     /// label→email→id precedence in JS.
     #[serde(rename = "display")]
     pub display_name: Option<String>,
+    /// For an EXTRA account (D-015): the expanded `CLAUDE_CONFIG_DIR`
+    /// this identity was read from. Backend-only plumbing (store key,
+    /// credential path) — the payload does not need it.
+    #[serde(skip)]
+    pub config_dir: Option<String>,
 }
 
 impl AccountLabel {
@@ -110,6 +115,7 @@ pub fn claude_account(config_json: &str) -> Option<AccountLabel> {
         tiers,
         plan: None,
         display_name: None,
+        config_dir: None,
     })
 }
 
@@ -214,6 +220,32 @@ pub fn detect_all_from(
         .collect()
 }
 
+/// Extra Claude accounts from per-account config dirs (D-015). Input is
+/// `(expanded_dir, contents of <dir>/.claude.json)`; a dir whose account
+/// matches `default_id` is skipped (listing the default dir again must
+/// not duplicate its row), as is anything unreadable.
+pub fn extra_claude_accounts(
+    dirs: &[(String, Option<String>)],
+    default_id: Option<&str>,
+) -> Vec<(String, AccountLabel)> {
+    let mut seen: std::collections::HashSet<String> =
+        default_id.iter().map(|id| id.to_string()).collect();
+    dirs.iter()
+        .filter_map(|(dir, json)| {
+            let mut acct = claude_account(json.as_deref()?)?;
+            // Two dirs signed into one account (or the default listed
+            // again) must not duplicate its row.
+            if let Some(id) = &acct.account_id
+                && !seen.insert(id.clone())
+            {
+                return None;
+            }
+            acct.config_dir = Some(dir.clone());
+            Some(("claude".to_string(), acct))
+        })
+        .collect()
+}
+
 /// Reads the identity files under `$HOME` and returns the provider→account
 /// map. A missing or unreadable file is simply an absent account: this is
 /// best-effort enrichment and must never fail a poll tick.
@@ -227,6 +259,27 @@ pub fn detect_all() -> Vec<(String, AccountLabel)> {
         read(".codex/auth.json").as_deref(),
         read(".gemini/google_accounts.json").as_deref(),
     );
+
+    // Extra Claude accounts (D-015): each registry config dir keeps its
+    // own `.claude.json`. Appended AFTER the defaults so "first entry per
+    // provider" keeps meaning "the default account" everywhere.
+    let home_str = home.to_string_lossy().to_string();
+    let extra_inputs: Vec<(String, Option<String>)> = crate::registry::load()
+        .claude_config_dirs
+        .iter()
+        .map(|d| {
+            let dir = crate::registry::expand_tilde(d, &home_str);
+            let json =
+                std::fs::read_to_string(std::path::Path::new(&dir).join(".claude.json")).ok();
+            (dir, json)
+        })
+        .collect();
+    let default_id = found
+        .iter()
+        .find(|(p, _)| p == "claude")
+        .and_then(|(_, a)| a.account_id.clone());
+    found.extend(extra_claude_accounts(&extra_inputs, default_id.as_deref()));
+
     let labels = read(".config/qhud/accounts.json")
         .map(|s| parse_inventory(&s))
         .unwrap_or_default();
@@ -398,6 +451,38 @@ mod tests {
         );
         assert_eq!(out[0].1.email.as_deref(), Some("user@example.com"));
         assert_eq!(out[1].1.email.as_deref(), Some("person@gmail.com"));
+    }
+
+    #[test]
+    fn extra_claude_accounts_dedupe_the_default_and_carry_their_dir() {
+        let second = r#"{"oauthAccount":{"emailAddress":"second@example.com",
+          "accountUuid":"acct-2","organizationType":"claude_pro",
+          "userRateLimitTier":"default_claude_max_5x"}}"#;
+        let dupe_of_default = r#"{"oauthAccount":{"emailAddress":"user@example.com",
+          "accountUuid":"acct-1"}}"#;
+        let dirs = vec![
+            (
+                "/home/u/claude-personal".to_string(),
+                Some(second.to_string()),
+            ),
+            (
+                "/home/u/claude-dupe".to_string(),
+                Some(dupe_of_default.to_string()),
+            ),
+            ("/home/u/claude-empty".to_string(), None),
+        ];
+
+        let out = extra_claude_accounts(&dirs, Some("acct-1"));
+
+        assert_eq!(out.len(), 1, "dupe-of-default and unreadable are skipped");
+        let (provider, acct) = &out[0];
+        assert_eq!(provider, "claude");
+        assert_eq!(acct.email.as_deref(), Some("second@example.com"));
+        assert_eq!(
+            acct.config_dir.as_deref(),
+            Some("/home/u/claude-personal"),
+            "the dir is the store key and credential path"
+        );
     }
 
     #[test]

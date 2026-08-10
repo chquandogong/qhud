@@ -51,19 +51,21 @@ async fn fetch_codex_workspaces() -> Result<Vec<codex_usage::WorkspaceUsage>, St
 /// and a real headless --print all leave fetchedAtMs untouched). Never on a
 /// timer, and never runs the OAuth refresh grant.
 #[tauri::command]
-async fn fetch_claude_usage() -> Result<crate::usage_cache::CachedUsage, String> {
+async fn fetch_claude_usage() -> Result<Vec<claude_usage::AccountFetch>, String> {
     eprintln!("qhud ui: claude-usage-refresh requested");
-    let out = claude_usage::fetch(view::now_ms()).await;
+    // fetch_all records each success to the fetched store itself.
+    let out = claude_usage::fetch_all(view::now_ms()).await;
     match &out {
-        Ok(u) => {
-            eprintln!(
-                "qhud: claude usage ok (5h {:?}, 7d {:?}, {} scoped)",
-                u.five_hour.as_ref().map(|w| w.pct),
-                u.seven_day.as_ref().map(|w| w.pct),
-                u.scoped.len()
-            );
-            // Persisted so the freshest reading survives a restart.
-            fetched_store::record_claude(u);
+        Ok(accounts) => {
+            for a in accounts {
+                eprintln!(
+                    "qhud: claude usage ok [{}] (5h {:?}, 7d {:?}, {} scoped)",
+                    a.key,
+                    a.usage.five_hour.as_ref().map(|w| w.pct),
+                    a.usage.seven_day.as_ref().map(|w| w.pct),
+                    a.usage.scoped.len()
+                );
+            }
         }
         Err(e) => eprintln!("qhud: claude usage failed: {e}"),
     }
@@ -159,13 +161,11 @@ fn main() {
                 return;
             }
         };
-        match rt.block_on(claude_usage::fetch(view::now_ms())) {
-            Ok(u) => {
-                // The CLI twin records exactly like the ⟳ click does, so a
-                // GNOME-shortcut refresh feeds the widget's next tick too.
-                fetched_store::record_claude(&u);
-                println!("{}", serde_json::to_string_pretty(&u).unwrap_or_default());
-            }
+        // The CLI twin runs exactly what the ⟳ click does — fetch_all
+        // records each account to the store, so a GNOME-shortcut refresh
+        // feeds the widget's next tick too.
+        match rt.block_on(claude_usage::fetch_all(view::now_ms())) {
+            Ok(v) => println!("{}", serde_json::to_string_pretty(&v).unwrap_or_default()),
             Err(e) => eprintln!("qhud: claude usage failed: {e}"),
         }
         return;

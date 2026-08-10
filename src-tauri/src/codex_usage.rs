@@ -236,51 +236,71 @@ fn read_all_auth() -> Vec<(String, Option<String>, String)> {
     let Some(home) = std::env::var_os("HOME").map(std::path::PathBuf::from) else {
         return Vec::new();
     };
-    let dir = home.join(".codex");
-    let Ok(entries) = std::fs::read_dir(&dir) else {
-        return Vec::new();
-    };
-    let mut paths: Vec<std::path::PathBuf> = entries
-        .flatten()
-        .map(|e| e.path())
-        .filter(|p| {
-            p.file_name()
-                .and_then(|n| n.to_str())
-                .is_some_and(|n| n == "auth.json" || n.starts_with("auth.json."))
-        })
-        .collect();
-    // Deterministic order, with the live file first so it wins any dedupe.
-    paths.sort();
-    paths.sort_by_key(|p| p.file_name().and_then(|n| n.to_str()) != Some("auth.json"));
+    // The default home first, then each registry extra home (D-015) —
+    // order decides which file wins the per-account dedupe below.
+    let home_str = home.to_string_lossy().to_string();
+    let mut dirs = vec![home.join(".codex")];
+    for d in crate::registry::load().codex_homes {
+        dirs.push(std::path::PathBuf::from(crate::registry::expand_tilde(
+            &d, &home_str,
+        )));
+    }
 
     let mut out: Vec<(String, Option<String>, String)> = Vec::new();
-    for path in paths {
-        let Ok(body) = std::fs::read_to_string(&path) else {
+    for dir in dirs {
+        let Ok(entries) = std::fs::read_dir(&dir) else {
             continue;
         };
-        let Ok(v) = serde_json::from_str::<serde_json::Value>(&body) else {
-            continue;
-        };
-        let tok = v
-            .pointer("/tokens/access_token")
-            .and_then(|t| t.as_str())
-            .filter(|t| !t.is_empty());
-        let acct = v
-            .pointer("/tokens/account_id")
-            .and_then(|t| t.as_str())
-            .map(str::to_string);
-        if let Some(tok) = tok
-            && let Some(acct) = acct.clone()
-            && !out
-                .iter()
-                .any(|(_, a, _)| a.as_deref() == Some(acct.as_str()))
-        {
-            let label = path
-                .file_name()
-                .and_then(|n| n.to_str())
-                .unwrap_or("auth.json")
-                .to_string();
-            out.push((tok.to_string(), Some(acct), label));
+        let mut paths: Vec<std::path::PathBuf> = entries
+            .flatten()
+            .map(|e| e.path())
+            .filter(|p| {
+                p.file_name()
+                    .and_then(|n| n.to_str())
+                    .is_some_and(|n| n == "auth.json" || n.starts_with("auth.json."))
+            })
+            .collect();
+        // Deterministic order, with the live file first so it wins any dedupe.
+        paths.sort();
+        paths.sort_by_key(|p| p.file_name().and_then(|n| n.to_str()) != Some("auth.json"));
+
+        for path in paths {
+            let Ok(body) = std::fs::read_to_string(&path) else {
+                continue;
+            };
+            let Ok(v) = serde_json::from_str::<serde_json::Value>(&body) else {
+                continue;
+            };
+            let tok = v
+                .pointer("/tokens/access_token")
+                .and_then(|t| t.as_str())
+                .filter(|t| !t.is_empty());
+            let acct = v
+                .pointer("/tokens/account_id")
+                .and_then(|t| t.as_str())
+                .map(str::to_string);
+            if let Some(tok) = tok
+                && let Some(acct) = acct.clone()
+                && !out
+                    .iter()
+                    .any(|(_, a, _)| a.as_deref() == Some(acct.as_str()))
+            {
+                // Label carries the home when it is not the default one,
+                // so log lines stay attributable across homes.
+                let file = path
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .unwrap_or("auth.json");
+                let label = if dir == home.join(".codex") {
+                    file.to_string()
+                } else {
+                    format!(
+                        "{}/{file}",
+                        dir.file_name().and_then(|n| n.to_str()).unwrap_or("?")
+                    )
+                };
+                out.push((tok.to_string(), Some(acct), label));
+            }
         }
     }
     out

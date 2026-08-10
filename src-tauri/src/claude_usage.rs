@@ -22,12 +22,9 @@ const USAGE_URL: &str = "https://api.anthropic.com/api/oauth/usage";
 
 /// Reads only `claudeAiOauth.accessToken`. The refresh token sitting beside it
 /// is never read, so it cannot be spent or leaked.
-fn read_token() -> Result<String, String> {
-    let home = std::env::var_os("HOME")
-        .map(std::path::PathBuf::from)
-        .ok_or("HOME is not set")?;
-    let body = std::fs::read_to_string(home.join(".claude/.credentials.json"))
-        .map_err(|_| "no ~/.claude/.credentials.json — run `claude` and sign in".to_string())?;
+fn read_token_at(cred: &std::path::Path) -> Result<String, String> {
+    let body = std::fs::read_to_string(cred)
+        .map_err(|_| format!("no {} — run `claude` and sign in", cred.display()))?;
     let v: serde_json::Value =
         serde_json::from_str(&body).map_err(|e| format!("credentials are not valid JSON: {e}"))?;
     v.get("claudeAiOauth")
@@ -36,6 +33,13 @@ fn read_token() -> Result<String, String> {
         .filter(|t| !t.is_empty())
         .map(str::to_string)
         .ok_or_else(|| "credentials have no accessToken — sign in again".to_string())
+}
+
+fn default_credentials() -> Result<std::path::PathBuf, String> {
+    std::env::var_os("HOME")
+        .map(std::path::PathBuf::from)
+        .map(|h| h.join(".claude/.credentials.json"))
+        .ok_or_else(|| "HOME is not set".to_string())
 }
 
 /// `claude-code/<installed version>`. The User-Agent is load-bearing: without
@@ -54,10 +58,81 @@ fn user_agent() -> String {
     format!("claude-code/{}", ver.unwrap_or_else(|| "2.1.0".into()))
 }
 
-/// One request, from a click. Returns the same shape the on-disk cache uses so
-/// the renderer needs no second code path.
+/// One ⟳ result for one account. `key` is `"default"` or the expanded
+/// config-dir path; `account_id` comes from that dir's own `.claude.json`
+/// (the live body's identity fields are deliberately never parsed).
+#[derive(serde::Serialize)]
+pub struct AccountFetch {
+    pub key: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub account_id: Option<String>,
+    pub usage: CachedUsage,
+}
+
+/// ⟳ for every signed-in Claude account: the default (`~/.claude`) plus
+/// each registry config dir (D-015). Every success is recorded to the
+/// fetched store under its own key. Partial failure is partial: an
+/// expired extra account must not hide the default's numbers.
+pub async fn fetch_all(now_ms: u64) -> Result<Vec<AccountFetch>, String> {
+    let ident = |config_json: &std::path::Path| -> Option<String> {
+        let body = std::fs::read_to_string(config_json).ok()?;
+        crate::accounts::claude_account(&body)?.account_id
+    };
+    let mut out = Vec::new();
+    let mut errs = Vec::new();
+
+    let home = std::env::var_os("HOME").map(std::path::PathBuf::from);
+    match fetch(now_ms).await {
+        Ok(mut usage) => {
+            usage.account_id = home.as_ref().and_then(|h| ident(&h.join(".claude.json")));
+            crate::fetched_store::record_claude(&usage);
+            out.push(AccountFetch {
+                key: "default".into(),
+                account_id: usage.account_id.clone(),
+                usage,
+            });
+        }
+        Err(e) => errs.push(format!("default: {e}")),
+    }
+
+    if let Some(home) = &home {
+        let home_str = home.to_string_lossy().to_string();
+        for d in crate::registry::load().claude_config_dirs {
+            let dir = crate::registry::expand_tilde(&d, &home_str);
+            let base = std::path::Path::new(&dir);
+            match fetch_from(&base.join(".credentials.json"), now_ms).await {
+                Ok(mut usage) => {
+                    usage.account_id = ident(&base.join(".claude.json"));
+                    crate::fetched_store::record_claude_extra(&dir, &usage);
+                    out.push(AccountFetch {
+                        key: dir,
+                        account_id: usage.account_id.clone(),
+                        usage,
+                    });
+                }
+                Err(e) => errs.push(format!("{dir}: {e}")),
+            }
+        }
+    }
+
+    if out.is_empty() {
+        return Err(errs.join("; "));
+    }
+    if !errs.is_empty() {
+        eprintln!("qhud: claude fetch partial: {}", errs.join("; "));
+    }
+    Ok(out)
+}
+
+/// One request, from a click, for the default account.
 pub async fn fetch(now_ms: u64) -> Result<CachedUsage, String> {
-    let token = read_token()?;
+    fetch_from(&default_credentials()?, now_ms).await
+}
+
+/// One request against a specific credential file. Returns the same shape
+/// the on-disk cache uses so the renderer needs no second code path.
+pub async fn fetch_from(cred: &std::path::Path, now_ms: u64) -> Result<CachedUsage, String> {
+    let token = read_token_at(cred)?;
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(10))
         .build()

@@ -312,12 +312,18 @@ pub fn parse_cached_usage(claude_json: &str) -> Option<CachedUsage> {
     Some(build(util, cached.fetched_at_ms, cached.account_uuid))
 }
 
-/// Reads the snapshot from `$HOME/.claude.json`. Best-effort: any
-/// failure is simply "no cache".
+/// Reads the snapshot out of a specific `.claude.json` — extra accounts
+/// (D-015) keep their own copy under their `CLAUDE_CONFIG_DIR`.
+/// Best-effort: any failure is simply "no cache".
+pub fn detect_at(config_json: &std::path::Path) -> Option<CachedUsage> {
+    let body = std::fs::read_to_string(config_json).ok()?;
+    parse_cached_usage(&body)
+}
+
+/// Reads the default account's snapshot from `$HOME/.claude.json`.
 pub fn detect() -> Option<CachedUsage> {
     let home = std::env::var_os("HOME").map(std::path::PathBuf::from)?;
-    let body = std::fs::read_to_string(home.join(".claude.json")).ok()?;
-    parse_cached_usage(&body)
+    detect_at(&home.join(".claude.json"))
 }
 
 #[cfg(test)]

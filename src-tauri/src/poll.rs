@@ -57,8 +57,8 @@ pub fn run(app: AppHandle) {
                     Ok((reports, _notices)) => {
                         let mut payload = view::payload(&reports);
                         payload.backend = Some((*backend).to_string());
-                        attach_snapshots(&mut payload);
                         let active = accounts::detect_all();
+                        attach_snapshots(&mut payload, &active);
                         view::attach_accounts(&mut payload, &active);
                         view::attach_placeholders(&mut payload, &registry::load(), &active);
                         Some(payload)
@@ -89,8 +89,8 @@ pub fn dump_once() -> Option<String> {
         event_loop::run_once_with_target(&mut ctx, Instant::now(), None).ok()?;
     let mut payload = view::payload(&reports);
     payload.backend = Some(backend.to_string());
-    attach_snapshots(&mut payload);
     let active = accounts::detect_all();
+    attach_snapshots(&mut payload, &active);
     view::attach_accounts(&mut payload, &active);
     view::attach_placeholders(&mut payload, &registry::load(), &active);
     serde_json::to_string_pretty(&payload).ok()
@@ -98,12 +98,25 @@ pub fn dump_once() -> Option<String> {
 
 /// Snapshot enrichment shared by the poll loop and `--dump`: the fresher
 /// of Claude Code's on-disk cache and qhud's own last ⟳ feeds the Claude
-/// row (labelled with its true origin), and the stored Codex workspace
+/// row (labelled with its true origin); every extra Claude account
+/// (D-015) gets its own row the same way; the stored Codex workspace
 /// rows ride along dated. Local file reads only — the loop stays passive.
-fn attach_snapshots(payload: &mut view::Payload) {
+fn attach_snapshots(payload: &mut view::Payload, active: &[(String, accounts::AccountLabel)]) {
     let store = fetched_store::load();
     if let Some((cache, origin)) = usage_cache::fresher(usage_cache::detect(), store.claude) {
         view::attach_usage_cache(payload, Some(&cache), origin);
+    }
+    for (provider, acct) in active {
+        if provider != "claude" {
+            continue;
+        }
+        let Some(dir) = &acct.config_dir else {
+            continue;
+        };
+        let cache = usage_cache::detect_at(&std::path::Path::new(dir).join(".claude.json"));
+        let fetched = store.claude_extras.get(dir).cloned();
+        let snap = usage_cache::fresher(cache, fetched);
+        view::attach_extra_account(payload, acct.clone(), snap.as_ref().map(|(c, o)| (c, *o)));
     }
     view::attach_fetched_codex(payload, store.codex.as_ref());
 }

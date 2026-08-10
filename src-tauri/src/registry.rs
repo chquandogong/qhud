@@ -50,6 +50,27 @@ pub struct Registry {
     pub workspace_plans: HashMap<String, String>,
     pub known: Vec<KnownAccount>,
     pub forgotten: HashSet<String>,
+    /// Extra Claude config dirs (D-015), one per additional account the
+    /// operator keeps signed in via `CLAUDE_CONFIG_DIR=<dir> claude`.
+    /// Each contains that account's own `.claude.json` (identity + usage
+    /// cache) and `.credentials.json`. `~` expands to $HOME.
+    pub claude_config_dirs: Vec<String>,
+    /// Extra Codex homes (D-015), one per additional account kept signed
+    /// in via `CODEX_HOME=<dir> codex`. Each contains its own
+    /// `auth.json` (+ parked siblings). `~` expands to $HOME.
+    pub codex_homes: Vec<String>,
+}
+
+/// Expands a single leading `~/` (or bare `~`) against the given home.
+/// Anything else passes through untouched — no general shell expansion.
+pub fn expand_tilde(path: &str, home: &str) -> String {
+    if path == "~" {
+        return home.to_string();
+    }
+    match path.strip_prefix("~/") {
+        Some(rest) => format!("{home}/{rest}"),
+        None => path.to_string(),
+    }
 }
 
 /// A row for a known-but-not-live account.
@@ -82,6 +103,10 @@ pub fn parse(json: &str) -> Registry {
         known: Vec<KnownAccount>,
         #[serde(default)]
         forgotten: Vec<String>,
+        #[serde(default)]
+        claude_config_dirs: Vec<String>,
+        #[serde(default)]
+        codex_homes: Vec<String>,
     }
     let raw: Raw = serde_json::from_str(json).unwrap_or_default();
     Registry {
@@ -90,6 +115,8 @@ pub fn parse(json: &str) -> Registry {
         workspace_plans: raw.workspace_plans,
         known: raw.known,
         forgotten: raw.forgotten.into_iter().collect(),
+        claude_config_dirs: raw.claude_config_dirs,
+        codex_homes: raw.codex_homes,
     }
 }
 
@@ -209,6 +236,25 @@ mod tests {
     fn parse_of_junk_is_empty_not_an_error() {
         assert!(parse("not json").known.is_empty());
         assert!(parse("{}").forgotten.is_empty());
+        assert!(parse("{}").claude_config_dirs.is_empty());
+    }
+
+    #[test]
+    fn parse_reads_extra_config_dirs() {
+        let r = parse(
+            r#"{"claude_config_dirs":["~/claude-personal","/abs/dir"],
+                "codex_homes":["~/.codex-dogu"]}"#,
+        );
+        assert_eq!(r.claude_config_dirs, vec!["~/claude-personal", "/abs/dir"]);
+        assert_eq!(r.codex_homes, vec!["~/.codex-dogu"]);
+    }
+
+    #[test]
+    fn expand_tilde_touches_only_a_leading_tilde() {
+        assert_eq!(expand_tilde("~/x/y", "/home/u"), "/home/u/x/y");
+        assert_eq!(expand_tilde("~", "/home/u"), "/home/u");
+        assert_eq!(expand_tilde("/abs/~/x", "/home/u"), "/abs/~/x");
+        assert_eq!(expand_tilde("rel/x", "/home/u"), "rel/x");
     }
 
     #[test]

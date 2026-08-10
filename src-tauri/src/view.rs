@@ -303,6 +303,56 @@ pub fn attach_usage_cache(
     payload.quotas.sort_by(|a, b| a.provider.cmp(&b.provider));
 }
 
+/// Appends a quota row for an EXTRA Claude account (D-015) — one kept
+/// signed in via its own `CLAUDE_CONFIG_DIR`. Its numbers can only come
+/// from that dir's own usage snapshot (its cache or qhud's last ⟳ for
+/// it); pane readings never merge here because a pane's account is not
+/// attributable (known limit). With no snapshot at all the row still
+/// renders — identity-only — because hiding a signed-in account would
+/// undo the point of multi-account.
+pub fn attach_extra_account(
+    payload: &mut Payload,
+    account: crate::accounts::AccountLabel,
+    snap: Option<(&crate::usage_cache::CachedUsage, &'static str)>,
+) {
+    let to_gauge = |w: &crate::usage_cache::CachedWindow| Gauge {
+        pct: w.pct,
+        source: "providercache".to_string(),
+        reset_unix: w.reset_unix,
+        of_tokens: None,
+    };
+    let row = match snap {
+        Some((cache, origin)) => ProviderQuota {
+            provider: "claude".to_string(),
+            h5: cache.five_hour.as_ref().map(to_gauge),
+            d7: cache.seven_day.as_ref().map(to_gauge),
+            from_label: String::new(),
+            session: String::new(),
+            account: Some(account),
+            origin: Some(origin),
+            cache_fetched_at_ms: Some(cache.fetched_at_ms),
+            scoped: cache.scoped.clone(),
+            extra: cache.extra.clone(),
+        },
+        None => ProviderQuota {
+            provider: "claude".to_string(),
+            h5: None,
+            d7: None,
+            from_label: String::new(),
+            session: String::new(),
+            account: Some(account),
+            origin: None,
+            cache_fetched_at_ms: None,
+            scoped: Vec::new(),
+            extra: None,
+        },
+    };
+    payload.quotas.push(row);
+    // Stable by provider: the default (pane-fed or synthesized) row was
+    // pushed first and stays first within the claude group.
+    payload.quotas.sort_by(|a, b| a.provider.cmp(&b.provider));
+}
+
 /// Exposes qhud's last explicit Codex fetch on the payload, dated, so the
 /// workspace rows survive a restart. With no codex pane running, the rows
 /// need a provider row to hang from — synthesize one, marked `fetched`,
@@ -358,11 +408,19 @@ pub fn attach_placeholders(
 /// Stamps each quota row with the account that owns it. Kept out of
 /// `payload` so that stays a pure function of the reports; the poll loop
 /// and `--dump` each call this once per tick.
+///
+/// Only rows that do not already carry an account are filled: an extra-
+/// account row (D-015) arrives with its own identity, and the FIRST
+/// detected entry per provider is the default account — stamping it over
+/// an extra row would relabel one account's numbers with another's name.
 pub fn attach_accounts(
     payload: &mut Payload,
     accounts: &[(String, crate::accounts::AccountLabel)],
 ) {
     for quota in &mut payload.quotas {
+        if quota.account.is_some() {
+            continue;
+        }
         quota.account = accounts
             .iter()
             .find(|(provider, _)| *provider == quota.provider)
@@ -689,6 +747,85 @@ mod tests {
 
         let row = p.quotas.iter().find(|q| q.provider == "claude").unwrap();
         assert_eq!(row.origin, Some("fetched"));
+    }
+
+    #[test]
+    fn extra_account_rows_sit_after_the_default_and_keep_their_origin() {
+        let mut p = payload_of(vec![pane("claude", "claude:1:main", Some(36), None)]);
+        attach_usage_cache(&mut p, Some(&cache(20, 3)), "cache");
+
+        let acct = crate::accounts::AccountLabel {
+            email: Some("second@example.com".into()),
+            account_id: Some("acct-2".into()),
+            ..Default::default()
+        };
+        attach_extra_account(&mut p, acct, Some((&cache(50, 9), "fetched")));
+
+        let rows: Vec<&ProviderQuota> =
+            p.quotas.iter().filter(|q| q.provider == "claude").collect();
+        assert_eq!(rows.len(), 2, "default and extra account both render");
+        assert_eq!(
+            rows[0].origin,
+            Some("pane"),
+            "the default (pane-fed) row stays first"
+        );
+        assert_eq!(rows[1].origin, Some("fetched"));
+        assert_eq!(rows[1].h5.as_ref().unwrap().pct, 50);
+        assert_eq!(
+            rows[1].account.as_ref().unwrap().email.as_deref(),
+            Some("second@example.com")
+        );
+    }
+
+    #[test]
+    fn attach_accounts_fills_only_rows_that_have_no_account_yet() {
+        use crate::accounts::AccountLabel;
+        let mut p = payload_of(vec![pane("claude", "claude:1:main", Some(1), None)]);
+        attach_extra_account(
+            &mut p,
+            AccountLabel {
+                account_id: Some("acct-2".into()),
+                ..Default::default()
+            },
+            None,
+        );
+
+        let detected = vec![(
+            "claude".to_string(),
+            AccountLabel {
+                account_id: Some("acct-1".into()),
+                ..Default::default()
+            },
+        )];
+        attach_accounts(&mut p, &detected);
+
+        let ids: Vec<Option<&str>> = p
+            .quotas
+            .iter()
+            .filter(|q| q.provider == "claude")
+            .map(|q| q.account.as_ref().and_then(|a| a.account_id.as_deref()))
+            .collect();
+        assert_eq!(
+            ids,
+            vec![Some("acct-1"), Some("acct-2")],
+            "the default row is labelled; the extra row's own identity survives"
+        );
+    }
+
+    #[test]
+    fn extra_account_without_a_snapshot_still_renders_identity_only() {
+        let mut p = payload_of(vec![]);
+        let acct = crate::accounts::AccountLabel {
+            email: Some("second@example.com".into()),
+            ..Default::default()
+        };
+
+        attach_extra_account(&mut p, acct, None);
+
+        let row = p.quotas.iter().find(|q| q.provider == "claude").unwrap();
+        assert!(row.h5.is_none() && row.d7.is_none());
+        assert!(row.origin.is_none(), "no snapshot, no origin claim");
+        assert!(row.account.is_some(), "the identity is the whole point");
     }
 
     #[test]
