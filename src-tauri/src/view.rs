@@ -75,6 +75,10 @@ pub struct ProviderQuota {
     /// statusLine feed has no equivalent.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub scoped: Vec<crate::usage_cache::ScopedLimit>,
+    /// Usage-credit spend beyond the plan windows (additive, v0.5.0).
+    /// Only the usage endpoint / its cache carries this.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub extra: Option<crate::usage_cache::ExtraUsage>,
 }
 
 #[derive(Serialize, Clone, Default)]
@@ -210,6 +214,7 @@ pub fn provider_quotas(panes: &[PaneView]) -> Vec<ProviderQuota> {
                 origin: Some("pane"),
                 cache_fetched_at_ms: None,
                 scoped: Vec::new(),
+                extra: None,
             });
         if let Some(g) = &pane.gauges.h5
             && !expired(g)
@@ -259,6 +264,7 @@ pub fn attach_usage_cache(payload: &mut Payload, cache: Option<&crate::usage_cac
     if let Some(row) = payload.quotas.iter_mut().find(|q| q.provider == "claude") {
         row.cache_fetched_at_ms = Some(cache.fetched_at_ms);
         row.scoped = cache.scoped.clone();
+        row.extra = cache.extra.clone();
         return;
     }
     if cache.five_hour.is_none() && cache.seven_day.is_none() {
@@ -274,6 +280,7 @@ pub fn attach_usage_cache(payload: &mut Payload, cache: Option<&crate::usage_cac
         origin: Some("cache"),
         cache_fetched_at_ms: Some(cache.fetched_at_ms),
         scoped: cache.scoped.clone(),
+        extra: cache.extra.clone(),
     });
     payload.quotas.sort_by(|a, b| a.provider.cmp(&b.provider));
 }
@@ -517,7 +524,7 @@ mod tests {
     }
 
     fn cache(h5: u8, d7: u8) -> crate::usage_cache::CachedUsage {
-        use crate::usage_cache::{CachedWindow, ScopedLimit};
+        use crate::usage_cache::{CachedWindow, ExtraUsage, ScopedLimit};
         crate::usage_cache::CachedUsage {
             fetched_at_ms: 1_785_996_526_168,
             account_id: Some("acct-1".into()),
@@ -535,6 +542,16 @@ mod tests {
                 pct: 5,
                 reset_unix: None,
             }],
+            extra: Some(ExtraUsage {
+                enabled: true,
+                used_minor: 1234,
+                currency: "USD".into(),
+                exponent: 2,
+                limit_minor: Some(5000),
+                percent: Some(25),
+                severity: Some("normal".into()),
+                limit_reached: false,
+            }),
         }
     }
 
@@ -587,6 +604,29 @@ mod tests {
         assert_eq!(claude.scoped.len(), 1);
         assert_eq!(claude.scoped[0].scope.as_deref(), Some("Fable"));
         assert_eq!(claude.cache_fetched_at_ms, Some(1_785_996_526_168));
+    }
+
+    #[test]
+    fn extra_usage_rides_along_on_both_cache_paths() {
+        // Merge path: a live claude pane exists, the snapshot only enriches.
+        let mut live = payload_of(vec![pane("claude", "claude:1:main", Some(36), None)]);
+        attach_usage_cache(&mut live, Some(&cache(20, 3)));
+        let row = live.quotas.iter().find(|q| q.provider == "claude").unwrap();
+        assert_eq!(
+            row.extra.as_ref().map(|e| e.used_minor),
+            Some(1234),
+            "extra usage is snapshot-only data and must ride the merge"
+        );
+
+        // Synthesis path: no claude pane at all.
+        let mut empty = payload_of(vec![]);
+        attach_usage_cache(&mut empty, Some(&cache(20, 3)));
+        let row = empty
+            .quotas
+            .iter()
+            .find(|q| q.provider == "claude")
+            .unwrap();
+        assert_eq!(row.extra.as_ref().map(|e| e.used_minor), Some(1234));
     }
 
     #[test]

@@ -182,14 +182,14 @@ struct AccountsBody {
     accounts: Vec<AccountEntry>,
 }
 
+// Entries also carry `structure: "workspace"` on the wire; it is not
+// needed for anything qhud renders, so it is not modelled.
 #[derive(Deserialize)]
 struct AccountEntry {
     #[serde(default)]
     id: Option<String>,
     #[serde(default)]
     plan_type: Option<String>,
-    #[serde(default)]
-    structure: Option<String>,
     /// Workspace display name, when the server supplies one.
     #[serde(default)]
     name: Option<String>,
@@ -278,33 +278,9 @@ fn read_all_auth() -> Vec<(String, Option<String>, String)> {
     out
 }
 
-fn read_auth() -> Result<(String, Option<String>), String> {
-    let home = std::env::var_os("HOME")
-        .map(std::path::PathBuf::from)
-        .ok_or("HOME is not set")?;
-    let body = std::fs::read_to_string(home.join(".codex/auth.json"))
-        .map_err(|_| "no ~/.codex/auth.json — run `codex login`".to_string())?;
-    #[derive(Deserialize)]
-    struct Auth {
-        tokens: Option<Tokens>,
-    }
-    #[derive(Deserialize)]
-    struct Tokens {
-        access_token: Option<String>,
-        account_id: Option<String>,
-    }
-    let tokens = serde_json::from_str::<Auth>(&body)
-        .map_err(|e| format!("auth.json is not readable JSON: {e}"))?
-        .tokens
-        .ok_or("auth.json has no tokens — run `codex login`")?;
-    // The id_token is NOT interchangeable here: as a Bearer it returns
-    // 401 token_expired even while the access token is still valid.
-    let access = tokens
-        .access_token
-        .filter(|t| !t.is_empty())
-        .ok_or("auth.json has no access_token — run `codex login`")?;
-    Ok((access, tokens.account_id))
-}
+// NOTE (kept from the deleted single-credential reader): the id_token is
+// NOT interchangeable with the access token — as a Bearer it returns 401
+// token_expired even while the access token is still valid.
 
 async fn get(
     client: &reqwest::Client,

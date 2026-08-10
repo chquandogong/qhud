@@ -35,6 +35,27 @@ pub struct ScopedLimit {
     pub reset_unix: Option<u64>,
 }
 
+/// Usage-credit spend beyond the plan windows ("extra usage") — the last
+/// piece the provider's own usage page shows that the plan windows do not.
+/// Normalized from the response's `spend` object (the richer shape) with
+/// `extra_usage` as fallback; amounts stay in minor units so no float
+/// money ever round-trips.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct ExtraUsage {
+    pub enabled: bool,
+    /// Minor units — cents when `exponent` is 2.
+    pub used_minor: i64,
+    pub currency: String,
+    pub exponent: u8,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub limit_minor: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub percent: Option<u8>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub severity: Option<String>,
+    pub limit_reached: bool,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct CachedUsage {
     /// When Claude Code last refreshed this snapshot.
@@ -44,6 +65,9 @@ pub struct CachedUsage {
     pub seven_day: Option<CachedWindow>,
     /// Per-model / per-surface windows, absent from the statusLine feed.
     pub scoped: Vec<ScopedLimit>,
+    /// Usage-credit spend, when the plan carries it.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub extra: Option<ExtraUsage>,
 }
 
 /// Parses RFC3339 with fractional seconds and offset, e.g.
@@ -78,6 +102,95 @@ struct Utilization {
     seven_day: Option<RawWindow>,
     #[serde(default)]
     limits: Vec<RawLimit>,
+    #[serde(default)]
+    extra_usage: Option<RawExtraUsage>,
+    #[serde(default)]
+    spend: Option<RawSpend>,
+}
+
+#[derive(Deserialize)]
+struct RawExtraUsage {
+    #[serde(default)]
+    is_enabled: Option<bool>,
+    /// Shape unconfirmed when set (observed only as null) — kept as a
+    /// raw value and interpreted defensively by `minor_units`.
+    #[serde(default)]
+    monthly_limit: serde_json::Value,
+    #[serde(default)]
+    used_credits: Option<i64>,
+    #[serde(default)]
+    currency: Option<String>,
+    #[serde(default)]
+    decimal_places: Option<u8>,
+    #[serde(default)]
+    spend_limit_reached: Option<bool>,
+}
+
+#[derive(Deserialize)]
+struct RawSpend {
+    #[serde(default)]
+    used: Option<RawMoney>,
+    #[serde(default)]
+    limit: serde_json::Value,
+    #[serde(default)]
+    percent: Option<f64>,
+    #[serde(default)]
+    severity: Option<String>,
+    #[serde(default)]
+    enabled: Option<bool>,
+}
+
+#[derive(Deserialize)]
+struct RawMoney {
+    #[serde(default)]
+    amount_minor: Option<i64>,
+    #[serde(default)]
+    currency: Option<String>,
+    #[serde(default)]
+    exponent: Option<u8>,
+}
+
+/// Money field that may be a bare integer (minor units) or a
+/// `{amount_minor, ...}` object. A bare float is dropped: its unit is
+/// ambiguous, and guessing a scale could show $50 as $0.50.
+fn minor_units(v: &serde_json::Value) -> Option<i64> {
+    v.as_i64().or_else(|| v.get("amount_minor")?.as_i64())
+}
+
+/// Prefers `spend` (the richer object: percent + severity + typed money)
+/// and falls back to `extra_usage`. `spend_limit_reached` only exists on
+/// `extra_usage`, so the two are merged rather than either/or.
+fn resolve_extra(extra: Option<RawExtraUsage>, spend: Option<RawSpend>) -> Option<ExtraUsage> {
+    if extra.is_none() && spend.is_none() {
+        return None;
+    }
+    let used = spend.as_ref().and_then(|s| s.used.as_ref());
+    Some(ExtraUsage {
+        enabled: spend
+            .as_ref()
+            .and_then(|s| s.enabled)
+            .or(extra.as_ref().and_then(|e| e.is_enabled))
+            .unwrap_or(false),
+        used_minor: used
+            .and_then(|m| m.amount_minor)
+            .or(extra.as_ref().and_then(|e| e.used_credits))
+            .unwrap_or(0),
+        currency: used
+            .and_then(|m| m.currency.clone())
+            .or(extra.as_ref().and_then(|e| e.currency.clone()))
+            .unwrap_or_else(|| "USD".to_string()),
+        exponent: used
+            .and_then(|m| m.exponent)
+            .or(extra.as_ref().and_then(|e| e.decimal_places))
+            .unwrap_or(2),
+        limit_minor: spend
+            .as_ref()
+            .and_then(|s| minor_units(&s.limit))
+            .or(extra.as_ref().and_then(|e| minor_units(&e.monthly_limit))),
+        percent: spend.as_ref().and_then(|s| s.percent).map(pct),
+        severity: spend.and_then(|s| s.severity),
+        limit_reached: extra.and_then(|e| e.spend_limit_reached).unwrap_or(false),
+    })
 }
 
 #[derive(Deserialize)]
@@ -153,6 +266,7 @@ fn build(util: Utilization, fetched_at_ms: u64, account_id: Option<String>) -> C
         five_hour: util.five_hour.and_then(RawWindow::resolve),
         seven_day: util.seven_day.and_then(RawWindow::resolve),
         scoped,
+        extra: resolve_extra(util.extra_usage, util.spend),
     }
 }
 
@@ -249,6 +363,105 @@ mod tests {
     fn absent_or_malformed_cache_yields_none() {
         assert!(parse_cached_usage(r#"{"oauthAccount":{}}"#).is_none());
         assert!(parse_cached_usage("not json").is_none());
+    }
+
+    // Synthetic values in the real cache's shape (2026-08-10): both
+    // `spend` (the richer, newer object) and `extra_usage` present.
+    const CACHE_WITH_EXTRA: &str = r#"{
+      "cachedUsageUtilization": {
+        "fetchedAtMs": 1786000000000,
+        "accountUuid": "00000000-0000-0000-0000-000000000001",
+        "utilization": {
+          "five_hour": {"utilization": 10, "resets_at": "2026-08-06T10:20:00Z"},
+          "seven_day": {"utilization": 5, "resets_at": "2026-08-12T18:00:00Z"},
+          "limits": [],
+          "extra_usage": {"is_enabled": true, "monthly_limit": null,
+            "used_credits": 250, "utilization": null, "currency": "USD",
+            "decimal_places": 2, "spend_limit_reached": false},
+          "spend": {"used": {"amount_minor": 1234, "currency": "USD", "exponent": 2},
+            "limit": {"amount_minor": 5000, "currency": "USD", "exponent": 2},
+            "percent": 25, "severity": "normal", "enabled": true}
+        }
+      }
+    }"#;
+
+    #[test]
+    fn spend_wins_over_extra_usage_for_the_money_numbers() {
+        let u = parse_cached_usage(CACHE_WITH_EXTRA).expect("cache parses");
+        let e = u.extra.expect("extra usage must survive parsing");
+
+        assert!(e.enabled);
+        assert_eq!(e.used_minor, 1234, "spend.used outranks used_credits");
+        assert_eq!(e.currency, "USD");
+        assert_eq!(e.exponent, 2);
+        assert_eq!(e.limit_minor, Some(5000));
+        assert_eq!(e.percent, Some(25));
+        assert_eq!(e.severity.as_deref(), Some("normal"));
+        assert!(!e.limit_reached);
+    }
+
+    #[test]
+    fn extra_usage_alone_still_yields_extra() {
+        // Older cache bodies carry only `extra_usage`. A bare integer
+        // monthly_limit is accepted as minor units; used_credits is the
+        // spend source when no `spend` object exists.
+        let json = r#"{"cachedUsageUtilization":{"fetchedAtMs":1,
+          "utilization":{"five_hour":null,"seven_day":null,"limits":[],
+            "extra_usage":{"is_enabled":true,"monthly_limit":10000,
+              "used_credits":250,"currency":"USD","decimal_places":2,
+              "spend_limit_reached":true}}}}"#;
+
+        let e = parse_cached_usage(json)
+            .expect("still a valid snapshot")
+            .extra
+            .expect("extra_usage alone is enough");
+
+        assert!(e.enabled);
+        assert_eq!(e.used_minor, 250);
+        assert_eq!(e.limit_minor, Some(10000));
+        assert_eq!(e.percent, None, "no spend object, no percent");
+        assert!(e.limit_reached);
+    }
+
+    #[test]
+    fn extra_is_absent_when_neither_field_exists() {
+        // Plans without usage credits (e.g. the REAL_CACHE fixture) must
+        // not grow a zeroed extra row.
+        assert!(parse_cached_usage(REAL_CACHE).unwrap().extra.is_none());
+    }
+
+    #[test]
+    fn live_utilization_body_carries_extra_too() {
+        // The ⟳ path parses the live body directly; extra must not be
+        // cache-only.
+        let body = r#"{"five_hour":{"utilization":8,"resets_at":"2026-08-06T10:20:00Z"},
+          "limits":[],
+          "spend":{"used":{"amount_minor":42,"currency":"USD","exponent":2},
+            "percent":0,"severity":"normal","enabled":true}}"#;
+
+        let e = parse_utilization(body, 7)
+            .expect("live body parses")
+            .extra
+            .expect("live extra survives");
+
+        assert_eq!(e.used_minor, 42);
+        assert_eq!(
+            e.limit_minor, None,
+            "no limit configured is not a zero limit"
+        );
+    }
+
+    #[test]
+    fn a_float_limit_is_dropped_rather_than_scale_guessed() {
+        // A bare float's unit is ambiguous (dollars? cents?). Guessing a
+        // scale could show $50 as $0.50 — omit the limit instead.
+        let json = r#"{"cachedUsageUtilization":{"fetchedAtMs":1,
+          "utilization":{"limits":[],
+            "extra_usage":{"is_enabled":true,"monthly_limit":50.0,
+              "used_credits":0,"currency":"USD","decimal_places":2}}}}"#;
+
+        let e = parse_cached_usage(json).unwrap().extra.unwrap();
+        assert_eq!(e.limit_minor, None);
     }
 
     #[test]

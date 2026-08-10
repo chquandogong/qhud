@@ -54,6 +54,16 @@
     return String(n);
   }
 
+  // Minor-unit money (cents when exponent 2) → display string. Money
+  // stays integer all the way from the wire; division happens only here.
+  function fmtMinor(minor, exponent, currency) {
+    const exp = exponent ?? 2;
+    const amount = (minor / 10 ** exp).toFixed(exp);
+    return currency === "USD" || currency == null
+      ? `$${amount}`
+      : `${amount} ${currency}`;
+  }
+
   function fmtReset(unix) {
     const diff = unix * 1000 - Date.now();
     if (diff <= 0) return "now";
@@ -274,6 +284,7 @@
       el("span", "q-prov", provider),
       el("span", "q-acct"),
       el("span", "q-plan"),
+      el("span", "q-extra"),
       el("span", "q-age"),
     );
     if (provider === "claude") {
@@ -281,7 +292,8 @@
       btn.title = "fetch live usage, including per-model windows";
       row.append(btn);
     }
-    for (const win of ["5h", "7d"]) row.append(buildChip(win, win.toUpperCase()));
+    for (const win of ["5h", "7d"])
+      row.append(buildChip(win, win.toUpperCase()));
     return row;
   }
 
@@ -292,7 +304,12 @@
     track.append(el("span", "q-fill"));
     const val = el("span", "q-val");
     val.append(document.createTextNode(""), el("i", null, "%"));
-    chip.append(el("span", "q-label", label), track, val, el("span", "q-reset"));
+    chip.append(
+      el("span", "q-label", label),
+      track,
+      val,
+      el("span", "q-reset"),
+    );
     return chip;
   }
 
@@ -634,7 +651,10 @@
   function scopedTooltipLines(scoped, age) {
     return (scoped || [])
       .filter((x) => x.kind === "weekly_scoped" && x.scope)
-      .map((x) => `${x.scope} weekly ${x.pct}%${age ? ` (snapshot ~${age} old)` : ""}`);
+      .map(
+        (x) =>
+          `${x.scope} weekly ${x.pct}%${age ? ` (snapshot ~${age} old)` : ""}`,
+      );
   }
 
   // Per-model gauges, only ever from an explicit refresh — so no stale marker.
@@ -694,6 +714,33 @@
       planEl.textContent = bits.join(" ");
       planEl.hidden = bits.length === 0;
 
+      // Usage credits beyond the plan ("extra usage") — the last thing the
+      // provider's own usage page shows that the windows do not. A live ⟳
+      // result outranks the payload's snapshot copy. Hidden entirely for
+      // plans that never enabled it, so it does not tax every account line.
+      let extra = q.extra;
+      if (
+        q.provider === "claude" &&
+        claudeFetch.state === "done" &&
+        claudeFetch.data?.extra
+      ) {
+        extra = claudeFetch.data.extra;
+      }
+      const extraEl = row.querySelector(".q-extra");
+      const showExtra = !!extra && (extra.enabled || extra.used_minor > 0);
+      extraEl.hidden = !showExtra;
+      if (showExtra) {
+        let txt = `extra ${fmtMinor(extra.used_minor, extra.exponent, extra.currency)}`;
+        if (extra.limit_minor != null)
+          txt += `/${fmtMinor(extra.limit_minor, extra.exponent, extra.currency)}`;
+        extraEl.textContent = txt;
+        extraEl.dataset.sev = extra.limit_reached
+          ? "crit"
+          : extra.percent != null
+            ? sev(extra.percent)
+            : "good";
+      }
+
       // A cache-sourced row is NOT a live reading. Mark it on the row and
       // say how old it is, so a stale number can never pass for current.
       row.dataset.origin = q.origin || "pane";
@@ -712,7 +759,6 @@
       ageEl.textContent = showAge ? `~${row.dataset.cacheAge} old` : "";
       ageEl.hidden = !showAge;
 
-
       const lines = [];
       if (q.origin === "cache") {
         lines.push(
@@ -724,6 +770,16 @@
         );
       }
       lines.push(...scopedTooltipLines(q.scoped, row.dataset.cacheAge));
+      if (showExtra) {
+        lines.push(
+          `extra usage: ${fmtMinor(extra.used_minor, extra.exponent, extra.currency)} used` +
+            (extra.limit_minor != null
+              ? ` of ${fmtMinor(extra.limit_minor, extra.exponent, extra.currency)}`
+              : "") +
+            (extra.percent != null ? ` (${extra.percent}%)` : "") +
+            (extra.limit_reached ? " — spend limit reached" : ""),
+        );
+      }
       if (q.account) {
         const a = q.account;
         lines.push(
@@ -748,7 +804,11 @@
       let h5 = q.h5;
       let d7 = q.d7;
       let scoped = [];
-      if (q.provider === "claude" && claudeFetch.state === "done" && claudeFetch.data) {
+      if (
+        q.provider === "claude" &&
+        claudeFetch.state === "done" &&
+        claudeFetch.data
+      ) {
         const d = claudeFetch.data;
         if (d.five_hour) h5 = { ...d.five_hour, source: "live" };
         if (d.seven_day) d7 = { ...d.seven_day, source: "live" };
@@ -765,7 +825,6 @@
           if (claudeFetch.error) b.title = claudeFetch.error;
         }
       }
-
     }
     for (const row of [...quotasEl.children]) {
       if (row.dataset.pkey || row.dataset.wsid) continue; // owned by other renderers
@@ -773,7 +832,8 @@
         if (!alive.has(row.dataset.sect)) row.remove();
         continue;
       }
-      if (row.dataset.provider && !alive.has(row.dataset.provider)) row.remove();
+      if (row.dataset.provider && !alive.has(row.dataset.provider))
+        row.remove();
     }
   }
 
@@ -923,8 +983,12 @@
       console.error(msg);
     } catch {}
   }
-  window.addEventListener("error", (e) => reportJsError("onerror", e.error || e.message));
-  window.addEventListener("unhandledrejection", (e) => reportJsError("rejection", e.reason));
+  window.addEventListener("error", (e) =>
+    reportJsError("onerror", e.error || e.message),
+  );
+  window.addEventListener("unhandledrejection", (e) =>
+    reportJsError("rejection", e.reason),
+  );
 
   document.addEventListener("contextmenu", (e) => e.preventDefault());
 

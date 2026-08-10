@@ -730,6 +730,27 @@ body {
 .q-plan[hidden] {
   display: none;
 }
+/* Usage-credit spend ("extra usage"), shown only when the plan carries
+   it. Severity follows the provider's own percent/limit-reached signal. */
+.q-extra {
+  font-family: var(--mono);
+  font-size: 8.5px;
+  color: var(--tx-faint);
+  flex: none;
+  white-space: nowrap;
+}
+.q-extra[hidden] {
+  display: none;
+}
+.q-extra[data-sev="concern"] {
+  color: var(--concern);
+}
+.q-extra[data-sev="warn"] {
+  color: var(--warn);
+}
+.q-extra[data-sev="crit"] {
+  color: var(--crit);
+}
 
 /* Provider section header. Provider is the outer axis (see renderQuotas),
    so it gets a heading rather than repeating on every row. */
