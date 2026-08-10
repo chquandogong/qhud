@@ -213,6 +213,24 @@ fn main() {
         return;
     }
 
+    // Diagnostic for the app-server fallback alone (FR-18): the path only
+    // fires inside --codex-usage when the raw HTTP path fails, which makes
+    // it untestable on demand without this.
+    if std::env::args().any(|a| a == "--codex-appserver") {
+        let rt = match tokio::runtime::Runtime::new() {
+            Ok(rt) => rt,
+            Err(e) => {
+                eprintln!("qhud: runtime: {e}");
+                return;
+            }
+        };
+        match rt.block_on(codex_usage::fetch_via_app_server()) {
+            Ok(w) => println!("{}", serde_json::to_string_pretty(&w).unwrap_or_default()),
+            Err(e) => eprintln!("qhud: codex app-server failed: {e}"),
+        }
+        return;
+    }
+
     if std::env::args().any(|a| a == "--codex-usage") {
         let rt = match tokio::runtime::Runtime::new() {
             Ok(rt) => rt,
