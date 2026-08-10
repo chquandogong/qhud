@@ -1,6 +1,6 @@
 # DASHBOARD — qhud
 
-> Status: v0.5.0 built (release pending) · Date: 2026-08-10 · Owner: chquandogong
+> Status: v0.5.0 released · Date: 2026-08-10 · Owner: chquandogong
 > Single source of truth = this git repo. This board is the handoff
 > surface: read it first when resuming work on another session/agent.
 
@@ -8,10 +8,10 @@
 
 | Item               | Value                                                                                                   |
 | ------------------ | ------------------------------------------------------------------------------------------------------- |
-| Version            | v0.5.0 on main (v0.4.0 released 2026-08-07 — [releases](https://github.com/chquandogong/qhud/releases)) |
+| Version            | v0.5.0 — [releases](https://github.com/chquandogong/qhud/releases) (v0.4.0 2026-08-07, v0.5.0 2026-08-10) |
 | Pipeline dep       | qmonster @ `6a21c44` (pinned rev — carries the cwd/attribution fixes)                                   |
 | Verified on        | Ubuntu 24.04 · GNOME 46 Wayland · 2 monitors (scale 1) · herdr live (4 agent panes)                     |
-| Quality gates      | fmt ✅ · clippy -D warnings ✅ · tests 69 ✅ · release build ✅ (CI was red on main 08-07→08-10; fixed) |
+| Quality gates      | fmt ✅ · clippy -D warnings ✅ · tests 72 ✅ · release build ✅ (CI was red on main 08-07→08-10; fixed) |
 | Input verification | **compositor-path only** (Mutter RemoteDesktop injection or human hand — XTEST inadmissible, D-010)     |
 | Cross-validation   | Codex/GPT — AGREE-WITH-CHANGES, CV-1..4 adopted (CROSS_VALIDATION_LOG)                                  |
 
@@ -37,7 +37,7 @@ app-server, agy loopback RPC).
 | Zoom · peek · single-instance (D-012, v0.3.0) + light tray glyph                                                                 | done 2026-08-06                  | claude+chquandogong |
 | Quota you can trust: attribution fixes, identity, ⟳, workspaces (v0.4.0)                                                         | done 2026-08-07                  | claude+chquandogong |
 | Every account at a glance: multi-account, persistence, extra usage, agy RPC, codex app-server, refresh-all (v0.5.0, D-015/D-016) | done 2026-08-10                  | claude+chquandogong |
-| Tag + release v0.5.0 (CI green again as of this work)                                                                            | **todo — operator push**         | operator            |
+| Tag + release v0.5.0 (CI green again — first since e6e31ed)                                                                      | done 2026-08-10                  | claude+chquandogong |
 | ⏳ TEST_PLAN pending rows (overview / lock / suspend / hotplug / fullscreen)                                                     | **todo — first on-machine pass** | operator            |
 | Live verification with a plain tmux server (fallback path)                                                                       | todo                             | operator            |
 | Real second-account setup (`CLAUDE_CONFIG_DIR` sign-in + registry entry)                                                         | todo — needs operator login      | operator            |
@@ -55,8 +55,8 @@ until the companion extension exists.
 
 ## Resume point
 
-Repo at v0.5.0 on main, unpushed. Next meaningful units: operator
-verification pass (push + tag v0.5.0, TEST_PLAN ⏳ rows, plain-tmux
-check, sign a second Claude account in under its own
-`CLAUDE_CONFIG_DIR` and register it), then pick from the backlog —
-tile→pane focus jump remains the highest-value small item.
+v0.5.0 tagged and released. Next meaningful units: operator
+verification pass (TEST_PLAN ⏳ rows, plain-tmux check, sign a second
+Claude account in under its own `CLAUDE_CONFIG_DIR` and register it),
+then pick from the backlog — tile→pane focus jump remains the
+highest-value small item.

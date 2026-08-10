@@ -64,6 +64,44 @@ Shell extension layer · tile→pane focus jump. See DASHBOARD.
 - **Self-matching `pkill -f` killed our own shell twice** — use
   bracket patterns (`[q]hud`) or exact `-x`.
 
+## Cycle 3 — v0.4.0 → v0.5.0 (2026-08-07 → 10)
+
+### What worked
+
+- **The operator's product statement as the plan**: "every account and
+  workspace at a glance, explicit refresh, never open the web again"
+  turned directly into the cycle's six units (extra usage, persistence,
+  refresh-all, D-015 multi-account, agy RPC, codex app-server) — no
+  speculative features.
+- **Delegated fetch paths (D-016)**: letting the provider's own process
+  answer (codex app-server, agy loopback) resolved the two problems raw
+  HTTP cannot — token rotation and keyring-held credentials — without
+  qhud ever touching auth.
+- **Test-first on every parser and merge rule** kept the multi-source
+  merge honest: the attach_accounts overwrite bug was caught by a RED
+  test before it ever rendered.
+
+### What to fix next cycle
+
+- **D-011 violations recur every time a NEW data source lands.** Three
+  in one day, all operator-caught, all the same shape: two values one
+  name (twin "weekly" chips), one fact two names (weekly vs 7D), one
+  fact two rows (account row vs its own active workspace). Corrective
+  action, already partly enforced: every new window/pool/row must carry
+  its scope NAME end to end, display vocabulary is fixed
+  (5H/1D/7D/30D), and `labels(...)` breadcrumbs now print the rendered
+  gauge labels so the next violation is visible from stderr instead of
+  waiting for the operator's eye.
+- **A NUL byte written into app.js** made grep treat the file as binary
+  (silently empty matches) while node still parsed it. Corrective
+  action: separators in generated keys are plain spaces, and "grep
+  suddenly finds nothing" is now a recognized symptom of a corrupted
+  file, not a missing string.
+- **`cargo clippy`/`cargo test` do not refresh the debug binary** — a
+  stale `target/debug/qhud` reported the OLD payload during
+  verification once. Corrective action: `cargo build` before any
+  `--dump`-based claim.
+
 ## Evidence trail
 
 FEASIBILITY_REPORT (two spikes, xprop states) ·

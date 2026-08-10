@@ -41,8 +41,11 @@ CLAUDE
   me@gmail.com        pro (max_20x)         ⟳ 12m ago
     5H        ████░░░░░░  42%   resets 1h03m
 CODEX
-  chquan17@gmail.com  ChatGPT Pro 5x    2 ws · ⟳ 3m ago
-    ↳ personal        ████████░░  80%   resets 3d
+  chquan17@gmail.com · personal   ChatGPT Pro 5x
+    5H        ██░░░░░░░░  12%   resets 2h05m
+    7D        ████████░░  80%   resets 3d
+  ↳ business          ChatGPT Business  1 ws · ⟳ 3m ago
+    7D        ██░░░░░░░░  15%   resets 3d
 AGY
   chquan17@gmail.com  Google AI Pro                    ⟳
     5H        ░░░░░░░░░░   0%   resets 4h
@@ -54,12 +57,15 @@ AGY
 Provider is the outer axis — it is what you pick when deciding where to run
 the next task. Under it sit the accounts (with their plans) — **several per
 provider** if you keep each signed in under its own config dir — and under
-each one gauge per window. Every number that did not come from a live pane
-wears its provenance (`⟳ 12m ago` for qhud's own last refresh, `~22h old`
-for the CLI's cache), so a stored reading can never pass for a live one.
-Below the live rows, accounts you have connected before but that have no
-usable credential right now collapse into one line: their quota is still
-being consumed, so hiding them would be a lie of omission.
+each one gauge per window. One fact renders once, named: the active Codex
+login's workspace lives ON its account row (`· personal`), and a `↳` row
+appears only for OTHER workspaces, so the same 7D pool never shows twice
+with clock skew. Every number that did not come from a live pane wears its
+provenance (`⟳ 12m ago` for qhud's own last refresh, `~22h old` for the
+CLI's cache), so a stored reading can never pass for a live one. Below the
+live rows, accounts you have connected before but that have no usable
+credential right now collapse into one line: their quota is still being
+consumed, so hiding them would be a lie of omission.
 
 Per-pane tiles underneath show status, context pressure, model, effort,
 branch, cwd, memory, cost, and cross-pane file conflicts.
