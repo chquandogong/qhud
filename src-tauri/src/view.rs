@@ -251,9 +251,11 @@ pub fn provider_quotas(panes: &[PaneView]) -> Vec<ProviderQuota> {
         .collect()
 }
 
-/// Folds a Claude usage snapshot into the quota strip.
+/// Folds a provider usage snapshot into the quota strip (Claude's cache
+/// or ⟳ result; agy's loopback-RPC read — anything in the
+/// `CachedUsage` shape).
 ///
-/// `origin` says which snapshot this is — `"cache"` (Claude Code's own
+/// `origin` says which snapshot this is — `"cache"` (the CLI's own
 /// on-disk copy) or `"fetched"` (qhud's last explicit ⟳) — and is what
 /// the frontend uses to caption the row's age.
 ///
@@ -261,13 +263,14 @@ pub fn provider_quotas(panes: &[PaneView]) -> Vec<ProviderQuota> {
 ///  1. A live pane reading is never overridden. Within a window usage
 ///     only grows, and the statusline is refreshed every prompt, so the
 ///     pane number is at least as current as the snapshot.
-///  2. The per-model `scoped` windows and `extra` spend are attached
-///     regardless — only the snapshot has them.
-///  3. If Claude contributed **no** pane at all, synthesize a row marked
-///     with the snapshot's `origin`. This is the whole point: the
-///     numbers survive with no CLI running.
+///  2. The `scoped` windows and `extra` spend are attached regardless —
+///     only the snapshot has them.
+///  3. If the provider contributed **no** pane at all, synthesize a row
+///     marked with the snapshot's `origin`. This is the whole point:
+///     the numbers survive with no CLI running.
 pub fn attach_usage_cache(
     payload: &mut Payload,
+    provider: &str,
     cache: Option<&crate::usage_cache::CachedUsage>,
     origin: &'static str,
 ) {
@@ -279,17 +282,25 @@ pub fn attach_usage_cache(
         of_tokens: None,
     };
 
-    if let Some(row) = payload.quotas.iter_mut().find(|q| q.provider == "claude") {
+    if let Some(row) = payload.quotas.iter_mut().find(|q| q.provider == provider) {
         row.cache_fetched_at_ms = Some(cache.fetched_at_ms);
         row.scoped = cache.scoped.clone();
         row.extra = cache.extra.clone();
+        // Filling a window the pane does NOT have is not overriding it
+        // (seen live: an agy pane carrying only the weekly reading).
+        if row.h5.is_none() {
+            row.h5 = cache.five_hour.as_ref().map(to_gauge);
+        }
+        if row.d7.is_none() {
+            row.d7 = cache.seven_day.as_ref().map(to_gauge);
+        }
         return;
     }
     if cache.five_hour.is_none() && cache.seven_day.is_none() {
         return;
     }
     payload.quotas.push(ProviderQuota {
-        provider: "claude".to_string(),
+        provider: provider.to_string(),
         h5: cache.five_hour.as_ref().map(to_gauge),
         d7: cache.seven_day.as_ref().map(to_gauge),
         from_label: String::new(),
@@ -686,7 +697,7 @@ mod tests {
         let mut p = payload_of(vec![pane("codex", "codex:1:main", Some(40), None)]);
         assert!(!p.quotas.iter().any(|q| q.provider == "claude"));
 
-        attach_usage_cache(&mut p, Some(&cache(20, 3)), "cache");
+        attach_usage_cache(&mut p, "claude", Some(&cache(20, 3)), "cache");
 
         let claude = p.quotas.iter().find(|q| q.provider == "claude").unwrap();
         assert_eq!(claude.origin, Some("cache"));
@@ -702,7 +713,7 @@ mod tests {
         // now. Within a window usage only grows, so the pane wins.
         let mut p = payload_of(vec![pane("claude", "claude:1:main", Some(36), Some(12))]);
 
-        attach_usage_cache(&mut p, Some(&cache(20, 3)), "cache");
+        attach_usage_cache(&mut p, "claude", Some(&cache(20, 3)), "cache");
 
         let claude = p.quotas.iter().find(|q| q.provider == "claude").unwrap();
         assert_eq!(claude.h5.as_ref().unwrap().pct, 36, "live reading survives");
@@ -715,10 +726,32 @@ mod tests {
     }
 
     #[test]
+    fn merge_fills_a_missing_window_but_never_overrides_a_present_one() {
+        // Seen live on the agy row: the pane carried only a weekly
+        // reading while the snapshot had both. Filling the hole is not
+        // overriding — the pane still wins wherever it has a number.
+        let mut p = payload_of(vec![pane("agy", "agy:1:research", None, Some(3))]);
+
+        attach_usage_cache(&mut p, "agy", Some(&cache(20, 99)), "fetched");
+
+        let row = p.quotas.iter().find(|q| q.provider == "agy").unwrap();
+        assert_eq!(
+            row.h5.as_ref().map(|g| g.pct),
+            Some(20),
+            "the snapshot fills the absent 5h window"
+        );
+        assert_eq!(
+            row.d7.as_ref().map(|g| g.pct),
+            Some(3),
+            "the pane's weekly reading is never overridden"
+        );
+    }
+
+    #[test]
     fn extra_usage_rides_along_on_both_cache_paths() {
         // Merge path: a live claude pane exists, the snapshot only enriches.
         let mut live = payload_of(vec![pane("claude", "claude:1:main", Some(36), None)]);
-        attach_usage_cache(&mut live, Some(&cache(20, 3)), "cache");
+        attach_usage_cache(&mut live, "claude", Some(&cache(20, 3)), "cache");
         let row = live.quotas.iter().find(|q| q.provider == "claude").unwrap();
         assert_eq!(
             row.extra.as_ref().map(|e| e.used_minor),
@@ -728,7 +761,7 @@ mod tests {
 
         // Synthesis path: no claude pane at all.
         let mut empty = payload_of(vec![]);
-        attach_usage_cache(&mut empty, Some(&cache(20, 3)), "cache");
+        attach_usage_cache(&mut empty, "claude", Some(&cache(20, 3)), "cache");
         let row = empty
             .quotas
             .iter()
@@ -743,7 +776,7 @@ mod tests {
         // result; the row must say so, not claim to be the CLI's cache.
         let mut p = payload_of(vec![]);
 
-        attach_usage_cache(&mut p, Some(&cache(20, 3)), "fetched");
+        attach_usage_cache(&mut p, "claude", Some(&cache(20, 3)), "fetched");
 
         let row = p.quotas.iter().find(|q| q.provider == "claude").unwrap();
         assert_eq!(row.origin, Some("fetched"));
@@ -752,7 +785,7 @@ mod tests {
     #[test]
     fn extra_account_rows_sit_after_the_default_and_keep_their_origin() {
         let mut p = payload_of(vec![pane("claude", "claude:1:main", Some(36), None)]);
-        attach_usage_cache(&mut p, Some(&cache(20, 3)), "cache");
+        attach_usage_cache(&mut p, "claude", Some(&cache(20, 3)), "cache");
 
         let acct = crate::accounts::AccountLabel {
             email: Some("second@example.com".into()),
@@ -882,7 +915,7 @@ mod tests {
         let mut p = payload_of(vec![pane("claude", "claude:1:main", Some(36), None)]);
         let before = p.quotas.len();
 
-        attach_usage_cache(&mut p, None, "cache");
+        attach_usage_cache(&mut p, "claude", None, "cache");
 
         assert_eq!(p.quotas.len(), before);
         assert!(p.quotas[0].cache_fetched_at_ms.is_none());

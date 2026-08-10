@@ -301,6 +301,11 @@
       btn.title = "fetch live usage, including per-model windows";
       row.append(btn);
     }
+    if (provider === "agy") {
+      const btn = el("button", "q-refresh", "⟳");
+      btn.title = "read quota from the running agy (loopback, no token)";
+      row.append(btn);
+    }
     for (const win of ["5h", "7d"])
       row.append(buildChip(win, win.toUpperCase()));
     return row;
@@ -354,6 +359,27 @@
   // (the statusline has none, and nothing qhud can run refreshes the on-disk
   // cache), so it is a click, never a poll.
   const claudeFetch = { state: "idle", data: null, error: null, at: 0 };
+  // agy usage via the CLI's own loopback RPC (no token, machine-local) —
+  // only answers while agy runs, so it too is a click, never a poll.
+  const agyFetch = { state: "idle", data: null, error: null, at: 0 };
+
+  async function refreshAgyUsage() {
+    if (agyFetch.state === "loading") return;
+    agyFetch.state = "loading";
+    agyFetch.error = null;
+    render();
+    try {
+      const inv = window.__TAURI__?.core?.invoke;
+      if (!inv) throw new Error("not running under Tauri");
+      agyFetch.data = await inv("fetch_agy_usage");
+      agyFetch.at = Date.now();
+      agyFetch.state = "done";
+    } catch (e) {
+      agyFetch.state = "error";
+      agyFetch.error = String(e);
+    }
+    render();
+  }
 
   async function refreshClaudeUsage() {
     if (claudeFetch.state === "loading") return;
@@ -578,6 +604,7 @@
   function refreshAll() {
     refreshClaudeUsage();
     fetchCodexWorkspaces();
+    refreshAgyUsage();
   }
 
   const refreshAllBtn = document.getElementById("refreshAll");
@@ -594,9 +621,13 @@
   function patchRefreshAll() {
     if (!refreshAllBtn) return;
     const busy =
-      claudeFetch.state === "loading" || codexFetch.state === "loading";
+      claudeFetch.state === "loading" ||
+      codexFetch.state === "loading" ||
+      agyFetch.state === "loading";
     refreshAllBtn.textContent = busy ? "…" : "⟳";
-    const errs = [claudeFetch.error, codexFetch.error].filter(Boolean);
+    const errs = [claudeFetch.error, codexFetch.error, agyFetch.error].filter(
+      Boolean,
+    );
     refreshAllBtn.classList.toggle("err", !busy && errs.length > 0);
     refreshAllBtn.title = errs.length
       ? errs.join("\n")
@@ -619,7 +650,9 @@
     // pointerdown, not click: a keep-below widget never receives synthesized
     // clicks reliably (D-009).
     if (e.target.classList?.contains("q-refresh")) {
-      refreshClaudeUsage();
+      const provider = e.target.closest(".q-row")?.dataset.provider;
+      if (provider === "agy") refreshAgyUsage();
+      else refreshClaudeUsage();
       return;
     }
     if (e.target.closest?.(".q-row[data-pkey]")) return; // ghost rows have their own handler
@@ -725,36 +758,44 @@
     return h;
   }
 
-  // Per-model windows (Claude reports a separate pool for Fable) are their
-  // own gauges, not a tooltip footnote: they run out independently.
-  // Per-model windows are NOT rendered as gauges. They exist only in
-  // ~/.claude.json:cachedUsageUtilization, which refreshes when the operator
-  // opens /usage — never on anything qhud can trigger (verified: --version,
-  // doctor, mcp list, and a real headless --print session all leave
-  // fetchedAtMs untouched). So the value is stale whenever the widget would be
-  // useful: it showed Fable at 5% while /usage said 22%. It survives in the
-  // row tooltip, dated, where it cannot pass for a live reading.
+  // A scoped window's chip label: Claude's per-model weekly caps
+  // (weekly_scoped) and agy's non-primary pools (pool_5h / pool_weekly).
+  // Unknown kinds return null and stay tooltip-only.
+  function scopedChipLabel(x) {
+    if (!x.scope) return null;
+    if (x.kind === "weekly_scoped" || x.kind === "pool_weekly")
+      return `${x.scope} wk`;
+    if (x.kind === "pool_5h") return `${x.scope} 5h`;
+    return null;
+  }
+
+  // Scoped windows in the tooltip: on a PANE row this is the only place
+  // they appear — a dated snapshot value rendered as a gauge next to live
+  // ones reads as live (the v0.4.0 Fable bug: cache said 5%, truth 22%).
   function scopedTooltipLines(scoped, age) {
     return (scoped || [])
-      .filter((x) => x.kind === "weekly_scoped" && x.scope)
+      .filter((x) => scopedChipLabel(x))
       .map(
         (x) =>
-          `${x.scope} weekly ${x.pct}%${age ? ` (snapshot ~${age} old)` : ""}`,
+          `${scopedChipLabel(x)} ${x.pct}%${age ? ` (snapshot ~${age} old)` : ""}`,
       );
   }
 
-  // Per-model gauges, only ever from an explicit refresh — so no stale marker.
-  function patchLiveScoped(row, scoped) {
-    const want = scoped.filter((x) => x.kind === "weekly_scoped" && x.scope);
+  // Scoped gauges. Only for data whose provenance the row already wears:
+  // an in-session refresh (live) or a whole-row snapshot with its age
+  // caption. `stale` dims the chips (CLI-cache rows).
+  function patchLiveScoped(row, scoped, stale) {
+    const want = scoped.filter((x) => scopedChipLabel(x));
     const seen = new Set();
     for (const x of want) {
-      const key = "m:" + x.scope;
+      const key = `m:${x.kind}:${x.scope}`;
       seen.add(key);
       let chip = row.querySelector(`[data-win="${CSS.escape(key)}"]`);
       if (!chip) {
-        chip = buildChip(key, `${x.scope} wk`);
+        chip = buildChip(key, scopedChipLabel(x));
         row.append(chip);
       }
+      chip.classList.toggle("stale", !!stale);
       patchQuotaChip(chip, { pct: x.pct, reset_unix: x.reset_unix });
     }
     for (const chip of [...row.querySelectorAll('[data-win^="m:"]')]) {
@@ -802,6 +843,13 @@
                 (r.key === "default" && !q.account?.account_id),
             )
           : null;
+      // The agy analog is a single account; its RPC read has the same
+      // snapshot shape, so the same override path applies.
+      const liveUsage =
+        liveFetch?.usage ||
+        (q.provider === "agy" && agyFetch.state === "done"
+          ? agyFetch.data
+          : null);
       // The provider name lives in the section header now, so the row's own
       // slot carries the ACCOUNT — the thing that actually differs per row.
       row.querySelector(".q-prov").textContent = "";
@@ -835,8 +883,8 @@
       // result outranks the payload's snapshot copy. Hidden entirely for
       // plans that never enabled it, so it does not tax every account line.
       let extra = q.extra;
-      if (liveFetch?.usage?.extra) {
-        extra = liveFetch.usage.extra;
+      if (liveUsage?.extra) {
+        extra = liveUsage.extra;
       }
       const extraEl = row.querySelector(".q-extra");
       const showExtra = !!extra && (extra.enabled || extra.used_minor > 0);
@@ -926,32 +974,40 @@
       let h5 = q.h5;
       let d7 = q.d7;
       let scoped = [];
-      if (liveFetch) {
-        const d = liveFetch.usage;
-        if (d.five_hour) h5 = { ...d.five_hour, source: "live" };
-        if (d.seven_day) d7 = { ...d.seven_day, source: "live" };
-        scoped = d.scoped || [];
-      } else if (q.origin === "fetched") {
-        // The row IS qhud's own ⟳ data (persisted); its per-model windows
-        // are the same thing the live refresh would show, and the row
-        // already wears the ⟳-age caption.
+      if (liveUsage) {
+        if (liveUsage.five_hour)
+          h5 = { ...liveUsage.five_hour, source: "live" };
+        if (liveUsage.seven_day)
+          d7 = { ...liveUsage.seven_day, source: "live" };
+        scoped = liveUsage.scoped || [];
+      } else if (q.origin === "fetched" || q.origin === "cache") {
+        // The whole row is snapshot data wearing its age caption, so its
+        // scoped windows may render as gauges too. On a PANE row they
+        // stay tooltip-only: a day-old per-model value next to live
+        // gauges reads as live (the v0.4.0 Fable bug).
         scoped = q.scoped || [];
       }
       patchQuotaChip(row.querySelector('[data-win="5h"]'), h5);
       patchQuotaChip(row.querySelector('[data-win="7d"]'), d7);
-      patchLiveScoped(row, scoped);
+      patchLiveScoped(row, scoped, !liveUsage && q.origin === "cache");
       // A signed-in account with no numbers at all (an extra account never
       // ⟳'d, no cache): say what to do instead of rendering a bare name.
       if (q.provider === "claude" && !h5 && !d7 && !showAge) {
         ageEl.hidden = false;
         ageEl.textContent = "no data — ⟳";
       }
-      if (q.provider === "claude") {
+      const rowFetch =
+        q.provider === "claude"
+          ? claudeFetch
+          : q.provider === "agy"
+            ? agyFetch
+            : null;
+      if (rowFetch) {
         const b = row.querySelector(".q-refresh");
         if (b) {
-          b.textContent = claudeFetch.state === "loading" ? "…" : "⟳";
-          b.classList.toggle("err", claudeFetch.state === "error");
-          if (claudeFetch.error) b.title = claudeFetch.error;
+          b.textContent = rowFetch.state === "loading" ? "…" : "⟳";
+          b.classList.toggle("err", rowFetch.state === "error");
+          if (rowFetch.error) b.title = rowFetch.error;
         }
       }
     }

@@ -34,6 +34,10 @@ pub struct FetchedStore {
     /// keyed by the expanded config-dir path.
     #[serde(default)]
     pub claude_extras: std::collections::BTreeMap<String, CachedUsage>,
+    /// Last successful agy loopback-RPC read (same snapshot shape —
+    /// gemini pool on the primary windows, other pools scoped).
+    #[serde(default)]
+    pub agy: Option<CachedUsage>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -109,6 +113,10 @@ pub fn record_claude_extra(config_dir: &str, usage: &CachedUsage) {
     });
 }
 
+pub fn record_agy(usage: &CachedUsage) {
+    record(|s| s.agy = Some(usage.clone()));
+}
+
 pub fn record_codex(workspaces: &[WorkspaceUsage], fetched_at_ms: u64) {
     record(|s| {
         s.codex = Some(CodexFetched {
@@ -152,6 +160,7 @@ mod tests {
                 }],
             }),
             claude_extras: std::collections::BTreeMap::new(),
+            agy: None,
         }
     }
 

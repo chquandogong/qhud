@@ -1,6 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod accounts;
+mod agy_usage;
 mod claude_usage;
 mod codex_usage;
 mod demo;
@@ -68,6 +69,29 @@ async fn fetch_claude_usage() -> Result<Vec<claude_usage::AccountFetch>, String>
             }
         }
         Err(e) => eprintln!("qhud: claude usage failed: {e}"),
+    }
+    out
+}
+
+/// agy quota via the CLI's own loopback Connect RPC — no token, and
+/// nothing leaves the machine (the agy process owns its auth). Only
+/// answers while agy runs; the fetched store keeps the last read for
+/// when it does not.
+#[tauri::command]
+async fn fetch_agy_usage() -> Result<crate::usage_cache::CachedUsage, String> {
+    eprintln!("qhud ui: agy-usage-refresh requested");
+    let out = agy_usage::fetch(view::now_ms()).await;
+    match &out {
+        Ok(u) => {
+            eprintln!(
+                "qhud: agy usage ok (5h {:?}, 7d {:?}, {} pools)",
+                u.five_hour.as_ref().map(|w| w.pct),
+                u.seven_day.as_ref().map(|w| w.pct),
+                u.scoped.len()
+            );
+            fetched_store::record_agy(u);
+        }
+        Err(e) => eprintln!("qhud: agy usage failed: {e}"),
     }
     out
 }
@@ -171,6 +195,24 @@ fn main() {
         return;
     }
 
+    if std::env::args().any(|a| a == "--agy-usage") {
+        let rt = match tokio::runtime::Runtime::new() {
+            Ok(rt) => rt,
+            Err(e) => {
+                eprintln!("qhud: runtime: {e}");
+                return;
+            }
+        };
+        match rt.block_on(agy_usage::fetch(view::now_ms())) {
+            Ok(u) => {
+                fetched_store::record_agy(&u);
+                println!("{}", serde_json::to_string_pretty(&u).unwrap_or_default());
+            }
+            Err(e) => eprintln!("qhud: agy usage failed: {e}"),
+        }
+        return;
+    }
+
     if std::env::args().any(|a| a == "--codex-usage") {
         let rt = match tokio::runtime::Runtime::new() {
             Ok(rt) => rt,
@@ -219,6 +261,7 @@ fn main() {
             ui_event,
             fetch_codex_workspaces,
             fetch_claude_usage,
+            fetch_agy_usage,
             forget_account
         ])
         .plugin(tauri_plugin_window_state::Builder::default().build())

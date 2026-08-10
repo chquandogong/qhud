@@ -104,8 +104,11 @@ pub fn dump_once() -> Option<String> {
 fn attach_snapshots(payload: &mut view::Payload, active: &[(String, accounts::AccountLabel)]) {
     let store = fetched_store::load();
     if let Some((cache, origin)) = usage_cache::fresher(usage_cache::detect(), store.claude) {
-        view::attach_usage_cache(payload, Some(&cache), origin);
+        view::attach_usage_cache(payload, "claude", Some(&cache), origin);
     }
+    // agy has no on-disk provider cache; the only snapshot is qhud's own
+    // last loopback read.
+    view::attach_usage_cache(payload, "agy", store.agy.as_ref(), "fetched");
     for (provider, acct) in active {
         if provider != "claude" {
             continue;
