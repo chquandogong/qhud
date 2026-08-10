@@ -167,5 +167,7 @@ pub fn payload() -> Payload {
         account_placeholders: Vec::new(),
         workspace_names: std::collections::HashMap::new(),
         workspace_plans: std::collections::HashMap::new(),
+        codex_workspaces: Vec::new(),
+        codex_fetched_at_ms: None,
     }
 }

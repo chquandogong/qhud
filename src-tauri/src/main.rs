@@ -4,6 +4,7 @@ mod accounts;
 mod claude_usage;
 mod codex_usage;
 mod demo;
+mod fetched_store;
 mod poll;
 mod registry;
 mod usage_cache;
@@ -32,7 +33,11 @@ async fn fetch_codex_workspaces() -> Result<Vec<codex_usage::WorkspaceUsage>, St
     eprintln!("qhud ui: codex-workspace-fetch requested");
     let out = codex_usage::fetch_all_workspaces().await;
     match &out {
-        Ok(w) => eprintln!("qhud: codex fetch ok ({} workspaces)", w.len()),
+        Ok(w) => {
+            eprintln!("qhud: codex fetch ok ({} workspaces)", w.len());
+            // Persisted so the rows survive a restart, dated (fetched_store).
+            fetched_store::record_codex(w, view::now_ms());
+        }
         Err(e) => eprintln!("qhud: codex fetch failed: {e}"),
     }
     out
@@ -50,12 +55,16 @@ async fn fetch_claude_usage() -> Result<crate::usage_cache::CachedUsage, String>
     eprintln!("qhud ui: claude-usage-refresh requested");
     let out = claude_usage::fetch(view::now_ms()).await;
     match &out {
-        Ok(u) => eprintln!(
-            "qhud: claude usage ok (5h {:?}, 7d {:?}, {} scoped)",
-            u.five_hour.as_ref().map(|w| w.pct),
-            u.seven_day.as_ref().map(|w| w.pct),
-            u.scoped.len()
-        ),
+        Ok(u) => {
+            eprintln!(
+                "qhud: claude usage ok (5h {:?}, 7d {:?}, {} scoped)",
+                u.five_hour.as_ref().map(|w| w.pct),
+                u.seven_day.as_ref().map(|w| w.pct),
+                u.scoped.len()
+            );
+            // Persisted so the freshest reading survives a restart.
+            fetched_store::record_claude(u);
+        }
         Err(e) => eprintln!("qhud: claude usage failed: {e}"),
     }
     out
@@ -151,7 +160,12 @@ fn main() {
             }
         };
         match rt.block_on(claude_usage::fetch(view::now_ms())) {
-            Ok(u) => println!("{}", serde_json::to_string_pretty(&u).unwrap_or_default()),
+            Ok(u) => {
+                // The CLI twin records exactly like the ⟳ click does, so a
+                // GNOME-shortcut refresh feeds the widget's next tick too.
+                fetched_store::record_claude(&u);
+                println!("{}", serde_json::to_string_pretty(&u).unwrap_or_default());
+            }
             Err(e) => eprintln!("qhud: claude usage failed: {e}"),
         }
         return;
@@ -166,7 +180,10 @@ fn main() {
             }
         };
         match rt.block_on(codex_usage::fetch_all_workspaces()) {
-            Ok(w) => println!("{}", serde_json::to_string_pretty(&w).unwrap_or_default()),
+            Ok(w) => {
+                fetched_store::record_codex(&w, view::now_ms());
+                println!("{}", serde_json::to_string_pretty(&w).unwrap_or_default());
+            }
             Err(e) => eprintln!("qhud: codex usage failed: {e}"),
         }
         return;

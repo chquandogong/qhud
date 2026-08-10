@@ -18,20 +18,27 @@ use serde::{Deserialize, Serialize};
 
 /// One usage window resolved to the widget's units: integer percent and
 /// a unix-seconds reset instant.
-#[derive(Debug, Clone, PartialEq, Serialize)]
+///
+/// `Deserialize` exists because these types round-trip through qhud's own
+/// fetched-usage store (`fetched_store`), not because any provider wire
+/// format matches them.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CachedWindow {
     pub pct: u8,
+    #[serde(default)]
     pub reset_unix: Option<u64>,
 }
 
 /// A model- or surface-scoped weekly window, e.g. the per-model cap.
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ScopedLimit {
     /// `session`, `weekly_all`, `weekly_scoped`, …
     pub kind: String,
     /// Model display name when the limit is model-scoped.
+    #[serde(default)]
     pub scope: Option<String>,
     pub pct: u8,
+    #[serde(default)]
     pub reset_unix: Option<u64>,
 }
 
@@ -40,34 +47,60 @@ pub struct ScopedLimit {
 /// Normalized from the response's `spend` object (the richer shape) with
 /// `extra_usage` as fallback; amounts stay in minor units so no float
 /// money ever round-trips.
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ExtraUsage {
     pub enabled: bool,
     /// Minor units — cents when `exponent` is 2.
     pub used_minor: i64,
     pub currency: String,
     pub exponent: u8,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub limit_minor: Option<i64>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub percent: Option<u8>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub severity: Option<String>,
     pub limit_reached: bool,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CachedUsage {
     /// When Claude Code last refreshed this snapshot.
     pub fetched_at_ms: u64,
+    #[serde(default)]
     pub account_id: Option<String>,
+    #[serde(default)]
     pub five_hour: Option<CachedWindow>,
+    #[serde(default)]
     pub seven_day: Option<CachedWindow>,
     /// Per-model / per-surface windows, absent from the statusLine feed.
+    #[serde(default)]
     pub scoped: Vec<ScopedLimit>,
     /// Usage-credit spend, when the plan carries it.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub extra: Option<ExtraUsage>,
+}
+
+/// Picks between Claude Code's own on-disk snapshot (`"cache"`) and
+/// qhud's last explicit ⟳ result (`"fetched"`) — whichever is fresher.
+/// A tie goes to "fetched": it is qhud's own read of the same endpoint,
+/// and at least as complete.
+pub fn fresher(
+    disk: Option<CachedUsage>,
+    fetched: Option<CachedUsage>,
+) -> Option<(CachedUsage, &'static str)> {
+    match (disk, fetched) {
+        (None, None) => None,
+        (Some(d), None) => Some((d, "cache")),
+        (None, Some(f)) => Some((f, "fetched")),
+        (Some(d), Some(f)) => {
+            if d.fetched_at_ms > f.fetched_at_ms {
+                Some((d, "cache"))
+            } else {
+                Some((f, "fetched"))
+            }
+        }
+    }
 }
 
 /// Parses RFC3339 with fractional seconds and offset, e.g.
@@ -313,6 +346,38 @@ mod tests {
         }
       }
     }"#;
+
+    fn snap(at: u64) -> CachedUsage {
+        CachedUsage {
+            fetched_at_ms: at,
+            account_id: None,
+            five_hour: None,
+            seven_day: None,
+            scoped: Vec::new(),
+            extra: None,
+        }
+    }
+
+    #[test]
+    fn fresher_picks_by_timestamp_with_ties_to_fetched() {
+        assert!(fresher(None, None).is_none());
+
+        let (u, origin) = fresher(Some(snap(10)), None).unwrap();
+        assert_eq!((u.fetched_at_ms, origin), (10, "cache"));
+
+        let (u, origin) = fresher(None, Some(snap(10))).unwrap();
+        assert_eq!((u.fetched_at_ms, origin), (10, "fetched"));
+
+        let (_, origin) = fresher(Some(snap(20)), Some(snap(10))).unwrap();
+        assert_eq!(origin, "cache", "a newer CLI snapshot must win");
+
+        let (_, origin) = fresher(Some(snap(10)), Some(snap(20))).unwrap();
+        assert_eq!(origin, "fetched");
+
+        // Tie goes to qhud's own read: same endpoint, at least as complete.
+        let (_, origin) = fresher(Some(snap(10)), Some(snap(10))).unwrap();
+        assert_eq!(origin, "fetched");
+    }
 
     #[test]
     fn parse_reset_handles_fractional_seconds_and_offset() {

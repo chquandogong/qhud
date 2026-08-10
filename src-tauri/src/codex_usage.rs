@@ -21,21 +21,29 @@ const USAGE_URL: &str = "https://chatgpt.com/backend-api/wham/usage";
 const ACCOUNTS_URL: &str = "https://chatgpt.com/backend-api/wham/accounts/check";
 
 /// A usage window with a label derived from its duration.
-#[derive(Debug, Clone, PartialEq, Serialize)]
+///
+/// `Deserialize` exists for qhud's own fetched-usage store round-trip
+/// (`fetched_store`), not for any provider wire format.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct UsageWindow {
     /// `5h`, `daily`, `weekly`, `30d`, or `Nm` when it matches nothing known.
     pub label: String,
     pub used_percent: u8,
+    #[serde(default)]
     pub reset_unix: Option<u64>,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Default)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct WorkspaceUsage {
     pub account_id: String,
     /// Workspace display name, when `accounts/check` supplied one.
+    #[serde(default)]
     pub name: Option<String>,
+    #[serde(default)]
     pub plan_type: Option<String>,
+    #[serde(default)]
     pub windows: Vec<UsageWindow>,
+    #[serde(default)]
     pub credits_balance: Option<String>,
 }
 

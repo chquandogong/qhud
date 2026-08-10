@@ -48,6 +48,14 @@ pub struct Payload {
     /// account_id -> display plan for a fetched workspace (additive, v0.4.1).
     #[serde(skip_serializing_if = "std::collections::HashMap::is_empty")]
     pub workspace_plans: std::collections::HashMap<String, String>,
+    /// Codex workspace rows from qhud's last explicit fetch, so they
+    /// survive a restart (additive, v0.5.0). Dated by
+    /// `codex_fetched_at_ms`, which the frontend must render — a stored
+    /// row must never pass for a live one.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub codex_workspaces: Vec<crate::codex_usage::WorkspaceUsage>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub codex_fetched_at_ms: Option<u64>,
 }
 
 #[derive(Serialize, Clone)]
@@ -178,6 +186,8 @@ pub fn payload(reports: &[PaneReport]) -> Payload {
         account_placeholders: Vec::new(),
         workspace_names: std::collections::HashMap::new(),
         workspace_plans: std::collections::HashMap::new(),
+        codex_workspaces: Vec::new(),
+        codex_fetched_at_ms: None,
     }
 }
 
@@ -241,18 +251,26 @@ pub fn provider_quotas(panes: &[PaneView]) -> Vec<ProviderQuota> {
         .collect()
 }
 
-/// Folds Claude's on-disk snapshot into the quota strip.
+/// Folds a Claude usage snapshot into the quota strip.
+///
+/// `origin` says which snapshot this is — `"cache"` (Claude Code's own
+/// on-disk copy) or `"fetched"` (qhud's last explicit ⟳) — and is what
+/// the frontend uses to caption the row's age.
 ///
 /// Rules, in order of importance:
 ///  1. A live pane reading is never overridden. Within a window usage
 ///     only grows, and the statusline is refreshed every prompt, so the
-///     pane number is at least as current as the cache.
-///  2. The per-model `scoped` windows are attached regardless — only the
-///     cache has them.
-///  3. If Claude contributed **no** pane at all, synthesize a row from
-///     the cache marked `origin: "cache"`. This is the whole point: the
+///     pane number is at least as current as the snapshot.
+///  2. The per-model `scoped` windows and `extra` spend are attached
+///     regardless — only the snapshot has them.
+///  3. If Claude contributed **no** pane at all, synthesize a row marked
+///     with the snapshot's `origin`. This is the whole point: the
 ///     numbers survive with no CLI running.
-pub fn attach_usage_cache(payload: &mut Payload, cache: Option<&crate::usage_cache::CachedUsage>) {
+pub fn attach_usage_cache(
+    payload: &mut Payload,
+    cache: Option<&crate::usage_cache::CachedUsage>,
+    origin: &'static str,
+) {
     let Some(cache) = cache else { return };
     let to_gauge = |w: &crate::usage_cache::CachedWindow| Gauge {
         pct: w.pct,
@@ -277,10 +295,40 @@ pub fn attach_usage_cache(payload: &mut Payload, cache: Option<&crate::usage_cac
         from_label: String::new(),
         session: String::new(),
         account: None,
-        origin: Some("cache"),
+        origin: Some(origin),
         cache_fetched_at_ms: Some(cache.fetched_at_ms),
         scoped: cache.scoped.clone(),
         extra: cache.extra.clone(),
+    });
+    payload.quotas.sort_by(|a, b| a.provider.cmp(&b.provider));
+}
+
+/// Exposes qhud's last explicit Codex fetch on the payload, dated, so the
+/// workspace rows survive a restart. With no codex pane running, the rows
+/// need a provider row to hang from — synthesize one, marked `fetched`,
+/// for the same reason the Claude snapshot synthesizes its own (rule 3 of
+/// `attach_usage_cache`); a live pane row is never touched.
+pub fn attach_fetched_codex(
+    payload: &mut Payload,
+    codex: Option<&crate::fetched_store::CodexFetched>,
+) {
+    let Some(codex) = codex else { return };
+    payload.codex_workspaces = codex.workspaces.clone();
+    payload.codex_fetched_at_ms = Some(codex.fetched_at_ms);
+    if codex.workspaces.is_empty() || payload.quotas.iter().any(|q| q.provider == "codex") {
+        return;
+    }
+    payload.quotas.push(ProviderQuota {
+        provider: "codex".to_string(),
+        h5: None,
+        d7: None,
+        from_label: String::new(),
+        session: String::new(),
+        account: None,
+        origin: Some("fetched"),
+        cache_fetched_at_ms: Some(codex.fetched_at_ms),
+        scoped: Vec::new(),
+        extra: None,
     });
     payload.quotas.sort_by(|a, b| a.provider.cmp(&b.provider));
 }
@@ -568,6 +616,8 @@ mod tests {
             account_placeholders: Vec::new(),
             workspace_names: std::collections::HashMap::new(),
             workspace_plans: std::collections::HashMap::new(),
+            codex_workspaces: Vec::new(),
+            codex_fetched_at_ms: None,
         }
     }
 
@@ -578,7 +628,7 @@ mod tests {
         let mut p = payload_of(vec![pane("codex", "codex:1:main", Some(40), None)]);
         assert!(!p.quotas.iter().any(|q| q.provider == "claude"));
 
-        attach_usage_cache(&mut p, Some(&cache(20, 3)));
+        attach_usage_cache(&mut p, Some(&cache(20, 3)), "cache");
 
         let claude = p.quotas.iter().find(|q| q.provider == "claude").unwrap();
         assert_eq!(claude.origin, Some("cache"));
@@ -594,7 +644,7 @@ mod tests {
         // now. Within a window usage only grows, so the pane wins.
         let mut p = payload_of(vec![pane("claude", "claude:1:main", Some(36), Some(12))]);
 
-        attach_usage_cache(&mut p, Some(&cache(20, 3)));
+        attach_usage_cache(&mut p, Some(&cache(20, 3)), "cache");
 
         let claude = p.quotas.iter().find(|q| q.provider == "claude").unwrap();
         assert_eq!(claude.h5.as_ref().unwrap().pct, 36, "live reading survives");
@@ -610,7 +660,7 @@ mod tests {
     fn extra_usage_rides_along_on_both_cache_paths() {
         // Merge path: a live claude pane exists, the snapshot only enriches.
         let mut live = payload_of(vec![pane("claude", "claude:1:main", Some(36), None)]);
-        attach_usage_cache(&mut live, Some(&cache(20, 3)));
+        attach_usage_cache(&mut live, Some(&cache(20, 3)), "cache");
         let row = live.quotas.iter().find(|q| q.provider == "claude").unwrap();
         assert_eq!(
             row.extra.as_ref().map(|e| e.used_minor),
@@ -620,7 +670,7 @@ mod tests {
 
         // Synthesis path: no claude pane at all.
         let mut empty = payload_of(vec![]);
-        attach_usage_cache(&mut empty, Some(&cache(20, 3)));
+        attach_usage_cache(&mut empty, Some(&cache(20, 3)), "cache");
         let row = empty
             .quotas
             .iter()
@@ -630,11 +680,72 @@ mod tests {
     }
 
     #[test]
+    fn synthesized_row_wears_the_snapshot_origin_it_was_given() {
+        // After a restart the freshest snapshot may be qhud's own ⟳
+        // result; the row must say so, not claim to be the CLI's cache.
+        let mut p = payload_of(vec![]);
+
+        attach_usage_cache(&mut p, Some(&cache(20, 3)), "fetched");
+
+        let row = p.quotas.iter().find(|q| q.provider == "claude").unwrap();
+        assert_eq!(row.origin, Some("fetched"));
+    }
+
+    #[test]
+    fn fetched_codex_rows_ride_the_payload_dated() {
+        let mut p = payload_of(vec![]);
+        let fetched = crate::fetched_store::CodexFetched {
+            fetched_at_ms: 1_786_000_000_000,
+            workspaces: vec![crate::codex_usage::WorkspaceUsage {
+                account_id: "ws-1".into(),
+                ..Default::default()
+            }],
+        };
+
+        attach_fetched_codex(&mut p, Some(&fetched));
+
+        assert_eq!(p.codex_workspaces.len(), 1);
+        assert_eq!(
+            p.codex_fetched_at_ms,
+            Some(1_786_000_000_000),
+            "a stored row without its date could pass for live"
+        );
+        // With no codex pane running, the stored rows need a provider row
+        // to hang from — synthesized, dated, and marked fetched (the same
+        // reason the Claude cache synthesizes one).
+        let codex = p.quotas.iter().find(|q| q.provider == "codex").unwrap();
+        assert_eq!(codex.origin, Some("fetched"));
+        assert_eq!(codex.cache_fetched_at_ms, Some(1_786_000_000_000));
+
+        // A live codex pane keeps its own row — no second one appears.
+        let mut live = payload_of(vec![pane("codex", "codex:1:main", Some(40), None)]);
+        attach_fetched_codex(&mut live, Some(&fetched));
+        let rows = live.quotas.iter().filter(|q| q.provider == "codex").count();
+        assert_eq!(rows, 1);
+        assert_eq!(
+            live.quotas
+                .iter()
+                .find(|q| q.provider == "codex")
+                .unwrap()
+                .origin,
+            Some("pane"),
+            "the live row's provenance is untouched"
+        );
+
+        // And absent data changes nothing.
+        let mut empty = payload_of(vec![]);
+        attach_fetched_codex(&mut empty, None);
+        assert!(empty.codex_workspaces.is_empty());
+        assert!(empty.codex_fetched_at_ms.is_none());
+        assert!(empty.quotas.is_empty());
+    }
+
+    #[test]
     fn absent_cache_changes_nothing() {
         let mut p = payload_of(vec![pane("claude", "claude:1:main", Some(36), None)]);
         let before = p.quotas.len();
 
-        attach_usage_cache(&mut p, None);
+        attach_usage_cache(&mut p, None, "cache");
 
         assert_eq!(p.quotas.len(), before);
         assert!(p.quotas[0].cache_fetched_at_ms.is_none());

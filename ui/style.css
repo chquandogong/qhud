@@ -826,6 +826,12 @@ body {
 .q-chip.stale {
   opacity: 0.6;
 }
+
+/* Workspace rows restored from qhud's last fetch (not this session's):
+   dimmed for the same reason, so stored can never read as live. */
+.q-ws.q-stored {
+  opacity: 0.7;
+}
 .q-chip.stale .q-label::after {
   content: "*";
   color: var(--concern);

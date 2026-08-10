@@ -91,7 +91,22 @@ pub async fn fetch(now_ms: u64) -> Result<CachedUsage, String> {
         return Err(format!("usage endpoint returned HTTP {}", status.as_u16()));
     }
     let body = resp.text().await.map_err(|e| format!("read failed: {e}"))?;
-    // The body carries account uuid and email — never log it.
+    // The body carries account uuid and email — never log it. The one
+    // exception is env-gated (FR-18 style) and prints exactly two
+    // identity-free sub-objects, for diagnosing extra-usage shape drift:
+    // QHUD_EXTRA_DIAG=1 qhud --claude-usage
+    if std::env::var_os("QHUD_EXTRA_DIAG").is_some()
+        && let Ok(v) = serde_json::from_str::<serde_json::Value>(&body)
+    {
+        eprintln!(
+            "qhud diag extra_usage: {}",
+            v.get("extra_usage").unwrap_or(&serde_json::Value::Null)
+        );
+        eprintln!(
+            "qhud diag spend: {}",
+            v.get("spend").unwrap_or(&serde_json::Value::Null)
+        );
+    }
     crate::usage_cache::parse_utilization(&body, now_ms)
         .ok_or_else(|| "usage response did not parse".to_string())
 }

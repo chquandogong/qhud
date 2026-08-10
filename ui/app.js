@@ -54,6 +54,15 @@
     return String(n);
   }
 
+  // Coarse age for stored snapshots — the answer to "how stale is this?"
+  function fmtAgeMs(ms) {
+    const min = Math.round((Date.now() - ms) / 60000);
+    if (min < 90) return `${Math.max(min, 0)}m`;
+    const hours = Math.round(min / 60);
+    if (hours < 48) return `${hours}h`;
+    return `${Math.round(hours / 24)}d`;
+  }
+
   // Minor-unit money (cents when exponent 2) → display string. Money
   // stays integer all the way from the wire; division happens only here.
   function fmtMinor(minor, exponent, currency) {
@@ -340,7 +349,7 @@
   // Codex workspaces (personal / business) live behind ONE login and share
   // its token, so they cost no extra auth — but fetching them leaves the
   // machine, so it happens on an explicit click and never on the timer.
-  const codexFetch = { state: "idle", rows: [], error: null };
+  const codexFetch = { state: "idle", rows: [], error: null, at: 0 };
   // Explicitly refreshed Claude usage. Only this can produce per-model windows
   // (the statusline has none, and nothing qhud can run refreshes the on-disk
   // cache), so it is a click, never a poll.
@@ -391,6 +400,7 @@
       const inv = window.__TAURI__?.core?.invoke;
       if (!inv) throw new Error("not running under Tauri");
       codexFetch.rows = await inv("fetch_codex_workspaces");
+      codexFetch.at = Date.now();
       codexFetch.state = "done";
     } catch (e) {
       codexFetch.state = "error";
@@ -399,30 +409,64 @@
     renderCodexExtra();
   }
 
+  // The workspace rows to show: a fetch made this session always wins;
+  // before any fetch, the stored rows from qhud's LAST explicit fetch
+  // (riding the payload) render instead — dated, never passing for live.
+  function codexSource() {
+    if (codexFetch.state === "done")
+      return { rows: codexFetch.rows, at: codexFetch.at, stored: false };
+    const p = state.payload;
+    if (p?.codex_workspaces?.length)
+      return {
+        rows: p.codex_workspaces,
+        at: p.codex_fetched_at_ms || 0,
+        stored: true,
+      };
+    return { rows: [], at: 0, stored: false };
+  }
+
+  // Rebuilds are gated on a source signature: renderCodexExtra now runs on
+  // every 2 s payload (for the stored rows), and unconditionally recreating
+  // the rows would retrigger the gauge CSS transitions each tick. Between
+  // rebuilds only the age caption moves.
+  let codexRowsSig = null;
+
   // Render each Codex workspace as its OWN row. One login owns several
   // workspaces (personal + business) with separate quota, so collapsing
   // them into a tooltip hid the very thing the fetch is for.
   function renderCodexExtra() {
-    for (const r of [...quotasEl.querySelectorAll("[data-wsid]")]) r.remove();
     const anchor = quotasEl.querySelector('[data-provider="codex"]');
     if (!anchor) return;
     const ageEl = anchor.querySelector(".q-age");
+    const clearRows = () => {
+      for (const r of [...quotasEl.querySelectorAll("[data-wsid]")]) r.remove();
+    };
 
     if (codexFetch.state === "loading") {
+      codexRowsSig = null;
+      clearRows();
       ageEl.hidden = false;
       ageEl.textContent = "fetching…";
       return;
     }
     if (codexFetch.state === "error") {
+      codexRowsSig = null;
+      clearRows();
       ageEl.hidden = false;
       ageEl.textContent = "fetch failed";
       anchor.title = `${codexFetch.error}\n\nclick to retry`;
       return;
     }
-    if (codexFetch.state !== "done") return;
 
-    ageEl.hidden = codexFetch.rows.length === 0;
-    ageEl.textContent = `${codexFetch.rows.length} ws`;
+    const { rows, at, stored } = codexSource();
+    if (rows.length === 0) return; // renderQuotas already hid the caption
+    const caption = `${rows.length} ws${at ? ` · ⟳ ${fmtAgeMs(at)} ago` : ""}`;
+    const sig = `${stored}:${at}:${rows.length}`;
+    ageEl.hidden = false;
+    ageEl.textContent = caption;
+    if (sig === codexRowsSig) return; // same rows; only the caption moved
+    codexRowsSig = sig;
+    clearRows();
     // The plan belongs to a WORKSPACE, not the login. Leaving it on the
     // account line made three rows for two workspaces, with the parent
     // duplicating the personal one and reading as a third account.
@@ -433,8 +477,8 @@
     // name comes from the registry via account.plan.
 
     let after = anchor;
-    for (const w of codexFetch.rows) {
-      const row = el("div", "q-row q-ws");
+    for (const w of rows) {
+      const row = el("div", `q-row q-ws${stored ? " q-stored" : ""}`);
       row.dataset.wsid = w.account_id;
       const wins = (w.windows || []).filter((x) => x.used_percent != null);
       row.append(
@@ -473,6 +517,10 @@
       }
       if (wins.length === 0) row.append(el("span", "q-age", "no window"));
       const meta = [];
+      if (stored)
+        meta.push(
+          `from qhud's last fetch, ${fmtAgeMs(at)} ago — click to refresh`,
+        );
       if (w.plan_type) meta.push(`plan_type (wire): ${w.plan_type}`);
       if (w.credits_balance) meta.push(`credits ${w.credits_balance}`);
       if (meta.length) row.title = meta.join("\n");
@@ -483,11 +531,11 @@
     // not prove the workspace rows rendered (the pixels are unverifiable from
     // outside the webview, D-010).
     window.__TAURI__?.core?.invoke("ui_event", {
-      event: `codex-ws-rows: ${codexFetch.rows.length} fetched, ${
+      event: `codex-ws-rows: ${rows.length} ${stored ? "stored" : "fetched"}, ${
         quotasEl.querySelectorAll("[data-wsid]").length
       } rendered`,
     });
-    logLabels("after-codex-fetch");
+    logLabels(stored ? "stored-codex-rows" : "after-codex-fetch");
   }
 
   quotasEl.addEventListener("pointerdown", async (e) => {
@@ -751,18 +799,28 @@
       } else {
         delete row.dataset.cacheAge;
       }
-      // Only a cache-ORIGIN row wears the age badge. On a live row the
+      // Only a snapshot-ORIGIN row wears the age badge. On a live row the
       // snapshot merely contributes per-model windows, so badging it
-      // would wrongly imply the visible gauges are stale.
+      // would wrongly imply the visible gauges are stale. "cache" is the
+      // CLI's own on-disk copy; "fetched" is qhud's last explicit ⟳.
       const ageEl = row.querySelector(".q-age");
-      const showAge = q.origin === "cache" && row.dataset.cacheAge;
-      ageEl.textContent = showAge ? `~${row.dataset.cacheAge} old` : "";
+      const snapshotRow = q.origin === "cache" || q.origin === "fetched";
+      const showAge = snapshotRow && row.dataset.cacheAge;
+      ageEl.textContent = !showAge
+        ? ""
+        : q.origin === "fetched"
+          ? `⟳ ${row.dataset.cacheAge} ago`
+          : `~${row.dataset.cacheAge} old`;
       ageEl.hidden = !showAge;
 
       const lines = [];
       if (q.origin === "cache") {
         lines.push(
           `no CLI running — from Claude's on-disk snapshot, ${row.dataset.cacheAge} old`,
+        );
+      } else if (q.origin === "fetched") {
+        lines.push(
+          `no CLI running — from qhud's last ⟳, ${row.dataset.cacheAge} ago`,
         );
       } else if (q.cache_fetched_at_ms) {
         lines.push(
@@ -857,6 +915,10 @@
 
     try {
       renderQuotas(p.quotas || []);
+      // After the provider rows: workspace rows anchor to the codex row,
+      // and before any in-session fetch they come from the payload's
+      // stored copy.
+      renderCodexExtra();
       renderPlaceholders(p.account_placeholders || []);
       // Positive confirmation that the strip painted. Absence of a JS error
       // is NOT proof the strip rendered — the pixels are unverifiable from

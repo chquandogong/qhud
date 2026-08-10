@@ -11,7 +11,7 @@ use qmonster::notify::desktop::NotifyBackend;
 use qmonster::store::sink::NoopSink;
 use qmonster::tmux::TmuxSource;
 
-use crate::{accounts, demo, registry, usage_cache, view};
+use crate::{accounts, demo, fetched_store, registry, usage_cache, view};
 
 const POLL: Duration = Duration::from_secs(2);
 const LIVE_RETRY: Duration = Duration::from_secs(10);
@@ -57,7 +57,7 @@ pub fn run(app: AppHandle) {
                     Ok((reports, _notices)) => {
                         let mut payload = view::payload(&reports);
                         payload.backend = Some((*backend).to_string());
-                        view::attach_usage_cache(&mut payload, usage_cache::detect().as_ref());
+                        attach_snapshots(&mut payload);
                         let active = accounts::detect_all();
                         view::attach_accounts(&mut payload, &active);
                         view::attach_placeholders(&mut payload, &registry::load(), &active);
@@ -89,11 +89,23 @@ pub fn dump_once() -> Option<String> {
         event_loop::run_once_with_target(&mut ctx, Instant::now(), None).ok()?;
     let mut payload = view::payload(&reports);
     payload.backend = Some(backend.to_string());
-    view::attach_usage_cache(&mut payload, usage_cache::detect().as_ref());
+    attach_snapshots(&mut payload);
     let active = accounts::detect_all();
     view::attach_accounts(&mut payload, &active);
     view::attach_placeholders(&mut payload, &registry::load(), &active);
     serde_json::to_string_pretty(&payload).ok()
+}
+
+/// Snapshot enrichment shared by the poll loop and `--dump`: the fresher
+/// of Claude Code's on-disk cache and qhud's own last ⟳ feeds the Claude
+/// row (labelled with its true origin), and the stored Codex workspace
+/// rows ride along dated. Local file reads only — the loop stays passive.
+fn attach_snapshots(payload: &mut view::Payload) {
+    let store = fetched_store::load();
+    if let Some((cache, origin)) = usage_cache::fresher(usage_cache::detect(), store.claude) {
+        view::attach_usage_cache(payload, Some(&cache), origin);
+    }
+    view::attach_fetched_codex(payload, store.codex.as_ref());
 }
 
 /// Builds a live observe context through qmonster's own mux-backend
