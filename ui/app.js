@@ -568,6 +568,36 @@
       : "needs re-auth";
   });
 
+  // One gesture, every provider. Each fetch keeps its own state and
+  // failure surface, so one provider's 401 never hides another's numbers.
+  function refreshAll() {
+    refreshClaudeUsage();
+    fetchCodexWorkspaces();
+  }
+
+  const refreshAllBtn = document.getElementById("refreshAll");
+  refreshAllBtn?.addEventListener("pointerdown", (e) => {
+    // pointerdown, not click (D-009); stop the topbar drag from starting.
+    e.stopPropagation();
+    e.preventDefault();
+    refreshAll();
+  });
+
+  // The topbar button mirrors the union of the per-provider fetch states,
+  // so "something is fetching / something failed" is visible even when
+  // the strip is scrolled or the failing row is collapsed.
+  function patchRefreshAll() {
+    if (!refreshAllBtn) return;
+    const busy =
+      claudeFetch.state === "loading" || codexFetch.state === "loading";
+    refreshAllBtn.textContent = busy ? "…" : "⟳";
+    const errs = [claudeFetch.error, codexFetch.error].filter(Boolean);
+    refreshAllBtn.classList.toggle("err", !busy && errs.length > 0);
+    refreshAllBtn.title = errs.length
+      ? errs.join("\n")
+      : "refresh usage for every provider (network)";
+  }
+
   // Non-pointer trigger for the Codex fetch, relayed from `qhud --fetch-codex`
   // (a keep-below widget cannot receive synthesized clicks, D-010).
   window.__TAURI__?.event
@@ -575,6 +605,9 @@
     .catch(() => {});
   window.__TAURI__?.event
     ?.listen("qhud://refresh-claude", () => refreshClaudeUsage())
+    .catch(() => {});
+  window.__TAURI__?.event
+    ?.listen("qhud://refresh-all", () => refreshAll())
     .catch(() => {});
 
   quotasEl.addEventListener("pointerdown", (e) => {
@@ -913,6 +946,7 @@
 
     srcBadge.hidden = p.source !== "demo";
 
+    patchRefreshAll();
     try {
       renderQuotas(p.quotas || []);
       // After the provider rows: workspace rows anchor to the codex row,
@@ -1177,7 +1211,7 @@
 
     for (const bar of document.querySelectorAll(".topbar, .foot")) {
       bar.addEventListener("pointerdown", (e) => {
-        if (e.target.closest(".grip")) return;
+        if (e.target.closest(".grip, .refresh-all")) return;
         e.preventDefault();
         beginManual("move", e);
       });

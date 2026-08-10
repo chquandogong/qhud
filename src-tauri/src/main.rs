@@ -207,6 +207,10 @@ fn main() {
                 // bindable to a GNOME shortcut.
                 let _ = app.emit("qhud://fetch-codex", ());
                 eprintln!("qhud ui: fetch-codex relayed");
+            } else if argv.iter().any(|a| a == "--refresh-all") {
+                // One gesture, every provider — the topbar ⟳'s twin.
+                let _ = app.emit("qhud://refresh-all", ());
+                eprintln!("qhud ui: refresh-all relayed");
             } else {
                 eprintln!("qhud: already running (second launch absorbed)");
             }
