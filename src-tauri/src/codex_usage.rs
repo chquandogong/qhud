@@ -51,6 +51,53 @@ pub struct WorkspaceUsage {
     pub windows: Vec<UsageWindow>,
     #[serde(default)]
     pub credits_balance: Option<String>,
+    /// True for the ACTIVE login's own workspace (the default
+    /// `auth.json`). Its numbers are the same pool the pane statusline
+    /// reports, so it merges into the provider row instead of rendering
+    /// a second, clock-skewed copy of the same 7D window (D-011).
+    #[serde(default)]
+    pub active: bool,
+}
+
+/// The active workspace's fetch result in the snapshot shape, so the
+/// existing provider-row merge (`view::attach_usage_cache`) can absorb
+/// it: unscoped 5h/weekly windows become the primary gauges, every
+/// scoped pool becomes a `pool_<label>` scoped window.
+pub fn workspace_snapshot(
+    ws: &WorkspaceUsage,
+    fetched_at_ms: u64,
+) -> crate::usage_cache::CachedUsage {
+    use crate::usage_cache::{CachedUsage, CachedWindow, ScopedLimit};
+    let mut cu = CachedUsage {
+        fetched_at_ms,
+        account_id: Some(ws.account_id.clone()),
+        five_hour: None,
+        seven_day: None,
+        scoped: Vec::new(),
+        extra: None,
+    };
+    for w in &ws.windows {
+        let window = CachedWindow {
+            pct: w.used_percent,
+            reset_unix: w.reset_unix,
+        };
+        match (w.scope.as_ref(), w.label.as_str()) {
+            (None, "5h") => cu.five_hour = Some(window),
+            (None, "weekly") => cu.seven_day = Some(window),
+            (scope, label) => {
+                // Scoped pools keep their name; an unscoped window of an
+                // unexpected duration (30d, daily) falls back to the
+                // main pool's name rather than vanishing.
+                cu.scoped.push(ScopedLimit {
+                    kind: format!("pool_{label}"),
+                    scope: Some(scope.cloned().unwrap_or_else(|| "codex".to_string())),
+                    pct: w.used_percent,
+                    reset_unix: w.reset_unix,
+                });
+            }
+        }
+    }
+    cu
 }
 
 /// Maps a window duration to a human label.
@@ -203,6 +250,7 @@ pub fn parse_usage(account_id: &str, body: &str) -> Option<WorkspaceUsage> {
         plan_type: parsed.plan_type,
         windows,
         credits_balance: parsed.credits.and_then(|c| c.balance),
+        active: false,
     })
 }
 
@@ -315,6 +363,7 @@ pub fn parse_app_server_rate_limits(line: &str, account_id: &str) -> Option<Work
         plan_type: top.plan_type,
         windows,
         credits_balance: top.credits.and_then(|c| c.balance),
+        active: false,
     })
 }
 
@@ -578,6 +627,10 @@ pub async fn fetch_all_workspaces() -> Result<Vec<WorkspaceUsage>, String> {
                     if usage.plan_type.is_none() {
                         usage.plan_type = plan;
                     }
+                    // The default auth.json is the ACTIVE login: its
+                    // workspace merges into the provider row (D-011)
+                    // instead of rendering as a second ↳ row.
+                    usage.active = file == "auth.json";
                     out.push(usage);
                 }
                 None => {
@@ -599,8 +652,9 @@ pub async fn fetch_all_workspaces() -> Result<Vec<WorkspaceUsage>, String> {
                 // without qhud touching any credential.
                 if file == "auth.json" {
                     match fetch_via_app_server().await {
-                        Ok(w) => {
+                        Ok(mut w) => {
                             eprintln!("qhud: codex active login recovered via app-server");
+                            w.active = true;
                             out.push(w);
                         }
                         Err(e2) => {
@@ -823,6 +877,45 @@ mod tests {
                 .any(|x| x.used_percent == 4 && x.scope.as_deref() == Some("GPT-5.3-Codex-Spark")),
             "per-model pool survives with its limitName as scope"
         );
+    }
+
+    #[test]
+    fn workspace_snapshot_maps_windows_onto_the_provider_row_shape() {
+        let ws = WorkspaceUsage {
+            account_id: "acct-1".into(),
+            windows: vec![
+                UsageWindow {
+                    label: "5h".into(),
+                    used_percent: 9,
+                    reset_unix: Some(1_786_350_000),
+                    scope: None,
+                },
+                UsageWindow {
+                    label: "weekly".into(),
+                    used_percent: 41,
+                    reset_unix: Some(1_786_937_652),
+                    scope: None,
+                },
+                UsageWindow {
+                    label: "weekly".into(),
+                    used_percent: 4,
+                    reset_unix: Some(1_786_937_652),
+                    scope: Some("GPT-5.3-Codex-Spark".into()),
+                },
+            ],
+            ..Default::default()
+        };
+
+        let cu = workspace_snapshot(&ws, 7);
+
+        assert_eq!(cu.fetched_at_ms, 7);
+        assert_eq!(cu.account_id.as_deref(), Some("acct-1"));
+        assert_eq!(cu.five_hour.as_ref().map(|w| w.pct), Some(9));
+        assert_eq!(cu.seven_day.as_ref().map(|w| w.pct), Some(41));
+        assert_eq!(cu.scoped.len(), 1, "scoped pools survive as chips");
+        assert_eq!(cu.scoped[0].kind, "pool_weekly");
+        assert_eq!(cu.scoped[0].scope.as_deref(), Some("GPT-5.3-Codex-Spark"));
+        assert_eq!(cu.scoped[0].pct, 4);
     }
 
     #[test]

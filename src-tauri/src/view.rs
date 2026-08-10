@@ -365,10 +365,16 @@ pub fn attach_extra_account(
 }
 
 /// Exposes qhud's last explicit Codex fetch on the payload, dated, so the
-/// workspace rows survive a restart. With no codex pane running, the rows
-/// need a provider row to hang from — synthesize one, marked `fetched`,
-/// for the same reason the Claude snapshot synthesizes its own (rule 3 of
-/// `attach_usage_cache`); a live pane row is never touched.
+/// workspace rows survive a restart.
+///
+/// The ACTIVE login's own workspace is the same pool the pane statusline
+/// reports, so its numbers merge into the codex provider row through the
+/// standard snapshot rules (pane wins, holes fill, scoped pools become
+/// chips) instead of rendering a second, clock-skewed copy of the same
+/// 7D window. Every workspace still rides `codex_workspaces` — the
+/// frontend renders a ↳ row only for the non-active ones. With no codex
+/// pane and no mergeable windows, a bare row is synthesized so the ↳
+/// rows keep an anchor.
 pub fn attach_fetched_codex(
     payload: &mut Payload,
     codex: Option<&crate::fetched_store::CodexFetched>,
@@ -376,6 +382,10 @@ pub fn attach_fetched_codex(
     let Some(codex) = codex else { return };
     payload.codex_workspaces = codex.workspaces.clone();
     payload.codex_fetched_at_ms = Some(codex.fetched_at_ms);
+    if let Some(ws) = codex.workspaces.iter().find(|w| w.active) {
+        let snap = crate::codex_usage::workspace_snapshot(ws, codex.fetched_at_ms);
+        attach_usage_cache(payload, "codex", Some(&snap), "fetched");
+    }
     if codex.workspaces.is_empty() || payload.quotas.iter().any(|q| q.provider == "codex") {
         return;
     }
@@ -859,6 +869,60 @@ mod tests {
         assert!(row.h5.is_none() && row.d7.is_none());
         assert!(row.origin.is_none(), "no snapshot, no origin claim");
         assert!(row.account.is_some(), "the identity is the whole point");
+    }
+
+    #[test]
+    fn active_workspace_merges_into_the_codex_row_instead_of_duplicating() {
+        use crate::codex_usage::{UsageWindow, WorkspaceUsage};
+        let fetched = crate::fetched_store::CodexFetched {
+            fetched_at_ms: 1_786_000_000_000,
+            workspaces: vec![
+                WorkspaceUsage {
+                    account_id: "ws-active".into(),
+                    name: Some("personal".into()),
+                    windows: vec![UsageWindow {
+                        label: "weekly".into(),
+                        used_percent: 2,
+                        reset_unix: Some(1_786_947_317),
+                        scope: None,
+                    }],
+                    active: true,
+                    ..Default::default()
+                },
+                WorkspaceUsage {
+                    account_id: "ws-other".into(),
+                    name: Some("business".into()),
+                    ..Default::default()
+                },
+            ],
+        };
+
+        // No codex pane: the active workspace IS the provider row now —
+        // its gauges land there instead of on a second, clock-skewed row.
+        let mut p = payload_of(vec![]);
+        attach_fetched_codex(&mut p, Some(&fetched));
+        let rows: Vec<&ProviderQuota> = p.quotas.iter().filter(|q| q.provider == "codex").collect();
+        assert_eq!(rows.len(), 1, "one codex row, not one per copy of the pool");
+        assert_eq!(rows[0].origin, Some("fetched"));
+        assert_eq!(rows[0].d7.as_ref().map(|g| g.pct), Some(2));
+        // Both workspaces still ride the payload; the frontend renders a
+        // ↳ row only for the non-active one.
+        assert_eq!(p.codex_workspaces.len(), 2);
+        assert!(p.codex_workspaces.iter().any(|w| w.active));
+
+        // With a live codex pane the pane reading survives (rule 1) and
+        // the fetch only enriches.
+        let mut live = payload_of(vec![pane("codex", "codex:1:review", Some(40), None)]);
+        attach_fetched_codex(&mut live, Some(&fetched));
+        let row = live.quotas.iter().find(|q| q.provider == "codex").unwrap();
+        assert_eq!(row.origin, Some("pane"));
+        assert_eq!(row.h5.as_ref().map(|g| g.pct), Some(40), "pane wins");
+        assert_eq!(
+            row.d7.as_ref().map(|g| g.pct),
+            Some(2),
+            "the fetch fills the window the pane did not carry"
+        );
+        assert_eq!(row.cache_fetched_at_ms, Some(1_786_000_000_000));
     }
 
     #[test]

@@ -102,7 +102,12 @@ Emitted as Tauri event `qhud://report`; see `src-tauri/src/view.rs`.
                  "scope": "GPT-5.3-Codex-Spark"}], // scope = pool name; absent on the
                                                    // main pool. Duration alone labels
                                                    // both "weekly" (additive, v0.5.0)
-    "credits_balance": "345.57"
+    "credits_balance": "345.57",
+    "active": true                       // the default login's own workspace — the SAME
+                                         // pool the pane statusline feeds the codex row,
+                                         // so it merges there (name on the row, windows
+                                         // via snapshot rules); a ↳ row renders only for
+                                         // active:false entries (additive, v0.5.0)
   }],                                    // dated by codex_fetched_at_ms; stored ≠ live
   "codex_fetched_at_ms": 0,              // additive, v0.5.0
   "generated_at_ms": 0,

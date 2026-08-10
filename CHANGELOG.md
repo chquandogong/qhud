@@ -82,6 +82,14 @@ expired token, extra-usage spend, and readings that survive a restart.
   `limitName`, wire id as fallback) on both the HTTP and app-server
   paths; the chip reads "Codex-Spark wk" (version prefix dropped for
   width, full name in the tooltip) and the main pool stays "weekly".
+- **The codex account row and its `↳` workspace row showed the same 7D
+  pool twice, clock-skewed** (operator report, same D-011 root). The
+  pane statusline on the account row IS the active login's workspace,
+  so the fetched copy of that workspace now merges into the account row
+  (pane wins, holes fill, per-model pools become chips) and the row
+  names the workspace it shows (`chquan17@gmail.com · personal`, plan
+  and credits in the tooltip). `↳` rows render only for OTHER
+  workspaces, where a differing value means something.
 - **CI was red on main since e6e31ed**: clippy `-D warnings` tripped
   over dead `read_auth()` and the unmodelled `structure` field left
   behind by the every-credential change. Both removed.

@@ -440,6 +440,26 @@
     renderCodexExtra();
   }
 
+  // A workspace's windows in the snapshot shape the row-override path
+  // expects (the JS twin of the backend's workspace_snapshot).
+  function wsToUsage(w) {
+    const u = { five_hour: null, seven_day: null, scoped: [] };
+    for (const x of w.windows || []) {
+      if (!x.scope && x.label === "5h")
+        u.five_hour = { pct: x.used_percent, reset_unix: x.reset_unix };
+      else if (!x.scope && x.label === "weekly")
+        u.seven_day = { pct: x.used_percent, reset_unix: x.reset_unix };
+      else
+        u.scoped.push({
+          kind: `pool_${x.label}`,
+          scope: x.scope || "codex",
+          pct: x.used_percent,
+          reset_unix: x.reset_unix,
+        });
+    }
+    return u;
+  }
+
   // The workspace rows to show: a fetch made this session always wins;
   // before any fetch, the stored rows from qhud's LAST explicit fetch
   // (riding the payload) render instead — dated, never passing for live.
@@ -490,9 +510,21 @@
     }
 
     const { rows, at, stored } = codexSource();
-    if (rows.length === 0) return; // renderQuotas already hid the caption
-    const caption = `${rows.length} ws${at ? ` · ⟳ ${fmtAgeMs(at)} ago` : ""}`;
-    const sig = `${stored}:${at}:${rows.length}`;
+    // The ACTIVE login's workspace lives merged on the provider row
+    // (same pool as the pane statusline — two rows would be the same 7D
+    // twice, clock-skewed); ↳ rows are for the others only.
+    const visible = rows.filter((w) => !w.active);
+    if (visible.length === 0) {
+      // Nothing to hang below the row; provenance lives on the row/tooltip.
+      const sig = `${stored}:${at}:0`;
+      if (sig !== codexRowsSig) {
+        codexRowsSig = sig;
+        clearRows();
+      }
+      return;
+    }
+    const caption = `${visible.length} ws${at ? ` · ⟳ ${fmtAgeMs(at)} ago` : ""}`;
+    const sig = `${stored}:${at}:${visible.length}`;
     ageEl.hidden = false;
     ageEl.textContent = caption;
     if (sig === codexRowsSig) return; // same rows; only the caption moved
@@ -508,7 +540,7 @@
     // name comes from the registry via account.plan.
 
     let after = anchor;
-    for (const w of rows) {
+    for (const w of visible) {
       const row = el("div", `q-row q-ws${stored ? " q-stored" : ""}`);
       row.dataset.wsid = w.account_id;
       const wins = (w.windows || []).filter((x) => x.used_percent != null);
@@ -572,7 +604,9 @@
     // not prove the workspace rows rendered (the pixels are unverifiable from
     // outside the webview, D-010).
     window.__TAURI__?.core?.invoke("ui_event", {
-      event: `codex-ws-rows: ${rows.length} ${stored ? "stored" : "fetched"}, ${
+      event: `codex-ws-rows: ${rows.length} ${stored ? "stored" : "fetched"} (${
+        rows.length - visible.length
+      } merged into the row), ${
         quotasEl.querySelectorAll("[data-wsid]").length
       } rendered`,
     });
@@ -783,13 +817,14 @@
   const winLabel = (label) => WIN_DISPLAY[label] || label;
 
   // A scoped window's chip label: Claude's per-model weekly caps
-  // (weekly_scoped) and agy's non-primary pools (pool_5h / pool_weekly).
-  // Unknown kinds return null and stay tooltip-only.
+  // (weekly_scoped) and any provider's non-primary pools (pool_<label>:
+  // agy's 3p pools, codex's per-model limits). Unknown kinds return null
+  // and stay tooltip-only.
   function scopedChipLabel(x) {
     if (!x.scope) return null;
-    if (x.kind === "weekly_scoped" || x.kind === "pool_weekly")
-      return `${x.scope} 7D`;
-    if (x.kind === "pool_5h") return `${x.scope} 5H`;
+    if (x.kind === "weekly_scoped") return `${x.scope} 7D`;
+    if (x.kind?.startsWith("pool_"))
+      return `${x.scope} ${winLabel(x.kind.slice(5))}`;
     return null;
   }
 
@@ -867,13 +902,29 @@
                 (r.key === "default" && !q.account?.account_id),
             )
           : null;
-      // The agy analog is a single account; its RPC read has the same
-      // snapshot shape, so the same override path applies.
+      // The active codex workspace is merged into this row (its ↳ row
+      // would be the same pool twice) — so the row must SAY which
+      // workspace it is showing.
+      const activeWs =
+        q.provider === "codex"
+          ? codexSource().rows.find(
+              (w) =>
+                w.active &&
+                (!q.account?.account_id ||
+                  w.account_id === q.account.account_id),
+            )
+          : null;
+      // The agy RPC read and the codex active-workspace fetch have the
+      // same snapshot shape as Claude's ⟳, so one override path serves
+      // all three. Codex only counts when fetched THIS session — the
+      // stored copy already reached this row through the backend merge,
+      // dated.
       const liveUsage =
         liveFetch?.usage ||
         (q.provider === "agy" && agyFetch.state === "done"
           ? agyFetch.data
-          : null);
+          : null) ||
+        (activeWs && codexFetch.state === "done" ? wsToUsage(activeWs) : null);
       // The provider name lives in the section header now, so the row's own
       // slot carries the ACCOUNT — the thing that actually differs per row.
       row.querySelector(".q-prov").textContent = "";
@@ -881,7 +932,17 @@
       // indistinguishable; the chip stays empty when no account is known.
       const acctEl = row.querySelector(".q-acct");
       acctEl.textContent = q.account?.display || "";
-      acctEl.hidden = !q.account?.display;
+      // "whose quota" now includes WHICH workspace of that login. Name
+      // precedence matches the ↳ rows: the operator's registry mapping
+      // first, then whatever the server supplied.
+      const activeWsName = activeWs
+        ? (state.payload?.workspace_names || {})[activeWs.account_id] ||
+          activeWs.name
+        : null;
+      if (activeWsName && acctEl.textContent) {
+        acctEl.textContent += ` · ${activeWsName}`;
+      }
+      acctEl.hidden = !acctEl.textContent;
 
       // Plan / seat, inline rather than tooltip-only: "whose quota and on
       // what plan" is the question the strip exists to answer, and hover
@@ -985,6 +1046,15 @@
         // A team seat carries an org pool AND the member's own seat, each
         // with its own tier — collapsing them would hide a pool.
         for (const t of a.tiers || []) lines.push(`${t.kind} tier: ${t.tier}`);
+      }
+      if (activeWs) {
+        lines.push(
+          `workspace: ${activeWsName || activeWs.account_id.slice(0, 8)} (active login)`,
+        );
+        if (activeWs.plan_type)
+          lines.push(`plan_type (wire): ${activeWs.plan_type}`);
+        if (activeWs.credits_balance)
+          lines.push(`credits ${activeWs.credits_balance}`);
       }
       if (q.from_label) {
         lines.push(

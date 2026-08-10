@@ -158,6 +158,7 @@ mod tests {
                         scope: None,
                     }],
                     credits_balance: None,
+                    active: true,
                 }],
             }),
             claude_extras: std::collections::BTreeMap::new(),
