@@ -301,3 +301,54 @@ Format: context → options → decision → rationale → residual risk.
   steady state as safe as it was when it had no network code at all.
 - **Evidence**: 22.8 MB measured; `SPEC.md` non-functional section
   updated in the same change.
+
+## D-015 · Multi-account = per-account CLI config dirs, not qhud-owned logins
+
+- **Context**: the operator's stated purpose for qhud (2026-08-10) is
+  every account's usage and reset times at a glance — several accounts
+  per provider — with explicit refresh, so they never open the provider
+  web pages again. v0.4.0's known limit said "one live login per
+  provider"; that was a fact of reading only the default credential
+  path, not of the machine: Claude Code keeps a complete identity +
+  usage cache + credential per `CLAUDE_CONFIG_DIR`, and Codex per
+  `CODEX_HOME`.
+- **Decision**: the registry (`~/.config/qhud/accounts.json`) gains
+  `claude_config_dirs` and `codex_homes`. Each Claude dir contributes
+  its own strip row — identity from that dir's `.claude.json`, numbers
+  from the fresher of its own usage cache and qhud's last ⟳ for it —
+  and one ⟳ walks every account, recording each under its own store
+  key. Codex extra homes join the existing every-credential scan.
+  Login and token rotation stay with the CLIs; qhud still never runs a
+  refresh grant.
+- **Rejected**: qhud holding its own per-account OAuth logins (device
+  flow). It is the only route to full independence from the CLIs, but
+  it moves credential custody, rotation failure ("bricked login") and
+  policy risk into a HUD. Revisit only if the config-dir route proves
+  insufficient in practice.
+- **Known limits**: a pane's account is not attributable, so pane-fed
+  gauges always land on the default account's row. agy multi-account
+  needs OS-keyring reverse engineering — not attempted.
+- **Evidence**: live `--dump` with a second config dir shows two claude
+  rows with their own tiers/origins/ages; `fetch_all` logs a partial
+  error for a credential-less dir while the default still fetches.
+
+## D-016 · Delegated fetch paths: the provider's own process may do the talking
+
+- **Context**: two failure modes the raw paths cannot fix — an expired
+  Codex access token 401s (and qhud must never run the rotated,
+  single-use refresh grant), and agy exposes no HTTP usage endpoint
+  qhud could call with a stored credential at all (live token in the
+  OS keyring).
+- **Decision**: extend D-014's "network only on request" with a third
+  kind of on-request path — asking the provider's OWN process:
+  `codex -s read-only -a untrusted app-server` (JSON-RPC over stdio,
+  `account/rateLimits/read`) as a fallback for the active login, and
+  agy's loopback Connect RPC `RetrieveUserQuotaSummary` (tokenless,
+  machine-local, /proc port discovery). In both, credential custody and
+  rotation stay entirely with the CLI; qhud reads no token.
+- **Ordering**: raw HTTP first for Codex (fast), app-server only on
+  failure of the active login; agy has no raw path, so loopback is
+  primary. Both remain click-only — the 2 s poll loop is unchanged.
+- **Evidence**: `--codex-appserver` returns the active workspace with
+  plan/credits/windows; `--agy-usage` discovered the port and parsed
+  all four pools live.

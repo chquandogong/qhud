@@ -56,10 +56,14 @@ cargo build --release          # binary at target/release/qhud
   **not** proof anything painted.
 - **Fetch paths without clicking** (a keep-below widget does not receive
   synthesized pointer input, D-010):
-  `qhud --refresh-claude` and `qhud --fetch-codex` relay to the running
-  widget through the single-instance channel — bindable to a shortcut.
-  `qhud --claude-usage` and `qhud --codex-usage` run the same fetches
-  standalone and print JSON.
+  `qhud --refresh-all`, `qhud --refresh-claude` and `qhud --fetch-codex`
+  relay to the running widget through the single-instance channel —
+  bindable to a shortcut. `qhud --claude-usage`, `qhud --codex-usage` and
+  `qhud --agy-usage` run the same fetches standalone, print JSON, and
+  record to the fetched store exactly like a click. `qhud
+--codex-appserver` exercises the expired-token fallback on demand.
+  `QHUD_EXTRA_DIAG=1 qhud --claude-usage` prints the live body's
+  identity-free `extra_usage`/`spend` sub-objects for shape drift.
 - **Accounts and plans** live in `~/.config/qhud/accounts.json`,
   deliberately outside this public repo. `labels` / `plans` /
   `workspace_names` / `workspace_plans` set display text; `known[]`
@@ -67,6 +71,29 @@ cargo build --release          # binary at target/release/qhud
   a live account). Display names are operator-supplied and must never be
   "corrected" from a wire `plan_type` — `prolite` is shown as ChatGPT
   Pro 5x, `team` as ChatGPT Business.
+- **Several accounts per provider** (D-015): keep each extra account
+  signed in under its own dir, then register the dir —
+
+  ```bash
+  CLAUDE_CONFIG_DIR=~/claude-personal claude   # sign in once, keep it
+  CODEX_HOME=~/.codex-dogu codex login          # same idea for codex
+  ```
+
+  ```jsonc
+  // ~/.config/qhud/accounts.json
+  {
+    "claude_config_dirs": ["~/claude-personal"],
+    "codex_homes": ["~/.codex-dogu"],
+  }
+  ```
+
+  Each Claude dir renders as its own row (identity + its own snapshot
+  - ⟳); Codex extra homes join the every-credential scan. A dir whose
+    account matches the default is skipped, not duplicated.
+
+- **qhud's own ⟳ results** persist in `~/.config/qhud/fetched-usage.json`
+  (same outside-the-repo privacy rule; written temp+rename). Deleting it
+  is always safe — the next ⟳ rebuilds it.
 
 ## Autostart + app launcher (GNOME)
 

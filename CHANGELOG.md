@@ -2,6 +2,80 @@
 
 All notable changes to qhud. Format: [Keep a Changelog](https://keepachangelog.com/), versioning: [SemVer](https://semver.org/).
 
+## [0.5.0] — 2026-08-10
+
+Every account, at a glance, without the provider web pages: several
+Claude accounts at once, agy without a pane, Codex that survives an
+expired token, extra-usage spend, and readings that survive a restart.
+
+### Added
+
+- **Several Claude accounts at once** (D-015, FR-22). The registry
+  gains `claude_config_dirs` / `codex_homes`: each Claude config dir
+  kept signed in via `CLAUDE_CONFIG_DIR` contributes its own strip
+  row — identity from that dir's `.claude.json`, numbers from the
+  fresher of its usage cache and qhud's last ⟳ for it, dated with
+  true origin. One ⟳ walks every account; an expired one logs a
+  partial error and never hides the others. "One live login per
+  provider" is now a default, not a ceiling.
+- **Explicit-fetch results persist** (FR-20).
+  `~/.config/qhud/fetched-usage.json` (temp+rename, outside the repo)
+  keeps the last ⟳ per provider and per extra account; on restart the
+  freshest snapshot renders dated (`⟳ 12m ago` vs `~22h old`) instead
+  of falling back to a day-old CLI cache. Stored Codex workspace rows
+  ride the payload dimmed, and synthesize a provider row when no
+  codex pane runs.
+- **Claude extra-usage spend** (FR-19): the usage endpoint's
+  `spend`/`extra_usage` pair — the last thing the provider's own page
+  shows that qhud dropped — normalized to minor-unit money and shown
+  on the claude account line (`extra $X.XX[/limit]`),
+  severity-tinted, detailed in the tooltip. A bare-float limit is
+  dropped rather than scale-guessed.
+- **agy quota on ⟳, no pane required** (FR-23). A running agy binds
+  loopback Connect listeners; `RetrieveUserQuotaSummary` answers the
+  CLI surface with no token and no CSRF. Port discovery is
+  /proc-only; gemini pools take the primary gauges, every other pool
+  (3p-\*, future ones) becomes a scoped `pool_5h`/`pool_weekly` chip.
+  `qhud --agy-usage` is the CLI twin.
+- **Codex app-server fallback** (FR-24): when the active login's raw
+  `/wham` fetch fails (typically an expired access token), a
+  short-lived `codex -s read-only -a untrusted app-server` child
+  answers `account/rateLimits/read` — Codex owns its own rotation, so
+  the reading works without qhud touching a credential.
+  `qhud --codex-appserver` exercises the path on demand (FR-18).
+- **One ⟳ for everything** (FR-21): a topbar button (excluded from
+  the drag region) refreshes every provider concurrently and mirrors
+  the union of fetch states; `qhud --refresh-all` relays from a GNOME
+  shortcut. Per-provider triggers stay; the agy row gets its own ⟳.
+- **`QHUD_EXTRA_DIAG=1`**: env-gated, identity-free dump of the live
+  body's `extra_usage`/`spend` sub-objects, for shape drift. Used to
+  prove a surprise was real data, not a parse bug: the org had
+  disabled extra usage while the day-old cache still said enabled.
+
+### Changed
+
+- Snapshot merging: a pane row's MISSING window is now filled from
+  the snapshot (filling a hole is not overriding a reading — seen
+  live on an agy pane that carried only the weekly window). Scoped
+  windows render as gauges only on rows whose provenance caption
+  covers them (snapshot-origin rows; dimmed with the stale marker on
+  CLI-cache rows); pane rows keep them tooltip-only (the v0.4.0
+  Fable lesson).
+- `fetch_claude_usage` returns one entry per account;
+  `attach_usage_cache` is provider-generic; strip rows are keyed by
+  (provider, account) instead of provider.
+- tokio gains `process`/`io-util`/`time` for the app-server child.
+
+### Fixed
+
+- **CI was red on main since e6e31ed**: clippy `-D warnings` tripped
+  over dead `read_auth()` and the unmodelled `structure` field left
+  behind by the every-credential change. Both removed.
+- `attach_accounts` used to stamp the first detected account onto
+  EVERY row of a provider — with multi-account rows that would have
+  relabelled one account's numbers with another's name (caught by
+  test before it shipped).
+
 ## [0.4.0] — 2026-08-07
 
 Quota you can trust: the numbers now match what the providers' own
