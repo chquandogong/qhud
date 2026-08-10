@@ -544,13 +544,13 @@
           reset.textContent = fmtReset(x.reset_unix);
         }
         // A per-model pool has the same duration as the main one — the
-        // NAME is the only thing telling two "weekly" chips apart. The
-        // version prefix is dropped for width ("GPT-5.3-Codex-Spark" →
+        // NAME is the only thing telling two 7D chips apart. The version
+        // prefix is dropped for width ("GPT-5.3-Codex-Spark" →
         // "Codex-Spark"); the full name stays in the chip tooltip.
-        let labelText = x.label;
+        let labelText = winLabel(x.label);
         if (x.scope) {
           const short = x.scope.replace(/^GPT-[\d.]+-/, "");
-          labelText = `${short} ${x.label === "weekly" ? "wk" : x.label}`;
+          labelText = `${short} ${labelText}`;
           chip.title = x.scope;
         }
         chip.append(el("span", "q-label", labelText), track, val, reset);
@@ -768,14 +768,28 @@
     return h;
   }
 
+  // One vocabulary for one fact: every window is named by its duration —
+  // 5H, 1D, 7D, 30D — everywhere. The wire says "weekly"/"30d" on codex
+  // windows and the operator rightly asked whether "weekly" and "7D"
+  // were different things; they are the same 7-day rolling window, so
+  // they must carry the same name.
+  const WIN_DISPLAY = {
+    "5h": "5H",
+    daily: "1D",
+    weekly: "7D",
+    "30d": "30D",
+    yearly: "1Y",
+  };
+  const winLabel = (label) => WIN_DISPLAY[label] || label;
+
   // A scoped window's chip label: Claude's per-model weekly caps
   // (weekly_scoped) and agy's non-primary pools (pool_5h / pool_weekly).
   // Unknown kinds return null and stay tooltip-only.
   function scopedChipLabel(x) {
     if (!x.scope) return null;
     if (x.kind === "weekly_scoped" || x.kind === "pool_weekly")
-      return `${x.scope} wk`;
-    if (x.kind === "pool_5h") return `${x.scope} 5h`;
+      return `${x.scope} 7D`;
+    if (x.kind === "pool_5h") return `${x.scope} 5H`;
     return null;
   }
 
@@ -1165,12 +1179,18 @@
   function logLabels(tag) {
     try {
       const lines = [...quotasEl.querySelectorAll(".q-row")]
-        .map((r) =>
-          [".q-prov", ".q-acct", ".q-plan"]
+        .map((r) => {
+          const ident = [".q-prov", ".q-acct", ".q-plan"]
             .map((sel) => r.querySelector(sel)?.textContent || "")
             .filter(Boolean)
-            .join("|"),
-        )
+            .join("|");
+          // Gauge labels too: a wrong window NAME (weekly vs 7D) is
+          // exactly the kind of bug counts cannot catch.
+          const chips = [...r.querySelectorAll(".q-label")]
+            .map((l) => l.textContent)
+            .join(",");
+          return ident + (chips ? ` [${chips}]` : "");
+        })
         .filter(Boolean)
         .join("  /  ");
       window.__TAURI__?.core?.invoke("ui_event", {

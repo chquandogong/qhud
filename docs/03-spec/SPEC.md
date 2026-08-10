@@ -137,7 +137,11 @@ quota is account-scoped (provider strip; per-pane `gauges.h5/d7`
 stay in the payload but tiles do not render them); CTX/status are
 pane-scoped. Pressures leave the backend as integer percents;
 reset instants as unix seconds (frontend owns countdown text); the
-webview never sees qmonster types.
+webview never sees qmonster types. Window labels are wire values
+(`5h`/`daily`/`weekly`/`30d`); the frontend displays ONE duration
+vocabulary — `5H`/`1D`/`7D`/`30D` — everywhere, because "weekly" and
+"7D" are the same 7-day rolling window and one fact must not wear two
+names (v0.5.0, operator report).
 
 ## Out of scope (v0.1)
 

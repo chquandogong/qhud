@@ -61,6 +61,12 @@ expired token, extra-usage spend, and readings that survive a restart.
   covers them (snapshot-origin rows; dimmed with the stale marker on
   CLI-cache rows); pane rows keep them tooltip-only (the v0.4.0
   Fable lesson).
+- **One window vocabulary** (operator report): the strip said `7D`
+  while codex workspace rows said `weekly` and scoped chips said `wk` —
+  three names for the same 7-day rolling window. The frontend now
+  displays duration names everywhere (`5H`/`1D`/`7D`/`30D`); wire
+  labels are unchanged. `labels(...)` breadcrumbs now include gauge
+  labels, so a wrong window name is visible from stderr.
 - `fetch_claude_usage` returns one entry per account;
   `attach_usage_cache` is provider-generic; strip rows are keyed by
   (provider, account) instead of provider.

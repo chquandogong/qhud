@@ -37,7 +37,7 @@ CLAUDE
   chquan@dogu.xyz     team (max_5x)  extra $0.00       ⟳
     5H        ███░░░░░░░   8%   resets 2h10m
     7D        ██░░░░░░░░  15%   resets 5d
-    Fable wk  ██░░░░░░░░  22%   resets 5d
+    Fable 7D  ██░░░░░░░░  22%   resets 5d
   me@gmail.com        pro (max_20x)         ⟳ 12m ago
     5H        ████░░░░░░  42%   resets 1h03m
 CODEX
@@ -47,7 +47,7 @@ AGY
   chquan17@gmail.com  Google AI Pro                    ⟳
     5H        ░░░░░░░░░░   0%   resets 4h
     7D        ░░░░░░░░░░   0%   resets 6d
-    3p 5h     ░░░░░░░░░░   0%   resets 4h
+    3p 5H     ░░░░░░░░░░   0%   resets 4h
 ⌵ 4 accounts need auth
 ```
 
