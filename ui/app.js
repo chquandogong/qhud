@@ -543,7 +543,17 @@
           reset.dataset.resetUnix = x.reset_unix;
           reset.textContent = fmtReset(x.reset_unix);
         }
-        chip.append(el("span", "q-label", x.label), track, val, reset);
+        // A per-model pool has the same duration as the main one — the
+        // NAME is the only thing telling two "weekly" chips apart. The
+        // version prefix is dropped for width ("GPT-5.3-Codex-Spark" →
+        // "Codex-Spark"); the full name stays in the chip tooltip.
+        let labelText = x.label;
+        if (x.scope) {
+          const short = x.scope.replace(/^GPT-[\d.]+-/, "");
+          labelText = `${short} ${x.label === "weekly" ? "wk" : x.label}`;
+          chip.title = x.scope;
+        }
+        chip.append(el("span", "q-label", labelText), track, val, reset);
         row.append(chip);
       }
       if (wins.length === 0) row.append(el("span", "q-age", "no window"));

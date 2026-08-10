@@ -68,6 +68,14 @@ expired token, extra-usage spend, and readings that survive a restart.
 
 ### Fixed
 
+- **Two identically-labelled "weekly" chips with different values on a
+  Codex workspace row** (operator report — the D-011 class of mistake
+  again). The main pool and the per-model pools share a 7-day duration,
+  and the label was derived from duration alone, dropping the pool
+  name. `UsageWindow` now carries `scope` (from `limit_name` /
+  `limitName`, wire id as fallback) on both the HTTP and app-server
+  paths; the chip reads "Codex-Spark wk" (version prefix dropped for
+  width, full name in the tooltip) and the main pool stays "weekly".
 - **CI was red on main since e6e31ed**: clippy `-D warnings` tripped
   over dead `read_auth()` and the unmodelled `structure` field left
   behind by the every-credential change. Both removed.

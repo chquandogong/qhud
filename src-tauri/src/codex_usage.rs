@@ -31,6 +31,12 @@ pub struct UsageWindow {
     pub used_percent: u8,
     #[serde(default)]
     pub reset_unix: Option<u64>,
+    /// Which pool this window belongs to, when it is NOT the account's
+    /// main one (e.g. a per-model limit like "GPT-5.3-Codex-Spark").
+    /// Duration alone labels both pools "weekly" — one name over two
+    /// different values is the D-011 mistake all over again.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub scope: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
@@ -107,6 +113,12 @@ struct RateLimit {
 struct AdditionalLimit {
     #[serde(default)]
     rate_limit: Option<RateLimit>,
+    /// Human pool name ("GPT-5.3-Codex-Spark"); the window's scope.
+    #[serde(default)]
+    limit_name: Option<String>,
+    /// Wire id ("codex_bengalfox") — the fallback when no name is given.
+    #[serde(default)]
+    metered_feature: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -133,6 +145,7 @@ impl RawWindow {
             label: window_label(self.limit_window_seconds.unwrap_or(0)),
             used_percent: self.used_percent?.round().clamp(0.0, 100.0) as u8,
             reset_unix: self.reset_at.and_then(|t| u64::try_from(t).ok()),
+            scope: None,
         })
     }
 }
@@ -169,8 +182,20 @@ pub fn parse_usage(account_id: &str, body: &str) -> Option<WorkspaceUsage> {
             .additional_rate_limits
             .unwrap_or_default()
             .into_iter()
-            .filter_map(|a| a.rate_limit)
-            .flat_map(RateLimit::windows),
+            .filter_map(|a| {
+                // The pool name is what distinguishes this window from the
+                // main one — both are "weekly" by duration.
+                let scope = a.limit_name.or(a.metered_feature);
+                Some((scope, a.rate_limit?))
+            })
+            .flat_map(|(scope, rl)| {
+                rl.windows()
+                    .map(move |mut w| {
+                        w.scope = scope.clone();
+                        w
+                    })
+                    .collect::<Vec<_>>()
+            }),
     );
     Some(WorkspaceUsage {
         account_id: account_id.to_string(),
@@ -207,6 +232,10 @@ pub fn parse_app_server_rate_limits(line: &str, account_id: &str) -> Option<Work
     #[serde(rename_all = "camelCase")]
     struct Limits {
         #[serde(default)]
+        limit_id: Option<String>,
+        #[serde(default)]
+        limit_name: Option<String>,
+        #[serde(default)]
         primary: Option<Win>,
         #[serde(default)]
         secondary: Option<Win>,
@@ -236,6 +265,7 @@ pub fn parse_app_server_rate_limits(line: &str, account_id: &str) -> Option<Work
             label: window_label(w.window_duration_mins.unwrap_or(0) * 60),
             used_percent: w.used_percent?.round().clamp(0.0, 100.0) as u8,
             reset_unix: w.resets_at.and_then(|t| u64::try_from(t).ok()),
+            scope: None,
         })
     };
 
@@ -256,13 +286,26 @@ pub fn parse_app_server_rate_limits(line: &str, account_id: &str) -> Option<Work
         );
     } else {
         // The by-id map carries every pool including the main one, so it
-        // is the whole truth when present.
-        for (_, l) in result.rate_limits_by_limit_id {
+        // is the whole truth when present. The main pool stays unscoped;
+        // every other pool wears its name (both are "weekly" by duration,
+        // and one label over two values is the D-011 mistake).
+        let main_id = top.limit_id.clone();
+        for (id, l) in result.rate_limits_by_limit_id {
+            let is_main = main_id.as_deref().map_or(id == "codex", |m| id == m);
+            let scope = if is_main {
+                None
+            } else {
+                l.limit_name.clone().or(Some(id))
+            };
             windows.extend(
                 [l.primary, l.secondary]
                     .into_iter()
                     .flatten()
-                    .filter_map(win),
+                    .filter_map(win)
+                    .map(|mut w| {
+                        w.scope = scope.clone();
+                        w
+                    }),
             );
         }
     }
@@ -654,6 +697,33 @@ mod tests {
     }
 
     #[test]
+    fn per_model_windows_carry_their_pool_name_the_main_one_does_not() {
+        // Both pools are 7-day windows, so duration alone labels them
+        // both "weekly" — two chips with one name and different values
+        // (the operator read that as a bug, and rightly so). The pool
+        // NAME is the distinguishing fact and must survive parsing.
+        let u = parse_usage("acct-1", USAGE_BODY).unwrap();
+
+        let main = u
+            .windows
+            .iter()
+            .find(|w| w.used_percent == 80)
+            .expect("main pool window");
+        assert_eq!(main.scope, None, "the account's main pool is unscoped");
+
+        let spark = u
+            .windows
+            .iter()
+            .find(|w| w.used_percent == 4)
+            .expect("per-model pool window");
+        assert_eq!(
+            spark.scope.as_deref(),
+            Some("GPT-5.3-Codex-Spark"),
+            "the per-model pool keeps its limit_name"
+        );
+    }
+
+    #[test]
     fn parse_usage_tolerates_missing_lanes_and_junk() {
         let thin = r#"{"rate_limit":{"primary_window":null,"secondary_window":null}}"#;
         let u = parse_usage("a", thin).expect("a body with no windows is still valid");
@@ -737,19 +807,21 @@ mod tests {
         assert!(
             w.windows
                 .iter()
-                .any(|x| x.label == "weekly" && x.used_percent == 41),
-            "main weekly pool survives: {:?}",
+                .any(|x| x.label == "weekly" && x.used_percent == 41 && x.scope.is_none()),
+            "main weekly pool survives unscoped: {:?}",
             w.windows
         );
         assert!(
             w.windows
                 .iter()
-                .any(|x| x.label == "5h" && x.used_percent == 9),
+                .any(|x| x.label == "5h" && x.used_percent == 9 && x.scope.is_none()),
             "secondary 5h window survives"
         );
         assert!(
-            w.windows.iter().any(|x| x.used_percent == 4),
-            "per-model pool survives"
+            w.windows
+                .iter()
+                .any(|x| x.used_percent == 4 && x.scope.as_deref() == Some("GPT-5.3-Codex-Spark")),
+            "per-model pool survives with its limitName as scope"
         );
     }
 

@@ -155,6 +155,7 @@ mod tests {
                         label: "weekly".into(),
                         used_percent: 80,
                         reset_unix: Some(1_786_330_868),
+                        scope: None,
                     }],
                     credits_balance: None,
                 }],

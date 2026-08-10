@@ -97,7 +97,11 @@ Emitted as Tauri event `qhud://report`; see `src-tauri/src/view.rs`.
   }],
   "codex_workspaces": [{                 // additive, v0.5.0 — the last explicit Codex fetch,
     "account_id": "…", "name": "Personal", "plan_type": "prolite",
-    "windows": [{"label": "weekly", "used_percent": 80, "reset_unix": 0}],
+    "windows": [{"label": "weekly", "used_percent": 80, "reset_unix": 0},
+                {"label": "weekly", "used_percent": 4, "reset_unix": 0,
+                 "scope": "GPT-5.3-Codex-Spark"}], // scope = pool name; absent on the
+                                                   // main pool. Duration alone labels
+                                                   // both "weekly" (additive, v0.5.0)
     "credits_balance": "345.57"
   }],                                    // dated by codex_fetched_at_ms; stored ≠ live
   "codex_fetched_at_ms": 0,              // additive, v0.5.0

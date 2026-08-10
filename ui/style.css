@@ -806,10 +806,16 @@ body {
   flex: 1 0 100%;
   padding-left: 10px;
 }
-/* Window label wide enough for "Fable wk", not just "5H". */
+/* Window label wide enough for "Fable wk", not just "5H" — and capped
+   so a long pool name ("Codex-Spark wk") truncates instead of squeezing
+   the gauge; the full name lives in the chip tooltip. */
 .q-chip .q-label {
   min-width: 46px;
+  max-width: 118px;
   flex: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .q-reset {
   min-width: 42px;
