@@ -1305,6 +1305,33 @@
     };
     window.__qhudBeacon = crumb;
 
+    // Every real pointerdown, logged at the CAPTURE phase before any
+    // handler can swallow it. This exists because "clicks do nothing"
+    // has now been reported against a widget that passed every
+    // compositor-path input test by the time it was investigated
+    // (2026-08-12): the one measurement missing was where the operator's
+    // actual click landed while it was broken. With this line, the next
+    // report is diagnosable from stderr alone — a `ptr:` with a target
+    // proves delivery and names what was hit; its absence proves the
+    // event never reached the webview at all.
+    document.addEventListener(
+      "pointerdown",
+      (e) => {
+        const t = e.target;
+        const tile = t.closest?.(".tile");
+        const row = t.closest?.(".q-row");
+        const what = tile
+          ? `tile:${tile.dataset.paneId || "?"}`
+          : row
+            ? `row:${row.dataset.provider || row.dataset.pkey || row.dataset.wsid || "?"}`
+            : String(t.id || t.className || t.tagName || "?").slice(0, 40);
+        crumb(
+          `ptr:${Math.round(e.clientX)},${Math.round(e.clientY)}:b${e.button}:${what}`,
+        );
+      },
+      true,
+    );
+
     // Font size: Ctrl+wheel over the widget zooms the whole page
     // (pointer-only — the widget never takes keyboard focus), persisted
     // across restarts. Range 70–160%.
