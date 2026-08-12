@@ -2,6 +2,37 @@
 
 All notable changes to qhud. Format: [Keep a Changelog](https://keepachangelog.com/), versioning: [SemVer](https://semver.org/).
 
+## [0.5.1] — 2026-08-12
+
+"Selection doesn't work" — diagnosed with new input breadcrumbs, and
+fixed where it actually was.
+
+### Fixed
+
+- **Strip rows now SELECT.** The operator's recurring "selection does
+  nothing" report was diagnosed live: the new `ptr:` breadcrumbs showed
+  every click arriving — and every one landing on quota-strip rows,
+  which had no selection behavior at all (tiles, which do select, were
+  not where the operator was clicking; daily restarts had never been
+  the variable). Clicking any strip row — account, workspace, ghost —
+  now expands its detail inline: the same facts the hover tooltip
+  carries, which barely works on a keep-below window.
+- **Ghost rows had TWO identical pointerdown listeners**, so a click
+  toggled twice and visibly did nothing. One unified strip handler now
+  owns ⟳ dispatch, ghost dismissal, and row selection.
+- **Clicking the codex row no longer fires a network fetch.** Fetching
+  moved to an explicit ⟳ on the row (like Claude and agy) — selecting
+  a row must never be a network action. `--fetch-codex` unchanged.
+
+### Added
+
+- **`ptr:` breadcrumbs** — every real pointerdown logs coordinates,
+  button and resolved target at the CAPTURE phase, before any handler
+  can swallow it. Presence proves delivery and names what was hit;
+  absence during a "clicks do nothing" moment relocates the bug to the
+  compositor/session layer. `qsel:` mirrors the tiles' `sel:` for
+  strip-row selection.
+
 ## [0.5.0] — 2026-08-10
 
 Every account, at a glance, without the provider web pages: several

@@ -838,6 +838,27 @@ body {
 .q-ws.q-stored {
   opacity: 0.7;
 }
+
+/* Selecting a row (any strip row) expands its detail inline. Hover
+   tooltips barely exist for a keep-below widget — you are rarely
+   pointing at it — so the facts move into the row on click. */
+.q-row.q-open {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  border-radius: 4px;
+}
+.q-detail {
+  display: none;
+  flex: 1 0 100%;
+  white-space: pre-line;
+  font-family: var(--mono);
+  font-size: 8.5px;
+  line-height: 1.5;
+  color: var(--tx-faint);
+  padding: 1px 0 3px 10px;
+}
+.q-row.q-open .q-detail {
+  display: block;
+}
 .q-chip.stale .q-label::after {
   content: "*";
   color: var(--concern);

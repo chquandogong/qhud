@@ -153,10 +153,11 @@ Autostart and an app-grid entry: see [RUNBOOK](docs/05-ops/RUNBOOK.md).
 | Move / resize          | drag the top or footer bar; ◢ grip to resize             |
 | Zoom                   | Ctrl+wheel over the widget (70–160%, persisted)          |
 | Expand a pane          | click its tile                                           |
+| Inspect an account     | click its strip row (expands the details inline)         |
 | Peek above windows     | tray → _Pin above windows_, or `qhud --peek`             |
 | Refresh everything     | the ⟳ in the topbar, or `qhud --refresh-all`             |
 | Refresh Claude usage   | the ⟳ on a Claude row, or `qhud --refresh-claude`        |
-| Fetch Codex workspaces | click the Codex row, or `qhud --fetch-codex`             |
+| Fetch Codex workspaces | the ⟳ on the Codex row, or `qhud --fetch-codex`          |
 | Read agy quota         | the ⟳ on the agy row (loopback RPC, only while agy runs) |
 | Forget an account      | ✕ on its collapsed row                                   |
 

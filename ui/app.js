@@ -306,8 +306,18 @@
       btn.title = "read quota from the running agy (loopback, no token)";
       row.append(btn);
     }
+    if (provider === "codex") {
+      // Fetching used to be the row CLICK, which collided with rows
+      // becoming selectable — network stays behind an explicit ⟳.
+      const btn = el("button", "q-refresh", "⟳");
+      btn.title = "fetch workspace usage (network)";
+      row.append(btn);
+    }
     for (const win of ["5h", "7d"])
       row.append(buildChip(win, win.toUpperCase()));
+    // Selecting the row expands this inline (filled by renderQuotas with
+    // the same facts the hover tooltip carries).
+    row.append(el("div", "q-detail"));
     return row;
   }
 
@@ -505,7 +515,7 @@
       clearRows();
       ageEl.hidden = false;
       ageEl.textContent = "fetch failed";
-      anchor.title = `${codexFetch.error}\n\nclick to retry`;
+      anchor.title = `${codexFetch.error}\n\n⟳ to retry`;
       return;
     }
 
@@ -592,11 +602,16 @@
       const meta = [];
       if (stored)
         meta.push(
-          `from qhud's last fetch, ${fmtAgeMs(at)} ago — click to refresh`,
+          `from qhud's last fetch, ${fmtAgeMs(at)} ago — ⟳ to refresh`,
         );
       if (w.plan_type) meta.push(`plan_type (wire): ${w.plan_type}`);
       if (w.credits_balance) meta.push(`credits ${w.credits_balance}`);
       if (meta.length) row.title = meta.join("\n");
+      const detail = el("div", "q-detail");
+      detail.textContent = meta.length
+        ? meta.join("\n")
+        : `workspace ${w.account_id}`;
+      row.append(detail);
       after.after(row);
       after = row;
     }
@@ -613,17 +628,35 @@
     logLabels(stored ? "stored-codex-rows" : "after-codex-fetch");
   }
 
+  // ONE pointerdown handler for the whole strip (pointerdown, not click:
+  // a keep-below widget never receives synthesized clicks reliably,
+  // D-009). Selecting a row expands its detail inline — hover tooltips
+  // barely exist for a window you are rarely pointing at — and network
+  // runs ONLY from the ⟳ buttons, never from selecting a row.
+  //
+  // History (2026-08-12, operator report "selection doesn't work"): the
+  // ptr: breadcrumbs showed every click arriving and landing on strip
+  // rows — which had no selection behavior at all, and ghost rows had
+  // TWO identical listeners, so their toggle ran twice and visibly did
+  // nothing. Selecting was never broken on the tiles; it did not exist
+  // where the operator was clicking.
   quotasEl.addEventListener("pointerdown", async (e) => {
-    const ghost = e.target.closest?.(".q-row[data-pkey]");
-    if (!ghost) return;
-    const [provider, ...rest] = ghost.dataset.pkey.split(":");
-    const key = rest.join(":");
+    if (e.target.classList?.contains("q-refresh")) {
+      const provider = e.target.closest(".q-row")?.dataset.provider;
+      if (provider === "agy") refreshAgyUsage();
+      else if (provider === "codex") fetchCodexWorkspaces();
+      else refreshClaudeUsage();
+      return;
+    }
     if (e.target.classList?.contains("q-forget")) {
       // Explicit dismissal — persisted, so it stays gone across restarts.
+      const ghost = e.target.closest(".q-row[data-pkey]");
+      if (!ghost) return;
+      const [provider, ...rest] = ghost.dataset.pkey.split(":");
       try {
         await window.__TAURI__?.core?.invoke("forget_account", {
           provider,
-          key,
+          key: rest.join(":"),
         });
         ghost.remove();
       } catch (err) {
@@ -632,15 +665,16 @@
       }
       return;
     }
-    // A plain click surfaces the guidance rather than doing anything: the
-    // action it describes needs a token refresh or a re-login, which is
-    // the operator's call, not the widget's.
-    ghost.classList.toggle("q-open");
-    ghost.querySelector(".q-age").textContent = ghost.classList.contains(
-      "q-open",
-    )
-      ? "see tooltip →"
-      : "needs re-auth";
+    const row = e.target.closest?.(".q-row");
+    if (!row) return;
+    row.classList.toggle("q-open");
+    window.__qhudBeacon?.(
+      `qsel:${
+        row.dataset.provider
+          ? `${row.dataset.provider}/${row.dataset.acct || "?"}`
+          : row.dataset.pkey || row.dataset.wsid || "?"
+      }:${row.classList.contains("q-open") ? "open" : "closed"}`,
+    );
   });
 
   // One gesture, every provider. Each fetch keeps its own state and
@@ -689,21 +723,6 @@
   window.__TAURI__?.event
     ?.listen("qhud://refresh-all", () => refreshAll())
     .catch(() => {});
-
-  quotasEl.addEventListener("pointerdown", (e) => {
-    // pointerdown, not click: a keep-below widget never receives synthesized
-    // clicks reliably (D-009).
-    if (e.target.classList?.contains("q-refresh")) {
-      const provider = e.target.closest(".q-row")?.dataset.provider;
-      if (provider === "agy") refreshAgyUsage();
-      else refreshClaudeUsage();
-      return;
-    }
-    if (e.target.closest?.(".q-row[data-pkey]")) return; // ghost rows have their own handler
-    if (e.target.closest?.(".q-row[data-wsid]")) return; // workspace rows are output, not a button
-    const row = e.target.closest?.('[data-provider="codex"]');
-    if (row) fetchCodexWorkspaces();
-  });
 
   // Accounts that have connected before but have no live credential now.
   // Shown dimmed and numberless: their quota is still ticking, so hiding
@@ -754,40 +773,15 @@
       row.title = `${p.label || p.key} — no stored credential.\n\n${
         p.hint || "sign in again to make it live"
       }`;
+      const detail = el("div", "q-detail");
+      detail.textContent = `no stored credential.\n${
+        p.hint || "sign in again to make it live"
+      }`;
+      row.append(detail);
       quotasEl.append(row);
     }
     quotasEl.hidden = quotasEl.children.length === 0;
   }
-
-  quotasEl.addEventListener("pointerdown", async (e) => {
-    const ghost = e.target.closest?.(".q-row[data-pkey]");
-    if (!ghost) return;
-    const [provider, ...rest] = ghost.dataset.pkey.split(":");
-    const key = rest.join(":");
-    if (e.target.classList?.contains("q-forget")) {
-      // Explicit dismissal — persisted, so it stays gone across restarts.
-      try {
-        await window.__TAURI__?.core?.invoke("forget_account", {
-          provider,
-          key,
-        });
-        ghost.remove();
-      } catch (err) {
-        ghost.querySelector(".q-age").textContent = "dismiss failed";
-        ghost.title = String(err);
-      }
-      return;
-    }
-    // A plain click surfaces the guidance rather than doing anything: the
-    // action it describes needs a token refresh or a re-login, which is
-    // the operator's call, not the widget's.
-    ghost.classList.toggle("q-open");
-    ghost.querySelector(".q-age").textContent = ghost.classList.contains(
-      "q-open",
-    )
-      ? "see tooltip →"
-      : "needs re-auth";
-  });
 
   // Provider is the OUTER axis: it is what the operator picks when deciding
   // where to run the next task, it matches the pane vocabulary
@@ -1063,6 +1057,10 @@
         );
       }
       row.title = lines.join("\n");
+      // The same facts, inline: rows expand on selection because hover
+      // tooltips barely exist for a keep-below widget.
+      const detailEl = row.querySelector(".q-detail");
+      if (detailEl) detailEl.textContent = lines.join("\n");
       // A live refresh outranks both the statusline and the cache: it is the
       // newest reading and the only one carrying per-model windows.
       let h5 = q.h5;
@@ -1320,11 +1318,16 @@
         const t = e.target;
         const tile = t.closest?.(".tile");
         const row = t.closest?.(".q-row");
-        const what = tile
-          ? `tile:${tile.dataset.paneId || "?"}`
-          : row
-            ? `row:${row.dataset.provider || row.dataset.pkey || row.dataset.wsid || "?"}`
-            : String(t.id || t.className || t.tagName || "?").slice(0, 40);
+        const btn = t.closest?.("button");
+        const what = btn
+          ? `${btn.className.split(" ")[0] || "button"}${
+              row ? `@${row.dataset.provider || "?"}` : ""
+            }`
+          : tile
+            ? `tile:${tile.dataset.paneId || "?"}`
+            : row
+              ? `row:${row.dataset.provider || row.dataset.pkey || row.dataset.wsid || "?"}`
+              : String(t.id || t.className || t.tagName || "?").slice(0, 40);
         crumb(
           `ptr:${Math.round(e.clientX)},${Math.round(e.clientY)}:b${e.button}:${what}`,
         );
