@@ -96,6 +96,23 @@ async fn fetch_agy_usage() -> Result<crate::usage_cache::CachedUsage, String> {
     out
 }
 
+/// Frame-clock self-heal, last rung: re-exec the widget in place. The
+/// window-state plugin restores geometry and the fetched store lives on
+/// disk, so the only cost is one blink — better than a wallpaper widget
+/// frozen on an hours-old frame until a human notices. The child gets
+/// --respawned so it waits out this process before the single-instance
+/// guard runs.
+#[tauri::command]
+fn restart_self(app: tauri::AppHandle) {
+    eprintln!("qhud ui: framestall restart — re-exec");
+    if let Ok(exe) = std::env::current_exe() {
+        match std::process::Command::new(exe).arg("--respawned").spawn() {
+            Ok(_) => app.exit(0),
+            Err(e) => eprintln!("qhud: self-restart spawn failed: {e}"),
+        }
+    }
+}
+
 /// Records "I no longer use this account" so its placeholder stops
 /// appearing. Only suppresses placeholders — a live credential always
 /// shows, because silently hiding an account in active use is worse than
@@ -169,6 +186,27 @@ fn main() {
         {
             std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
         }
+        // …and DMABUF-off alone proved insufficient: the freeze recurred
+        // the same day at an idle blank (2026-08-13 11:51) with the
+        // variable confirmed propagated to the WebKit child. The frozen
+        // instance showed WebKit's VBlankMonitor waiting on a DRM vblank
+        // — the threaded-compositor frame clock is the fragile piece, so
+        // take the whole accelerated-compositing path out. Software
+        // rendering is effortless for a strip this size. Opt out with
+        // QHUD_KEEP_COMPOSITING=1. (Belt: the frontend also carries a
+        // frame-clock watchdog that jiggles, then re-execs — see app.js.)
+        if std::env::var_os("WEBKIT_DISABLE_COMPOSITING_MODE").is_none()
+            && std::env::var_os("QHUD_KEEP_COMPOSITING").is_none()
+        {
+            std::env::set_var("WEBKIT_DISABLE_COMPOSITING_MODE", "1");
+        }
+    }
+
+    // Respawn handoff (frame-stall self-heal, last rung): the fresh
+    // process waits out the dying one so the single-instance guard does
+    // not absorb the replacement into the instance that is exiting.
+    if std::env::args().any(|a| a == "--respawned") {
+        std::thread::sleep(std::time::Duration::from_millis(1500));
     }
 
     // Diagnostic mode (before single-instance, no GTK): print one
@@ -294,7 +332,8 @@ fn main() {
             fetch_codex_workspaces,
             fetch_claude_usage,
             fetch_agy_usage,
-            forget_account
+            forget_account,
+            restart_self
         ])
         .plugin(tauri_plugin_window_state::Builder::default().build())
         .setup(|app| {

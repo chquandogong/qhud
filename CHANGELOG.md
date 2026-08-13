@@ -9,16 +9,31 @@ new input breadcrumbs, ending at a frozen renderer.
 
 ### Fixed
 
-- **The widget's pixels froze after overnight display power cycles**
-  (the root of the operator's recurring morning "selection doesn't
-  work" and the daily restarts). Proven live: the window pixmap stayed
-  byte-identical across seconds while JS, input and IPC all ran — tile
-  and row selections fired their breadcrumbs, fetches went out, and
-  the operator was looking at an hours-old frame the whole time.
-  WebKitGTK's DMABUF/EGL renderer was degraded from launch on this
-  stack (libEGL "DRI3 device" errors) and died at DPMS. qhud now sets
-  `WEBKIT_DISABLE_DMABUF_RENDERER=1` itself (SHM rendering — trivial
-  for a strip this size); opt out with `QHUD_KEEP_DMABUF=1`.
+- **The widget's pixels froze after display sleep** (the root of the
+  operator's recurring morning "selection doesn't work" and the daily
+  restarts). Proven live: the window pixmap stayed byte-identical
+  across seconds while JS, input and IPC all ran — tile and row
+  selections fired their breadcrumbs, fetches went out, and the
+  operator was looking at an hours-old frame the whole time. Fixed in
+  depth, because the trigger (idle blank + lock) is not reproducible
+  on demand:
+  - `WEBKIT_DISABLE_DMABUF_RENDERER=1` (the GPU path was degraded from
+    launch — libEGL "DRI3 device" errors). Alone it was NOT enough:
+    the freeze recurred the same day at an idle blank, with the
+    variable confirmed in the WebKit child's environment.
+  - `WEBKIT_DISABLE_COMPOSITING_MODE=1` — the frozen instance showed
+    WebKit's VBlankMonitor waiting on a DRM vblank, so the threaded-
+    compositor frame clock goes entirely. Software rendering is
+    effortless at this size. Opt-outs: `QHUD_KEEP_DMABUF=1`,
+    `QHUD_KEEP_COMPOSITING=1`.
+  - **A frame-clock watchdog** in the page: rAF rides the frame clock
+    and stops with it while timers keep ticking — that asymmetry (the
+    same one that made the bug invisible) is the detector. On a stall
+    ≥12 s it logs `framestall:`, jiggles the window by 1 px (forces a
+    reconfigure), and if frames stay dead, re-execs the widget
+    (`restart_self`, geometry restored by the window-state plugin).
+    The widget can no longer be frozen without either healing itself
+    or saying so in the log.
 
 - **Strip rows now SELECT.** The operator's recurring "selection does
   nothing" report was diagnosed live: the new `ptr:` breadcrumbs showed
