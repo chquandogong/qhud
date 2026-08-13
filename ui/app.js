@@ -1333,48 +1333,12 @@
       true,
     );
 
-    // Frame-clock watchdog. WebKit's presentation has frozen this widget
-    // twice (overnight and at an idle blank) while JS, input and IPC all
-    // kept running — the operator stared at an hours-old frame that
-    // still logged working clicks. The detector is the asymmetry that
-    // made the bug invisible: requestAnimationFrame rides the frame
-    // clock and stops with it, while setInterval keeps ticking. One rAF
-    // probe every 2 s keeps the cost nil; when the probe stops landing,
-    // heal in two rungs — a 1 px resize jiggle (forces a reconfigure and
-    // a fresh buffer), then a full re-exec via restart_self. Every rung
-    // leaves a framestall: breadcrumb, so the next report is one grep.
-    let lastFrame = Date.now();
-    const probeFrame = () => {
-      requestAnimationFrame(() => {
-        lastFrame = Date.now();
-        setTimeout(probeFrame, 2000);
-      });
-    };
-    probeFrame();
-    let healPhase = 0; // 0 healthy · 1 jiggled, waiting to see
-    let healAt = 0;
-    setInterval(async () => {
-      if (document.hidden) return; // hidden/locked: rAF is idle by design
-      const stalled = Date.now() - lastFrame;
-      if (stalled < 12000) {
-        healPhase = 0;
-        return;
-      }
-      if (healPhase === 0) {
-        healPhase = 1;
-        healAt = Date.now();
-        crumb(`framestall:${Math.round(stalled / 1000)}s:jiggle`);
-        try {
-          const s = await win.innerSize();
-          await win.setSize(new PhysicalSize(s.width, s.height + 1));
-          await win.setSize(new PhysicalSize(s.width, s.height));
-        } catch {}
-      } else if (healPhase === 1 && Date.now() - healAt > 15000) {
-        healPhase = 2;
-        crumb(`framestall:${Math.round(stalled / 1000)}s:restart`);
-        tauri.core.invoke("restart_self").catch(() => {});
-      }
-    }, 5000);
+    // NOTE on freeze detection: a JS rAF-based watchdog lived here for
+    // half a day and was removed — during a real presentation freeze
+    // rAF kept firing (software rendering decouples it from the
+    // screen), so it never saw what the operator saw. The watchdog
+    // that actually measures the symptom (pixels) lives in the Rust
+    // poll loop: frame_guard.rs.
 
     // Font size: Ctrl+wheel over the widget zooms the whole page
     // (pointer-only — the widget never takes keyboard focus), persisted

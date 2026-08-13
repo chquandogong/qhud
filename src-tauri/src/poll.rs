@@ -77,6 +77,8 @@ pub fn run(app: AppHandle) {
 
         let payload = payload.unwrap_or_else(demo::payload);
         let _ = app.emit("qhud://report", &payload);
+        // Pixel-level freeze watchdog (~every 28 s; see frame_guard.rs).
+        crate::frame_guard::tick(&app, tick);
         std::thread::sleep(POLL);
     }
 }

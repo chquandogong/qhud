@@ -26,14 +26,18 @@ new input breadcrumbs, ending at a frozen renderer.
     compositor frame clock goes entirely. Software rendering is
     effortless at this size. Opt-outs: `QHUD_KEEP_DMABUF=1`,
     `QHUD_KEEP_COMPOSITING=1`.
-  - **A frame-clock watchdog** in the page: rAF rides the frame clock
-    and stops with it while timers keep ticking — that asymmetry (the
-    same one that made the bug invisible) is the detector. On a stall
-    ≥12 s it logs `framestall:`, jiggles the window by 1 px (forces a
-    reconfigure), and if frames stay dead, re-execs the widget
-    (`restart_self`, geometry restored by the window-state plugin).
-    The widget can no longer be frozen without either healing itself
-    or saying so in the log.
+  - Neither env proved sufficient alone (the freeze recurred with both
+    set), and a JS rAF watchdog stayed blind through a real freeze —
+    software rendering decouples rAF from the screen. What holds is
+    measuring the SYMPTOM: **a Rust-side pixel guard** hashes a strip
+    of the widget's own window every ~28 s (the footer clock there
+    repaints every second). Two identical samples ⇒ frozen ⇒ heal:
+    unmap/remap first (verified live to resume painting on an actual
+    frozen instance; layer states re-asserted after), then re-exec
+    with `--respawned` if still static. Arms itself with one
+    "frame guard armed" stderr line; every detection and heal is
+    logged. The widget can no longer stay frozen — it heals within a
+    minute or says exactly why not.
 
 - **Strip rows now SELECT.** The operator's recurring "selection does
   nothing" report was diagnosed live: the new `ptr:` breadcrumbs showed

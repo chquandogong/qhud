@@ -6,6 +6,7 @@ mod claude_usage;
 mod codex_usage;
 mod demo;
 mod fetched_store;
+mod frame_guard;
 mod poll;
 mod registry;
 mod usage_cache;
@@ -96,21 +97,26 @@ async fn fetch_agy_usage() -> Result<crate::usage_cache::CachedUsage, String> {
     out
 }
 
-/// Frame-clock self-heal, last rung: re-exec the widget in place. The
-/// window-state plugin restores geometry and the fetched store lives on
-/// disk, so the only cost is one blink — better than a wallpaper widget
-/// frozen on an hours-old frame until a human notices. The child gets
-/// --respawned so it waits out this process before the single-instance
-/// guard runs.
-#[tauri::command]
-fn restart_self(app: tauri::AppHandle) {
-    eprintln!("qhud ui: framestall restart — re-exec");
+/// Re-exec the widget in place (frame-freeze heal, last rung — see
+/// `frame_guard`). The window-state plugin restores geometry and the
+/// fetched store lives on disk, so the only cost is one blink — better
+/// than a wallpaper widget frozen on an hours-old frame until a human
+/// notices. The child gets --respawned so it waits out this process
+/// before the single-instance guard runs.
+pub fn respawn(app: &tauri::AppHandle) {
     if let Ok(exe) = std::env::current_exe() {
         match std::process::Command::new(exe).arg("--respawned").spawn() {
             Ok(_) => app.exit(0),
             Err(e) => eprintln!("qhud: self-restart spawn failed: {e}"),
         }
     }
+}
+
+/// Re-asserts the widget's layer states (below/sticky/skip-taskbar) in
+/// whatever pin state the operator left it — the frame guard's remap
+/// heal unmaps the window, and X11 state can shed across that.
+pub fn reassert_layer(app: &tauri::AppHandle) {
+    apply_layer(app, PINNED.load(Ordering::Relaxed));
 }
 
 /// Records "I no longer use this account" so its placeholder stops
@@ -332,8 +338,7 @@ fn main() {
             fetch_codex_workspaces,
             fetch_claude_usage,
             fetch_agy_usage,
-            forget_account,
-            restart_self
+            forget_account
         ])
         .plugin(tauri_plugin_window_state::Builder::default().build())
         .setup(|app| {

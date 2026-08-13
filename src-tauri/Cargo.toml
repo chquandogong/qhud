@@ -26,6 +26,9 @@ reqwest = { version = "0.13.4", default-features = false, features = ["json", "r
 # process/io-util/time: the codex app-server fallback speaks JSON-RPC to
 # a short-lived child over stdio with a timeout.
 tokio = { version = "1.53.1", features = ["rt-multi-thread", "process", "io-util", "time"] }
+# Same gtk tauri/tao already link — the frame guard hashes a strip of the
+# widget's own window to catch presentation freezes (see frame_guard.rs).
+gtk = "0.18"
 
 [profile.release]
 strip = true
