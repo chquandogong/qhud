@@ -155,6 +155,20 @@ fn main() {
         {
             std::env::set_var("GDK_BACKEND", "x11");
         }
+        // WebKitGTK's DMABUF renderer froze this widget's output after
+        // display power cycles: proven 2026-08-13 with the window pixmap
+        // byte-identical across seconds while JS, input and IPC all ran
+        // (sel:/qsel:/fetch breadcrumbs firing) — the operator saw an
+        // hours-old frame and read it as "selection doesn't work". The
+        // GPU path was degraded from launch on this stack (libEGL "DRI3
+        // device" errors), and a wallpaper widget must survive overnight
+        // DPMS. The SHM path renders this small strip effortlessly.
+        // Opt out with QHUD_KEEP_DMABUF=1.
+        if std::env::var_os("WEBKIT_DISABLE_DMABUF_RENDERER").is_none()
+            && std::env::var_os("QHUD_KEEP_DMABUF").is_none()
+        {
+            std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
+        }
     }
 
     // Diagnostic mode (before single-instance, no GTK): print one

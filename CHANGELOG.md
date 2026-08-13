@@ -2,12 +2,23 @@
 
 All notable changes to qhud. Format: [Keep a Changelog](https://keepachangelog.com/), versioning: [SemVer](https://semver.org/).
 
-## [0.5.1] — 2026-08-12
+## [0.5.1] — 2026-08-13
 
-"Selection doesn't work" — diagnosed with new input breadcrumbs, and
-fixed where it actually was.
+"Selection doesn't work" — three real causes, peeled in order with the
+new input breadcrumbs, ending at a frozen renderer.
 
 ### Fixed
+
+- **The widget's pixels froze after overnight display power cycles**
+  (the root of the operator's recurring morning "selection doesn't
+  work" and the daily restarts). Proven live: the window pixmap stayed
+  byte-identical across seconds while JS, input and IPC all ran — tile
+  and row selections fired their breadcrumbs, fetches went out, and
+  the operator was looking at an hours-old frame the whole time.
+  WebKitGTK's DMABUF/EGL renderer was degraded from launch on this
+  stack (libEGL "DRI3 device" errors) and died at DPMS. qhud now sets
+  `WEBKIT_DISABLE_DMABUF_RENDERER=1` itself (SHM rendering — trivial
+  for a strip this size); opt out with `QHUD_KEEP_DMABUF=1`.
 
 - **Strip rows now SELECT.** The operator's recurring "selection does
   nothing" report was diagnosed live: the new `ptr:` breadcrumbs showed
