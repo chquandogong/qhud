@@ -102,6 +102,43 @@ Shell extension layer · tile→pane focus jump. See DASHBOARD.
   verification once. Corrective action: `cargo build` before any
   `--dump`-based claim.
 
+## Cycle 4 — the selection saga (2026-08-11 → 14, v0.5.1)
+
+### What worked
+
+- **Instrument before theorizing, then let the instrument talk**: the
+  ptr: capture-phase breadcrumbs turned "selection doesn't work" from
+  four contradictory hypotheses into one glance — every click arrived,
+  and none were on tiles. Two real fixes fell out (strip rows select;
+  duplicate ghost listeners), and the third cause could not have been
+  found without them.
+- **Live experiments on the broken instance** instead of restarting it:
+  xwd pixel hashing proved the freeze (byte-identical frames while the
+  DOM clock repainted), external-resize proved jiggles void (D-008),
+  unmap/remap proved the heal. Each experiment eliminated a fix class
+  before it shipped wrong.
+- **Measuring the symptom beat diagnosing the mechanism.** After two
+  failed renderer-layer bets, the pixel guard (hash your own footer,
+  heal on stasis) ended the bug class in one afternoon — and healed 3
+  real freezes in its first 22 h, unnoticed.
+
+### What to fix next cycle
+
+- **The operator's report and the logs contradicted each other, and
+  both were right.** "Clicks do nothing" + "every click logged as
+  working" IS the frozen-presentation signature — hash the pixels
+  FIRST next time, not on day three. Corrective action: the check is
+  now one RUNBOOK line and the guard runs it forever.
+- **"Fixed" was claimed twice on unverifiable mitigations** (DMABUF
+  off, compositing off) because the trigger could not be reproduced on
+  demand. Both recurred within hours. Corrective action: when the
+  trigger is not reproducible, say "mitigation deployed, unverified" —
+  and prefer a detector+heal that does not need the trigger understood.
+- **rAF is not presentation.** In software rendering, rAF keeps firing
+  while nothing reaches the screen; the JS watchdog built on it was
+  blind through a real freeze. In-page signals cannot police the
+  window's own visibility.
+
 ## Evidence trail
 
 FEASIBILITY_REPORT (two spikes, xprop states) ·

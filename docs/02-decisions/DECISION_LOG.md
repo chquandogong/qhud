@@ -352,3 +352,36 @@ Format: context → options → decision → rationale → residual risk.
 - **Evidence**: `--codex-appserver` returns the active workspace with
   plan/credits/windows; `--agy-usage` discovered the port and parsed
   all four pools live.
+
+## D-017 · The widget audits its own pixels (frame guard)
+
+- **Context**: three days of "selection doesn't work" reports against a
+  widget whose logs showed every click working. The screen was frozen
+  on an hours-old frame while JS, input and IPC ran — at display sleep,
+  Mutter stops scheduling frames for the keep-below window and the GTK
+  frame clock never resumes. Every mechanism-level fix failed live:
+  DMABUF-off recurred the same day; compositing-off plus a JS rAF
+  watchdog recurred within two hours with the watchdog blind (rAF keeps
+  firing in software mode, decoupled from the screen). An external 1 px
+  resize is ignored for this window (D-008), so jiggle heals are void;
+  unmap/remap was proven live to resume painting.
+- **Decision**: stop betting on mechanisms; measure the symptom. A
+  Rust-side guard hashes a footer pixel strip of the widget's own
+  window every ~28 s (the clock there repaints every second). Two
+  identical samples ⇒ frozen ⇒ hide+show and re-assert layer states;
+  still static one sample later ⇒ re-exec with `--respawned` (the child
+  waits out the dying process so the single-instance guard does not
+  absorb it). One "frame guard armed" line at startup proves the
+  sampler itself; every detection and heal is logged.
+- **Rejected**: env-only mitigation (kept as cheap belts —
+  `WEBKIT_DISABLE_DMABUF_RENDERER`, `WEBKIT_DISABLE_COMPOSITING_MODE`,
+  opt-outs `QHUD_KEEP_*` — but proven insufficient alone); in-page rAF
+  watchdogs (blind by construction); resize jiggles (no-op for this
+  window).
+- **Corollary, written into the RUNBOOK**: breadcrumbs prove logic,
+  never paint. Pixels are verifiable — `xwd | md5sum` twice, or the
+  guard's own log — and D-010's "absence of error is not proof
+  anything painted" now has its enforcement mechanism.
+- **Evidence**: unit-tested decision ladder; "armed" line on deploy;
+  field result 2026-08-13→14: three freezes, three sub-minute remap
+  heals, zero re-execs, zero operator-visible incidents.

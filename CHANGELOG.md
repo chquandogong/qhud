@@ -2,7 +2,7 @@
 
 All notable changes to qhud. Format: [Keep a Changelog](https://keepachangelog.com/), versioning: [SemVer](https://semver.org/).
 
-## [0.5.1] — 2026-08-13
+## [0.5.1] — 2026-08-14
 
 "Selection doesn't work" — three real causes, peeled in order with the
 new input breadcrumbs, ending at a frozen renderer.
@@ -37,7 +37,9 @@ new input breadcrumbs, ending at a frozen renderer.
     with `--respawned` if still static. Arms itself with one
     "frame guard armed" stderr line; every detection and heal is
     logged. The widget can no longer stay frozen — it heals within a
-    minute or says exactly why not.
+    minute or says exactly why not. Field result, first 22 h on the
+    reference machine: three freezes, three remap heals, zero
+    re-execs, and the operator noticed none of them.
 
 - **Strip rows now SELECT.** The operator's recurring "selection does
   nothing" report was diagnosed live: the new `ptr:` breadcrumbs showed
