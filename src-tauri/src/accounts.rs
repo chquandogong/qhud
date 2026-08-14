@@ -43,10 +43,16 @@ pub struct AccountLabel {
     /// label→email→id precedence in JS.
     #[serde(rename = "display")]
     pub display_name: Option<String>,
+    /// Which ORGANIZATION this login is scoped to. One claude.ai
+    /// account can belong to several orgs (team seat + personal free),
+    /// each with its own quota pools — so (account, org) is the row
+    /// identity, never the account alone.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub org_id: Option<String>,
     /// For an EXTRA account (D-015): the expanded `CLAUDE_CONFIG_DIR`
-    /// this identity was read from. Backend-only plumbing (store key,
-    /// credential path) — the payload does not need it.
-    #[serde(skip)]
+    /// this identity was read from. The frontend matches a ⟳ result to
+    /// its row by this key ("default" when absent).
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub config_dir: Option<String>,
 }
 
@@ -77,6 +83,8 @@ struct ClaudeOauthAccount {
     email_address: Option<String>,
     #[serde(default)]
     account_uuid: Option<String>,
+    #[serde(default)]
+    organization_uuid: Option<String>,
     #[serde(default)]
     organization_name: Option<String>,
     #[serde(default)]
@@ -115,6 +123,7 @@ pub fn claude_account(config_json: &str) -> Option<AccountLabel> {
         tiers,
         plan: None,
         display_name: None,
+        org_id: acct.organization_uuid,
         config_dir: None,
     })
 }
@@ -221,22 +230,25 @@ pub fn detect_all_from(
 }
 
 /// Extra Claude accounts from per-account config dirs (D-015). Input is
-/// `(expanded_dir, contents of <dir>/.claude.json)`; a dir whose account
-/// matches `default_id` is skipped (listing the default dir again must
-/// not duplicate its row), as is anything unreadable.
+/// `(expanded_dir, contents of <dir>/.claude.json)`; a dir whose
+/// (account, org) matches the default login is skipped (listing the
+/// default dir again must not duplicate its row), as is anything
+/// unreadable. Same account in a DIFFERENT org stays — separate pools.
 pub fn extra_claude_accounts(
     dirs: &[(String, Option<String>)],
-    default_id: Option<&str>,
+    default: Option<(&str, Option<&str>)>,
 ) -> Vec<(String, AccountLabel)> {
+    // Identity = (account, org): one claude.ai account can hold a team
+    // seat AND a personal org, and those are separate quota pools. Only
+    // the same account in the same org is a duplicate.
+    let key = |id: &str, org: Option<&str>| format!("{id}/{}", org.unwrap_or("-"));
     let mut seen: std::collections::HashSet<String> =
-        default_id.iter().map(|id| id.to_string()).collect();
+        default.iter().map(|(id, org)| key(id, *org)).collect();
     dirs.iter()
         .filter_map(|(dir, json)| {
             let mut acct = claude_account(json.as_deref()?)?;
-            // Two dirs signed into one account (or the default listed
-            // again) must not duplicate its row.
             if let Some(id) = &acct.account_id
-                && !seen.insert(id.clone())
+                && !seen.insert(key(id, acct.org_id.as_deref()))
             {
                 return None;
             }
@@ -274,11 +286,16 @@ pub fn detect_all() -> Vec<(String, AccountLabel)> {
             (dir, json)
         })
         .collect();
-    let default_id = found
+    let default_claude = found
         .iter()
         .find(|(p, _)| p == "claude")
-        .and_then(|(_, a)| a.account_id.clone());
-    found.extend(extra_claude_accounts(&extra_inputs, default_id.as_deref()));
+        .and_then(|(_, a)| a.account_id.clone().map(|id| (id, a.org_id.clone())));
+    found.extend(extra_claude_accounts(
+        &extra_inputs,
+        default_claude
+            .as_ref()
+            .map(|(id, org)| (id.as_str(), org.as_deref())),
+    ));
 
     let labels = read(".config/qhud/accounts.json")
         .map(|s| parse_inventory(&s))
@@ -458,8 +475,10 @@ mod tests {
         let second = r#"{"oauthAccount":{"emailAddress":"second@example.com",
           "accountUuid":"acct-2","organizationType":"claude_pro",
           "userRateLimitTier":"default_claude_max_5x"}}"#;
+        // The SAME account and the SAME org as the default — a re-login
+        // of what is already shown. This is the only true duplicate.
         let dupe_of_default = r#"{"oauthAccount":{"emailAddress":"user@example.com",
-          "accountUuid":"acct-1"}}"#;
+          "accountUuid":"acct-1","organizationUuid":"org-team"}}"#;
         let dirs = vec![
             (
                 "/home/u/claude-personal".to_string(),
@@ -472,7 +491,7 @@ mod tests {
             ("/home/u/claude-empty".to_string(), None),
         ];
 
-        let out = extra_claude_accounts(&dirs, Some("acct-1"));
+        let out = extra_claude_accounts(&dirs, Some(("acct-1", Some("org-team"))));
 
         assert_eq!(out.len(), 1, "dupe-of-default and unreadable are skipped");
         let (provider, acct) = &out[0];
@@ -483,6 +502,31 @@ mod tests {
             Some("/home/u/claude-personal"),
             "the dir is the store key and credential path"
         );
+    }
+
+    #[test]
+    fn same_account_in_a_different_org_is_a_row_not_a_duplicate() {
+        // One claude.ai account can belong to several organizations
+        // (a team seat AND a personal free org). Their quotas are
+        // separate pools; the CLI login is scoped to ONE org per config
+        // dir. Deduping by account id alone would silently discard the
+        // second org — seen live 2026-08-14.
+        let personal_org = r#"{"oauthAccount":{"emailAddress":"user@example.com",
+          "accountUuid":"acct-1","organizationUuid":"org-personal",
+          "organizationType":"claude_free"}}"#;
+        let dirs = vec![(
+            "/home/u/claude-personal".to_string(),
+            Some(personal_org.to_string()),
+        )];
+
+        let out = extra_claude_accounts(&dirs, Some(("acct-1", Some("org-team"))));
+
+        assert_eq!(
+            out.len(),
+            1,
+            "same account, different org = a different quota pool"
+        );
+        assert_eq!(out[0].1.org_id.as_deref(), Some("org-personal"));
     }
 
     #[test]

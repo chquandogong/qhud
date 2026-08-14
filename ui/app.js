@@ -861,7 +861,11 @@
     for (const q of quotas) {
       // One row per (provider, account) — a provider may carry several
       // accounts now (D-015), so the provider alone no longer keys a row.
-      const acctKey = q.account?.account_id || q.account?.email || "default";
+      // (account, org) keys the row: one claude.ai account can hold a
+      // team seat and a personal org — separate pools, separate rows.
+      const acctKey =
+        (q.account?.account_id || q.account?.email || "default") +
+        (q.account?.org_id ? ` ${q.account.org_id}` : "");
       aliveProviders.add(q.provider);
       aliveRows.add(`${q.provider} ${acctKey}`);
       let row = quotasEl.querySelector(
@@ -889,9 +893,10 @@
         claudeFetch.state === "done" &&
         Array.isArray(claudeFetch.data)
           ? claudeFetch.data.find(
-              (r) =>
-                (r.account_id && r.account_id === q.account?.account_id) ||
-                (r.key === "default" && !q.account?.account_id),
+              // The fetch key IS the config dir (or "default"): with one
+              // account in two orgs, account_id alone would feed one
+              // org's numbers to both rows.
+              (r) => r.key === (q.account?.config_dir || "default"),
             )
           : null;
       // The active codex workspace is merged into this row (its ↳ row
