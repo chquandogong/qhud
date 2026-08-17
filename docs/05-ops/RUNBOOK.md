@@ -93,8 +93,13 @@ cargo build --release          # binary at target/release/qhud
   ```
 
   Each Claude dir renders as its own row (identity + its own snapshot
-  - ⟳); Codex extra homes join the every-credential scan. A dir whose
-    account matches the default is skipped, not duplicated.
+  - ⟳); Codex extra homes join the every-credential scan. Row identity
+    is **(account, organization)**: one claude.ai login can hold a team
+    seat AND a personal org — pick the org you want at the CLI's
+    organization-selection step after the browser OAuth (the browser
+    auto-continues with its active session, so the org step is where
+    the choice actually happens). A dir matching the default's
+    (account, org) is skipped, not duplicated.
 
 - **qhud's own ⟳ results** persist in `~/.config/qhud/fetched-usage.json`
   (same outside-the-repo privacy rule; written temp+rename). Deleting it

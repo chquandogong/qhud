@@ -1,6 +1,6 @@
 # DASHBOARD — qhud
 
-> Status: v0.5.1 released · Date: 2026-08-14 · Owner: chquandogong
+> Status: v0.5.2 released · Date: 2026-08-17 · Owner: chquandogong
 > Single source of truth = this git repo. This board is the handoff
 > surface: read it first when resuming work on another session/agent.
 
@@ -8,10 +8,10 @@
 
 | Item               | Value                                                                                                   |
 | ------------------ | ------------------------------------------------------------------------------------------------------- |
-| Version            | v0.5.1 — [releases](https://github.com/chquandogong/qhud/releases) (v0.5.0 2026-08-10, v0.5.1 2026-08-14) |
+| Version            | v0.5.2 — [releases](https://github.com/chquandogong/qhud/releases) (v0.5.1 2026-08-14, v0.5.2 2026-08-17) |
 | Pipeline dep       | qmonster @ `6a21c44` (pinned rev — carries the cwd/attribution fixes)                                   |
 | Verified on        | Ubuntu 24.04 · GNOME 46 Wayland · 2 monitors (scale 1) · herdr live (4 agent panes)                     |
-| Quality gates      | fmt ✅ · clippy -D warnings ✅ · tests 75 ✅ · release build ✅ (CI was red on main 08-07→08-10; fixed) |
+| Quality gates      | fmt ✅ · clippy -D warnings ✅ · tests 76 ✅ · release build ✅ (CI was red on main 08-07→08-10; fixed) |
 | Input verification | **compositor-path only** (Mutter RemoteDesktop injection or human hand — XTEST inadmissible, D-010)     |
 | Cross-validation   | Codex/GPT — AGREE-WITH-CHANGES, CV-1..4 adopted (CROSS_VALIDATION_LOG)                                  |
 
@@ -39,9 +39,10 @@ app-server, agy loopback RPC) · D-017 the widget audits its own pixels (frame g
 | Every account at a glance: multi-account, persistence, extra usage, agy RPC, codex app-server, refresh-all (v0.5.0, D-015/D-016) | done 2026-08-10                  | claude+chquandogong |
 | Tag + release v0.5.0 (CI green again — first since e6e31ed)                                                                      | done 2026-08-10                  | claude+chquandogong |
 | "Selection doesn't work" saga: ptr/qsel input forensics → strip rows select, ⟳-only network → pixel frame guard (v0.5.1, D-017) | done 2026-08-14                  | claude+chquandogong |
+| Row identity = (account, org) — one login, two orgs, separate pools (v0.5.2)                                                     | done 2026-08-17                  | claude+chquandogong |
 | ⏳ TEST_PLAN pending rows (overview / lock / suspend / hotplug / fullscreen)                                                     | **todo — first on-machine pass** | operator            |
 | Live verification with a plain tmux server (fallback path)                                                                       | todo                             | operator            |
-| Real second-account setup (`CLAUDE_CONFIG_DIR` sign-in + registry entry)                                                         | todo — needs operator login      | operator            |
+| Personal-org login into `~/claude-personal` (pick the PERSONAL org at the CLI org step; registry already wired; OAuth keeps auto-selecting the team session) | todo — operator, whenever wanted | operator            |
 | Click tile → focus that pane in the terminal                                                                                     | backlog                          | —                   |
 | GNOME Shell extension: overview-clean pinning + DING coexistence                                                                 | backlog                          | —                   |
 | Upstream `ObserveSnapshot` export in qmonster, then unpin                                                                        | backlog                          | —                   |
@@ -56,8 +57,9 @@ until the companion extension exists.
 
 ## Resume point
 
-v0.5.1 tagged and released; the frame guard healed 3 freezes in its
-first 22 h with zero operator-visible incidents. Next meaningful
+v0.5.2 tagged and released (org-aware row identity). Frame guard
+field tally through 08-17: 4 freezes, 4 remap heals, 0 re-execs, 0
+operator-visible incidents. Next meaningful
 units: operator
 verification pass (TEST_PLAN ⏳ rows, plain-tmux check, sign a second
 Claude account in under its own `CLAUDE_CONFIG_DIR` and register it),

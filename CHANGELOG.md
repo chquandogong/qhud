@@ -2,6 +2,34 @@
 
 All notable changes to qhud. Format: [Keep a Changelog](https://keepachangelog.com/), versioning: [SemVer](https://semver.org/).
 
+## [0.5.2] — 2026-08-17
+
+### Fixed
+
+- **Row identity is (account, organization), not account alone.** Wiring
+  the operator's "second account" revealed there is no second account:
+  one claude.ai login (same email, same accountUuid) belongs to TWO
+  organizations — a team seat and a personal free org — each with its
+  own quota pools, and a CLI login is scoped to one org per config dir.
+  D-015's dedupe by account id silently discarded any second org as "a
+  duplicate of the default". `AccountLabel` now carries `org_id`
+  (organizationUuid) and exposes `config_dir`; dedupe keys on
+  (account, org); the frontend keys strip rows the same way and matches
+  each row to its ⟳ slice by config dir — matching by account id alone
+  would have fed one org's numbers to both rows of the same login.
+  Same account re-logged into the SAME org still dedupes (verified live:
+  a team re-login in the extra dir adds no row). Field verification of
+  an actual second-org row is pending an operator login that picks the
+  personal org at the CLI's organization step — the OAuth flow keeps
+  auto-continuing with the browser's active team session.
+
+### Noted
+
+- The v0.5.1 frame guard is earning its keep in the field: freezes
+  keep occurring at display sleep (4 detected through 08-17) and every
+  one was healed by the remap rung, zero re-execs, zero
+  operator-visible incidents.
+
 ## [0.5.1] — 2026-08-14
 
 "Selection doesn't work" — three real causes, peeled in order with the
