@@ -182,8 +182,8 @@ pub async fn fetch_from(cred: &std::path::Path, now_ms: u64) -> Result<CachedUsa
             v.get("spend").unwrap_or(&serde_json::Value::Null)
         );
     }
-    crate::usage_cache::parse_utilization(&body, now_ms)
-        .ok_or_else(|| "usage response did not parse".to_string())
+    crate::usage_cache::parse_utilization_detailed(&body, now_ms)
+        .map_err(|e| format!("usage response did not parse: {e}"))
 }
 
 #[cfg(test)]

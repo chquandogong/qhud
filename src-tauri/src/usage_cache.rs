@@ -149,11 +149,11 @@ struct RawExtraUsage {
     /// raw value and interpreted defensively by `minor_units`.
     #[serde(default)]
     monthly_limit: serde_json::Value,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "lenient_i64")]
     used_credits: Option<i64>,
     #[serde(default)]
     currency: Option<String>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "lenient_u8")]
     decimal_places: Option<u8>,
     #[serde(default)]
     spend_limit_reached: Option<bool>,
@@ -175,12 +175,39 @@ struct RawSpend {
 
 #[derive(Deserialize)]
 struct RawMoney {
-    #[serde(default)]
+    #[serde(default, deserialize_with = "lenient_i64")]
     amount_minor: Option<i64>,
     #[serde(default)]
     currency: Option<String>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "lenient_u8")]
     exponent: Option<u8>,
+}
+
+/// Integer-meaning wire numbers that the endpoint may serialize as an
+/// integral float. Observed 2026-09-01: `extra_usage.used_credits` turned
+/// from `4997` into `4997.0` (the same 4997 minor units `spend.used`
+/// still carries as an integer) and every ⟳ failed for two days because
+/// serde rejects a float for `i64`. An integral float is that integer; a
+/// fractional float has no known unit and is dropped, like a float
+/// limit — but neither may fail the whole body over one fallback field.
+fn integral(v: &serde_json::Value) -> Option<i64> {
+    if let Some(i) = v.as_i64() {
+        return Some(i);
+    }
+    let f = v.as_f64()?;
+    (f.fract() == 0.0 && f.abs() < 9.0e15).then_some(f as i64)
+}
+
+fn lenient_i64<'de, D: serde::Deserializer<'de>>(d: D) -> Result<Option<i64>, D::Error> {
+    let v = <Option<serde_json::Value> as serde::Deserialize>::deserialize(d)?;
+    Ok(v.as_ref().and_then(integral))
+}
+
+fn lenient_u8<'de, D: serde::Deserializer<'de>>(d: D) -> Result<Option<u8>, D::Error> {
+    let v = <Option<serde_json::Value> as serde::Deserialize>::deserialize(d)?;
+    Ok(v.as_ref()
+        .and_then(integral)
+        .and_then(|n| u8::try_from(n).ok()))
 }
 
 /// Money field that may be a bare integer (minor units) or a
@@ -272,12 +299,25 @@ impl RawWindow {
     }
 }
 
+/// Test convenience: the detailed parse below, flattened to an Option.
+#[cfg(test)]
+fn parse_utilization(json: &str, fetched_at_ms: u64) -> Option<CachedUsage> {
+    parse_utilization_detailed(json, fetched_at_ms).ok()
+}
+
 /// Parses a bare `utilization` object — the shape `/api/oauth/usage` returns
 /// directly, which is also exactly what Claude Code caches. `fetched_at_ms` is
 /// supplied by the caller because a live response carries no timestamp.
-pub fn parse_utilization(json: &str, fetched_at_ms: u64) -> Option<CachedUsage> {
-    let util: Utilization = serde_json::from_str(json).ok()?;
-    Some(build(util, fetched_at_ms, None))
+/// A rejection says WHY (serde's field/type message and
+/// position). The body carries account uuid and email, and this message
+/// never does: unknown fields are skipped untyped, and the typed fields
+/// are numbers, booleans and window/plan strings — so the value serde
+/// quotes back on a mismatch is never identity. HTTP 200 + "no data" was
+/// exactly the report that hid two Codex bugs (a937a3b); the ⟳ error must
+/// name the field that drifted.
+pub fn parse_utilization_detailed(json: &str, fetched_at_ms: u64) -> Result<CachedUsage, String> {
+    let util: Utilization = serde_json::from_str(json).map_err(|e| e.to_string())?;
+    Ok(build(util, fetched_at_ms, None))
 }
 
 fn build(util: Utilization, fetched_at_ms: u64, account_id: Option<String>) -> CachedUsage {
@@ -547,5 +587,76 @@ mod tests {
         assert!(u.five_hour.is_none());
         assert!(u.seven_day.is_none());
         assert!(u.scoped.is_empty());
+    }
+
+    #[test]
+    fn live_body_with_float_used_credits_still_parses() {
+        // Observed 2026-09-01 → 09-03 on the live endpoint: `used_credits`
+        // arrived as `4997.0` (the same 4997 minor units `spend.used`
+        // carries as an integer). A float in one fallback field must not
+        // reject the whole body — every ⟳ failed for two days on this.
+        let body = r#"{"five_hour":{"utilization":8,"resets_at":"2026-09-03T10:00:00Z"},
+          "seven_day":{"utilization":40,"resets_at":"2026-09-08T18:00:00Z"},
+          "limits":[],
+          "extra_usage":{"credits_ever_enabled":true,"currency":"USD","daily":null,
+            "decimal_places":2,"disabled_reason":null,"is_enabled":true,
+            "monthly_limit":null,"spend_limit_reached":false,"used_credits":4997.0,
+            "user_disabled":false,"utilization":null,"weekly":null},
+          "spend":{"auto_reload":null,"balance":null,"can_purchase_credits":false,
+            "can_toggle":false,"cap":null,"disabled_reason":null,"enabled":true,
+            "limit":null,"percent":0,"severity":"normal",
+            "used":{"amount_minor":4997,"currency":"USD","exponent":2}}}"#;
+
+        let u = parse_utilization(body, 7).expect("a float used_credits is not a broken body");
+        assert_eq!(u.five_hour.as_ref().map(|w| w.pct), Some(8));
+        let e = u.extra.expect("extra survives");
+        assert_eq!(e.used_minor, 4997);
+        assert_eq!(e.percent, Some(0));
+        assert_eq!(e.limit_minor, None);
+    }
+
+    #[test]
+    fn integral_float_used_credits_counts_as_minor_units_without_spend() {
+        // Without a `spend` object, used_credits is the only spend source.
+        // `4997.0` is the integer 4997 in a float's clothing (verified
+        // against spend.used.amount_minor on the live body), so it is
+        // taken as minor units; a non-integral float is ambiguous and is
+        // dropped like a float limit, but never fails the parse.
+        let integral = r#"{"limits":[],"extra_usage":{"is_enabled":true,
+          "used_credits":4997.0,"currency":"USD","decimal_places":2.0}}"#;
+        let e = parse_utilization(integral, 1)
+            .expect("parses")
+            .extra
+            .expect("extra");
+        assert_eq!(e.used_minor, 4997);
+        assert_eq!(e.exponent, 2);
+
+        let fractional = r#"{"limits":[],"extra_usage":{"is_enabled":true,
+          "used_credits":49.97,"currency":"USD","decimal_places":2}}"#;
+        let e = parse_utilization(fractional, 1)
+            .expect("still parses")
+            .extra
+            .expect("extra");
+        assert!(e.enabled);
+        assert_eq!(
+            e.used_minor, 0,
+            "ambiguous unit is dropped, not scale-guessed"
+        );
+    }
+
+    #[test]
+    fn a_rejected_body_says_which_shape_broke() {
+        // The ⟳ path surfaces this string in stderr — it must name the
+        // mismatch, and it must not be the body itself.
+        let err = parse_utilization_detailed(r#"{"five_hour": 5, "limits": []}"#, 1)
+            .expect_err("a number where a window object belongs is a real rejection");
+        assert!(
+            err.contains("expected"),
+            "serde's type message survives: {err}"
+        );
+        assert!(
+            !err.contains("\"limits\""),
+            "the body is not echoed back: {err}"
+        );
     }
 }
