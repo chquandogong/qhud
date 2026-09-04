@@ -1,6 +1,6 @@
 # DECISION_LOG
 
-> Status: living · Date: 2026-08-07 · Owner: chquandogong
+> Status: living · Date: 2026-09-04 · Owner: chquandogong
 
 Format: context → options → decision → rationale → residual risk.
 
@@ -385,3 +385,71 @@ Format: context → options → decision → rationale → residual risk.
 - **Evidence**: unit-tested decision ladder; "armed" line on deploy;
   field result 2026-08-13→14: three freezes, three sub-minute remap
   heals, zero re-execs, zero operator-visible incidents.
+
+## D-018 · A quota row's identity is (account, organization)
+
+> Shipped in v0.5.2 (2026-08-14/17, `dab68af`); recorded here 2026-09-04,
+> when a docs audit found the decision had reached the CHANGELOG,
+> DASHBOARD and RUNBOOK but never this log.
+
+- **Context**: wiring what the operator called their "second account"
+  showed there was no second account. One claude.ai login — same email,
+  same `accountUuid` — belongs to two organizations: a team seat and a
+  personal free org, each with its own quota pools. A CLI login is
+  scoped to one org per config dir, and the org is chosen at the CLI's
+  organization step after the browser OAuth, not by the browser.
+  D-015's dedupe keyed on account id alone, so a second org was
+  discarded as "a duplicate of the default".
+- **Decision**: identity is the pair. `AccountLabel` carries `org_id`
+  (`organizationUuid`) alongside the account id and exposes its
+  `config_dir`; dedupe keys on (account, org); the frontend keys strip
+  rows the same way and matches each row to its ⟳ slice **by config
+  dir**. Matching a ⟳ result by account id would feed one org's numbers
+  to both rows of the same login — the failure the pair exists to
+  prevent.
+- **Rejected**: keying rows by config dir alone (two dirs holding the
+  same (account, org) are genuinely one row, and re-logins create
+  exactly that); keying by email (an email is not a quota scope).
+- **Known limits**: field verification of a real second-org row still
+  waits on a login that picks the PERSONAL org at the CLI's
+  organization step — the OAuth flow keeps auto-continuing with the
+  browser's active team session.
+- **Evidence**: a team re-login into the extra dir adds no row (same
+  account, same org, correctly deduped); the extra dir's own
+  `.claude.json` supplies its identity with zero network.
+
+## D-019 · Wire numbers are read for their meaning; a rejected body must name its field
+
+- **Context**: on 2026-09-01 `/api/oauth/usage` began serializing
+  `extra_usage.used_credits` as `4997.0` instead of `4997`. serde
+  rejects a float for `i64`, so one optional fallback field failed the
+  entire response — 5h/7d windows included — and every Claude ⟳ failed
+  for two days. The error string was "usage response did not parse",
+  which named nothing, so the failure was indistinguishable from a dead
+  token or an empty body. The provider's own client shipped the same
+  week with in-band handling for empty and fieldless bodies on this
+  endpoint, so its number formatting is not a contract qhud may lean
+  on.
+- **Decision**: two rules. (1) Integer-meaning money fields
+  (`used_credits`, `decimal_places`, `amount_minor`, `exponent`) parse
+  through a lenient reader: an integral float IS that integer, a
+  fractional float is dropped as unit-ambiguous (the existing
+  scale-guess prohibition — $50 must never render as $0.50), and
+  neither outcome may fail the surrounding body. Optional fields stay
+  optional all the way down: no single field may cost the operator the
+  windows. (2) A parse rejection carries serde's field-and-type message
+  with its position. That message is identity-free by construction —
+  unknown fields are skipped untyped and every typed field is a number,
+  a boolean, or a window/plan string — so the D-013 rule against
+  logging this body still holds.
+- **Rejected**: `#[serde(untagged)]` enums per field (a silent
+  catch-all that would also swallow strings); parsing the whole body as
+  `serde_json::Value` and hand-walking it (loses the type contract that
+  caught the earlier Codex drift); rounding a fractional float to minor
+  units (a scale guess, forbidden since v0.5.0); echoing the response
+  body into the error (identity leak).
+- **Evidence**: three tests — the live 09-03 body verbatim, an
+  integral-vs-fractional pair, and a rejection asserting the message
+  names the mismatch and does not echo the body. Live after the fix,
+  the widget's own ⟳ logged
+  `claude usage ok [default] (5h 49%, 7d 7%, 3 scoped)`.

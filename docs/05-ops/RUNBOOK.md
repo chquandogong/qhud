@@ -1,6 +1,6 @@
 # RUNBOOK
 
-> Status: living · Date: 2026-08-07 · Owner: chquandogong
+> Status: living · Date: 2026-09-04 · Owner: chquandogong
 
 ## Install
 
@@ -69,6 +69,17 @@ cargo build --release          # binary at target/release/qhud
 --codex-appserver` exercises the expired-token fallback on demand.
   `QHUD_EXTRA_DIAG=1 qhud --claude-usage` prints the live body's
   identity-free `extra_usage`/`spend` sub-objects for shape drift.
+- **⟳ says "usage response did not parse: …"?** The endpoint's shape
+  drifted, and since v0.5.3 the rest of that line is serde's own
+  field-and-type message — read it, it names the field. Precedent
+  (2026-09-01, v0.5.3): `extra_usage.used_credits` started arriving as
+  `4997.0` instead of `4997`, and one optional field failed the whole
+  body for two days. Integer-meaning money fields now accept an
+  integral float; a NEW integer-typed field must go through the same
+  lenient reader (`lenient_i64`/`lenient_u8` in `usage_cache.rs`, D-019)
+  or it becomes the next two-day outage. If the message names a window
+  or a percent instead, the drift is in a field qhud renders and needs
+  a code change, not leniency.
 - **Accounts and plans** live in `~/.config/qhud/accounts.json`,
   deliberately outside this public repo. `labels` / `plans` /
   `workspace_names` / `workspace_plans` set display text; `known[]`
@@ -146,6 +157,7 @@ instance (single-instance guard, v0.3.0).
 | Symptom                                                                                                                                          | Fix                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | ------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Widget blank / not transparent / **pixels frozen** (clicks work — breadcrumbs fire — but the screen never changes; typical after overnight DPMS) | qhud disables both fragile WebKitGTK paths itself since v0.5.1 (`WEBKIT_DISABLE_DMABUF_RENDERER=1` + `WEBKIT_DISABLE_COMPOSITING_MODE=1` — the threaded compositor's frame clock died at display sleep; libEGL DRI3 errors at launch are the tell) AND self-heals: a Rust-side pixel guard hashes the footer strip every ~28 s; on two static samples it logs `frame freeze detected`, unmaps/remaps the window (the proven unfreezer), then re-execs if still static. If you overrode with `QHUD_KEEP_DMABUF=1` / `QHUD_KEEP_COMPOSITING=1`, unset those. Freeze check: `xwd -id $(xdotool search --class qhud \| tail -1) \| md5sum` twice a few seconds apart — identical hashes = frozen (the footer clock repaints every second) |
+| Claude quota row stuck on an old ⟳ (age caption keeps growing) and the topbar ⟳ shows an error tooltip                          | Read the stderr line: `usage response did not parse: <serde message>` means the endpoint changed shape (see the diagnostics section, D-019); `Claude token rejected (401)` means that config dir needs `claude` re-run — an expired EXTRA account cannot hide the default account's numbers, so if only one row is stale, only that dir is at fault |
 | Widget raises above windows                                                                                                                      | confirm XWayland: `xprop WM_CLASS` on the window should answer; if you set `QHUD_NO_X11_FORCE=1`, layering is your compositor's job                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | Wrong monitor after unplug                                                                                                                       | geometry restore points at a gone monitor — delete the window-state file under `~/.config/xyz.dogu.qhud/` and restart                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | No tray icon                                                                                                                                     | AppIndicator extension missing — widget still runs; quit via `pkill qhud`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |

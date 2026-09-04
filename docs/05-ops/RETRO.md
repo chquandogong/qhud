@@ -1,8 +1,10 @@
-# RETRO — v0.1.0 cycle
+# RETRO — qhud
 
-> Status: done · Date: 2026-08-05 · Owner: chquandogong
+> Status: living (cycles 1–5) · Date: 2026-09-04 · Owner: chquandogong
 
-## What worked (keep doing)
+## Cycle 1 — v0.1.0 (2026-08-05)
+
+### What worked (keep doing)
 
 - **Spike before framework**: a 20-line GJS window answered the only
   existential question (does Mutter honor keep-below for XWayland?)
@@ -18,7 +20,7 @@
   the no-write construction path at source level and contributed four
   adopted changes (CV-1..4). Worth the quota.
 
-## What to fix next cycle
+### What to fix next cycle
 
 - **Formatter hooks vs. table edits**: markdown tables get re-aligned
   by the post-write hook, so later `Edit` anchors must be re-read
@@ -33,7 +35,7 @@
   This is the top item on the DASHBOARD work board, deliberately not
   claimed as done.
 
-## Deferred (carried to backlog)
+### Deferred (carried to backlog)
 
 `.deb` packaging · upstream ObserveSnapshot facade + unpin · GNOME
 Shell extension layer · tile→pane focus jump. See DASHBOARD.
@@ -138,6 +140,48 @@ Shell extension layer · tile→pane focus jump. See DASHBOARD.
   while nothing reaches the screen; the JS watchdog built on it was
   blind through a real freeze. In-page signals cannot police the
   window's own visibility.
+
+## Cycle 5 — the two-day silent ⟳ (2026-09-01 → 09-04, v0.5.3)
+
+### What worked
+
+- **The shipped diagnostic found it in one run.** `QHUD_EXTRA_DIAG=1
+  qhud --claude-usage` existed because of a v0.5.0 shape question, and
+  it answered this one in a single invocation: the two sub-objects
+  printed fine, which proved the body was valid JSON and moved the
+  suspicion from "dead token / empty body" to "one field's type". A
+  diagnostic built for a past question paid for itself on a new one.
+- **Partial failure staying partial kept the widget honest.** The
+  default account's numbers were two days old, and the strip said so —
+  dated, with its age caption growing — rather than blanking or showing
+  a stale number as current. FR-20's dating and D-015's partial-error
+  rule are why a two-day outage was a nuisance and not a wrong number.
+- **A test written from the live body verbatim.** The failing test is
+  the actual 09-03 response, so the regression is pinned to reality
+  rather than to a hand-written approximation of it.
+
+### What to fix next cycle
+
+- **"Did not parse" without the field name cost two days.** Cycle 3
+  already learned this on Codex (`a937a3b`: HTTP 200 plus a "no data"
+  report hid two bugs, and a body preview diagnosed both), and the
+  Claude path shipped the same shape of blind error anyway. Corrective
+  action: every parse failure that faces the operator carries the
+  parser's own message (D-019); the lesson generalizes as **a rejection
+  must name what it rejected**, and it is now worth grepping the other
+  fetch paths for bare `ok_or_else` rejections.
+- **One optional field must never fail a whole response.** The 5h/7d
+  windows had nothing to do with `used_credits` and were lost with it.
+  Corrective action: integer-meaning wire numbers go through the
+  lenient reader, and new fields on a provider body are assumed to be
+  formatted however the provider feels like this week.
+- **The field tally in the docs was 5× stale.** v0.5.2 recorded "4
+  freezes through 08-17" from the guard's first days; the journal's
+  whole coverage (08-26 → 09-04) shows 21, all remap-healed, clustering minutes apart
+  after a display sleep. Nobody noticed because the heal is invisible —
+  which is the point of D-017, and also the reason a self-healing
+  subsystem needs its counter read on purpose, not when a human happens
+  to look. Corrective action: the tally is a DASHBOARD row now.
 
 ## Evidence trail
 

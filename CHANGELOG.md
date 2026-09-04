@@ -2,6 +2,65 @@
 
 All notable changes to qhud. Format: [Keep a Changelog](https://keepachangelog.com/), versioning: [SemVer](https://semver.org/).
 
+## [0.5.3] — 2026-09-04
+
+The usage endpoint changed how it writes one number. qhud stopped
+reading the whole body for two days.
+
+### Fixed
+
+- **A wire number that turned into a float killed every Claude ⟳.**
+  From 2026-09-01 18:26 every refresh reported "usage response did not
+  parse" while HTTP was 200 and the Codex and agy fetches in the SAME
+  click succeeded; the strip went on rendering the 08-31 19:00
+  snapshot, correctly dated, for two days. Cause, found by running the
+  shipped diagnostic (`QHUD_EXTRA_DIAG=1 qhud --claude-usage`): the
+  body is valid JSON, but `extra_usage.used_credits` now arrives as
+  `4997.0` where it used to be `4997`, and serde rejects a float for
+  `i64` — so ONE optional fallback field failed the entire response,
+  including the 5h/7d windows that had nothing to do with it. The same
+  4997 minor units still arrive as an integer in
+  `spend.used.amount_minor`, which is what proves a float there is
+  minor units and not dollars. Integer-meaning money fields
+  (`used_credits`, `decimal_places`, `amount_minor`, `exponent`) now
+  read an integral float as that integer; a fractional float keeps the
+  existing scale-guess prohibition and is dropped — but neither can
+  fail the body any more. Verified live: the widget's own ⟳ answered
+  `claude usage ok [default] (5h 49%, 7d 7%, 3 scoped)` with the
+  extra-usage row intact, and the result persisted to the fetched
+  store.
+
+### Changed
+
+- **A rejected usage body now names the field that drifted.** The error
+  was the bare string "usage response did not parse" — a two-day
+  diagnosis. It now carries serde's own field-and-type message with its
+  position. The body holds account uuid and email; this message holds
+  neither, by construction: unknown fields are skipped untyped, and
+  every typed field is a number, a boolean, or a window/plan string.
+  HTTP 200 plus an unexplained "no data" is the same shape of report
+  that once hid two Codex bugs (`a937a3b`), and it is now a shape qhud
+  cannot produce.
+
+### Noted
+
+- **The frame guard is working far harder than v0.5.2 recorded.** Field
+  tally over the journal's full coverage, 2026-08-26 → 09-04: **21
+  freezes detected, 21 remap heals, 0 re-execs, 0 operator-visible
+  incidents** (the v0.5.2 entry said 4 through 08-17, measured over the
+  guard's first days). Freezes cluster
+  — three inside three minutes on 09-01, two inside two minutes on
+  09-04 — so each heal is real (the ladder never escalated) but the
+  underlying stall recurs quickly once the display has slept. D-017's
+  detector-and-heal stance is what makes this invisible; the trigger is
+  still not reproducible on demand.
+- The extra account in `~/claude-personal` is still 401: its token
+  expired 2026-08-17 and no login has replaced it. Unrelated to this
+  drift, and it never hid the default account's numbers — partial
+  failure stayed partial, as D-015 requires.
+- `tauri.conf.json` had carried `"version": "0.4.0"` since v0.4.0;
+  it now tracks `Cargo.toml` again.
+
 ## [0.5.2] — 2026-08-17
 
 ### Fixed
