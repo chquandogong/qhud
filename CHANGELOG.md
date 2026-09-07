@@ -13,9 +13,10 @@ edits are stale comments, and the binaries do what v0.6.0's do.
   rather than patched. The old SPEC stopped at v0.5.0 and the old ARCHITECTURE
   was a v0.4.0 document; between them they omitted four modules
   (`agy_usage.rs`, `fetched_store.rs`, `frame_guard.rs`, `paths.rs`), both
-  platforms' path handling, the frame guard, the dual-platform release, eight
-  of the eleven CLI flags and nine of the environment variables — and every
-  module line count in the table was wrong. Requirements now cover every
+  platforms' path handling, the frame guard, the dual-platform release, five
+  of the eleven command-line flags and eighteen of the twenty environment
+  variables the code touches — and every module line count in the table was
+  wrong. Requirements now cover every
   shipped release: FR-1 … FR-24 keep the numbers other documents cite, and
   FR-25 … FR-34 give the v0.5.1 → v0.6.0 work the spec rows it never had
   (inline row selection, the frame guard, (account, organization) identity,
@@ -71,6 +72,19 @@ edits are stale comments, and the binaries do what v0.6.0's do.
 - The v0.5.3 wire-drift fix has held: every Claude refresh since 2026-09-04
   has succeeded. `~/claude-personal` still answers 401 — its token expired
   2026-08-17 and only an operator login clears it.
+
+### Corrected after tagging
+
+- **The counts above were wrong when v0.6.1 was tagged.** The entry claimed
+  the old ARCHITECTURE omitted "eight of the eleven CLI flags and nine of the
+  environment variables"; counted from the source, it named six flags of
+  eleven and two environment variables of twenty, so five and eighteen were
+  missing. The `docs:` commit message for this release also gave SPEC's new
+  length as 322 lines where it is 263. Corrected on `main` after publication;
+  the published v0.6.1 archives carry the original wording, and the tag was
+  left where it is. Recorded rather than quietly edited, because getting a
+  count wrong in the release whose whole subject is wrong counts is exactly
+  the kind of thing this project writes down.
 
 ## [0.6.0] — 2026-09-07
 
