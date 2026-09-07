@@ -206,10 +206,12 @@ QHUD_EXTRA_DIAG=1 qhud --claude-usage         # extra-usage shape drift (identit
 ```
 
 The widget also reports what it built to stderr — the structure it rendered,
-the text of every row, and any frontend exception. That exists because the
-pixels are not verifiable from outside the webview (`scrot` cannot capture
-XWayland-composited windows), so **the absence of an error is not proof
-anything painted**.
+the text of every row, and any frontend exception. Read those as proof of
+logic, never of paint: **the absence of an error is not proof anything
+painted**. Pixels are checked separately, because they are checkable —
+`xwd -id <window> | md5sum` twice a few seconds apart must differ (the footer
+clock repaints every second), and the widget runs that check on itself every
+~28 s and heals a frozen frame on its own (D-017).
 
 ## Design notes
 

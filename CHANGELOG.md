@@ -2,6 +2,76 @@
 
 All notable changes to qhud. Format: [Keep a Changelog](https://keepachangelog.com/), versioning: [SemVer](https://semver.org/).
 
+## [0.6.1] — 2026-09-07
+
+A documentation and verification release. No behavior change: the only source
+edits are stale comments, and the binaries do what v0.6.0's do.
+
+### Changed
+
+- **SPEC and ARCHITECTURE rewritten from scratch** against the v0.6.0 source
+  rather than patched. The old SPEC stopped at v0.5.0 and the old ARCHITECTURE
+  was a v0.4.0 document; between them they omitted four modules
+  (`agy_usage.rs`, `fetched_store.rs`, `frame_guard.rs`, `paths.rs`), both
+  platforms' path handling, the frame guard, the dual-platform release, eight
+  of the eleven CLI flags and nine of the environment variables — and every
+  module line count in the table was wrong. Requirements now cover every
+  shipped release: FR-1 … FR-24 keep the numbers other documents cite, and
+  FR-25 … FR-34 give the v0.5.1 → v0.6.0 work the spec rows it never had
+  (inline row selection, the frame guard, (account, organization) identity,
+  lenient wire numbers, the Windows widget, the real-accounts fallback,
+  scrolling and exact resets, model-only snapshots, concurrent refreshes,
+  snapshot ownership). Line counts are gone from the module table; they have
+  been wrong at every release. Two claims were retired: Windows is no longer
+  "out of scope", and "the pixels are not verifiable from outside the webview"
+  is the opposite of what D-017 proved — it was still being repeated in
+  ARCHITECTURE and the README.
+- **RISK_REGISTER rewritten.** It had stood since v0.4.0, was entirely
+  Linux-shaped, and had no row for the failure that dominated the field.
+  Status is now an explicit column, realized risks carry the date they
+  happened, and six rows are new: the display-sleep frame freeze, provider
+  wire-format drift (realized three times), the WebView2 runtime requirement,
+  the Windows dependency-patch and lockfile dance, a stale reading rendering
+  as current, and one account's numbers wearing another's name.
+- **ASSUMPTIONS rewritten.** The pinned-revision assumption named a revision
+  superseded a month earlier and no longer names one at all; the
+  single-platform premise, the "never persists" claim and a relative
+  "verified today" date are corrected; six assumptions are new, including the
+  frame guard's premise that the footer clock repaints every second, and the
+  inverse assumption that provider wire formats are *not* stable.
+- Stale comments corrected in `view.rs`, `main.rs`, `demo.rs`,
+  `usage_cache.rs` and `codex_usage.rs`: the payload's `source` gained
+  `"local"` in v0.6.0 and the doc comment still listed two values; a
+  diagnostic flag carried its neighbour's description; the demo module still
+  claimed to be the no-mux fallback.
+
+### Noted
+
+- **Ubuntu re-verified on the published v0.6.0 build**, closing the gap
+  v0.6.0 recorded when it shipped from a Windows host. The Linux release
+  asset was checksum-verified, installed and exercised on the reference
+  machine: desktop-layer states all present with `_NET_WM_DESKTOP` at
+  `0xFFFFFFFF`, two `xwd` hashes three seconds apart differing (so the
+  window is painting), the frame guard arming, herdr observation with eight
+  panes, and all three providers answering a refresh. The same tree passed
+  fmt, clippy with warnings as errors, 98/98 tests and a release build
+  locally. Dated rows are in TEST_PLAN.
+- **The frame guard's field tally was five times larger than recorded.**
+  Journal-captured window 2026-08-26 → 09-07: 28 freezes, 28 first-rung
+  heals, 0 re-execs, 0 operator-visible incidents. Freezes cluster minutes
+  apart after a display sleep. The earlier figures came from a
+  terminal-attached instance whose stderr never reached the journal and
+  cannot be re-derived.
+- **v0.6.0 cut the Linux binary from 25.13 MiB to 15.07 MiB**, and the reason
+  is worth recording: `[profile.release]` had been sitting in the member
+  manifest, where cargo ignores it, so `strip`, `lto` and
+  `codegen-units = 1` had never applied to any release. v0.5.3 quietly
+  exceeded D-014's 25 MB budget. Cargo had printed that warning on every
+  build for a month. Measure the release asset, not the local build.
+- The v0.5.3 wire-drift fix has held: every Claude refresh since 2026-09-04
+  has succeeded. `~/claude-personal` still answers 401 — its token expired
+  2026-08-17 and only an operator login clears it.
+
 ## [0.6.0] — 2026-09-07
 
 ### Added

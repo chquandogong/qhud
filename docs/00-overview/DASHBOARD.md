@@ -1,6 +1,6 @@
 # DASHBOARD — qhud
 
-> Status: v0.6.0 released · Date: 2026-09-07 · Owner: chquandogong
+> Status: v0.6.1 released · Date: 2026-09-07 · Owner: chquandogong
 > Single source of truth = this git repo. This board is the handoff
 > surface: read it first when resuming work on another session/agent.
 
@@ -8,15 +8,15 @@
 
 | Item               | Value                                                                                                   |
 | ------------------ | ------------------------------------------------------------------------------------------------------- |
-| Version            | [v0.6.0 released](https://github.com/chquandogong/qhud/releases/tag/v0.6.0) — Linux x86_64 tarball + Windows x86_64 ZIP |
+| Version            | [v0.6.1](https://github.com/chquandogong/qhud/releases/tag/v0.6.1) — rewritten SPEC/ARCHITECTURE and dated Ubuntu evidence; runtime behavior identical to [v0.6.0](https://github.com/chquandogong/qhud/releases/tag/v0.6.0) (Linux x86_64 tarball + Windows x86_64 ZIP) |
 | Pipeline dep       | qmonster @ `6a21c44`; canonical Git dependency on Linux, command-scoped Windows patch with lockfile restoration |
 | Platforms          | Ubuntu 24.04 / GNOME and native Windows x64 / WebView2; Windows terminal-tab observation remains unsupported |
-| Runtime evidence   | Historical Ubuntu: GNOME 46 Wayland, 2 monitors, herdr live (2026-09-03). Windows v0.6.0: native display, email, reset, Codex refresh and app-server fallback verified |
-| Quality gates      | Ubuntu fmt/clippy/tests **98/98**/release build passed; Windows tests **98/98**/release build passed — [CI 34117359064](https://github.com/chquandogong/qhud/actions/runs/34117359064) |
+| Runtime evidence   | **Ubuntu 2026-09-07 on the published v0.6.0 Linux asset** (checksum-verified, installed): Ubuntu 24.04.3 · GNOME Shell 46.0 Wayland · kernel 7.0.0-28 · eDP-1 2560×1600 + HDMI-1 3840×2160 (scale 1) · webkit2gtk 2.52.6 · herdr 0.7.5 live with 8 panes. `_NET_WM_STATE` = BELOW+STICKY+SKIP_PAGER+SKIP_TASKBAR, `_NET_WM_DESKTOP` = 0xFFFFFFFF, `WM_CLASS` = qhud/Qhud; two `xwd` hashes 3 s apart differed (painting); frame guard armed; all three providers answered ⟳. Windows v0.6.0: native display, email, reset, Codex refresh and app-server fallback verified |
+| Quality gates      | Ubuntu fmt/clippy/tests **98/98**/release build passed; Windows tests **98/98**/release build passed — [CI 34117359064](https://github.com/chquandogong/qhud/actions/runs/34117359064). Re-run locally on Ubuntu 2026-09-07 against the v0.6.0 tree: fmt clean, clippy `-D warnings` clean, 98/98, release build 6 m 21 s from the pinned Git dependency with no sibling checkout |
 | Input verification | Ubuntu: **compositor-path only** (Mutter RemoteDesktop injection or human hand — XTEST inadmissible, D-010) |
 | Cross-validation   | Codex/GPT — AGREE-WITH-CHANGES, CV-1..4 adopted (CROSS_VALIDATION_LOG)                                  |
-| Frame guard field  | 08-26 → 09-04 (journal coverage): **21 freezes, 21 remap heals, 0 re-execs, 0 visible incidents** (D-017)  |
-| Known live gap     | Last Ubuntu report (2026-09-04): `~/claude-personal` credential expired; a fresh login is needed for that row. This release does not renew credentials |
+| Frame guard field  | 08-26 → 09-07 (journal-captured window): **28 freezes, 28 remap heals, 0 re-execs, 0 visible incidents** (D-017). The v0.5.1/v0.5.2 counts came from a terminal-attached instance whose stderr never reached the journal, so they cannot be re-derived |
+| Known live gap     | Still open on 2026-09-07: the `~/claude-personal` credential expired 2026-08-17, so that row answers 401 on every ⟳. Only an operator login clears it; no release renews credentials. The default account is unaffected — partial failure stays partial |
 
 ## Decision index (full entries in DECISION_LOG)
 
@@ -30,7 +30,8 @@ D-014 passive by default, network on request · D-015 multi-account via
 per-account CLI config dirs · D-016 delegated fetch paths (codex
 app-server, agy loopback RPC) · D-017 the widget audits its own pixels
 (frame guard) · D-018 row identity is (account, organization) ·
-D-019 lenient wire numbers, and a rejected body names its field.
+D-019 lenient wire numbers, and a rejected body names its field ·
+D-020 Windows adaptation stays scoped; usage keeps its account and window.
 
 ## Work board
 
@@ -49,6 +50,8 @@ D-019 lenient wire numbers, and a rejected body names its field.
 | Native Windows account widget; local fallback without a mux; model/reset visibility and ownership safeguards (v0.6.0)       | implemented; local tests 98/98  | codex+chquandogong |
 | Portable Linux dependency manifest; Windows script-scoped patch; Ubuntu + Windows CI/release gates                          | both platform CI jobs passed    | codex+chquandogong |
 | v0.6.0 release publication and verified downloads                                                                         | [Release 34127575141 passed](https://github.com/chquandogong/qhud/actions/runs/34127575141); both archive checksums match | codex+chquandogong |
+| Ubuntu re-verification of the published v0.6.0 build, closing the "not re-exercised on this Windows host" gap                    | done 2026-09-07                  | claude+chquandogong |
+| SPEC and ARCHITECTURE rewritten from scratch for v0.6.0/v0.6.1; RISK_REGISTER and ASSUMPTIONS refreshed against field evidence   | done 2026-09-07                  | claude+chquandogong |
 | ⏳ TEST_PLAN pending rows (overview / lock / suspend / hotplug / fullscreen)                                                     | **todo — first on-machine pass** | operator            |
 | Live verification with a plain tmux server (fallback path)                                                                       | todo                             | operator            |
 | Personal-org login into `~/claude-personal` (pick the PERSONAL org at the CLI org step; registry already wired; OAuth keeps auto-selecting the team session) | todo — operator, whenever wanted | operator            |
@@ -66,34 +69,39 @@ until the companion extension exists.
 
 ## Resume point
 
-v0.6.0 adds the native Windows account widget while preserving the
-Ubuntu source-build path. With no mux, both platforms now show real
-local accounts and dated quota; demo panes require `--demo`. Model-only
-snapshots survive restarts, and the quota area scrolls when rows exceed
-the window. Model pools missing from a live provider response are not
-invented.
+v0.6.1 is a documentation and verification release: identical runtime
+behavior to v0.6.0, with `docs/03-spec/SPEC.md` and
+`docs/03-spec/ARCHITECTURE.md` rewritten from scratch against the
+v0.6.0 source, and RISK_REGISTER / ASSUMPTIONS refreshed against dated
+field evidence.
 
-Both remote platform jobs passed on code revision `1514e09`: Ubuntu
-fmt/clippy, 98 tests and release build; Windows 98 tests and release build.
-The local Windows v0.6.0 executable also passed a display/account-refresh
-smoke check, including its app-server fallback. Ubuntu desktop integration
-was not re-exercised on this Windows host; the field evidence above remains
-historical. The final tag `v0.6.0` points to `cfdd850`; its main CI and
-dual-platform release workflow both passed. All four downloads were
-published, both archive SHA-256 checksums matched, and the published
-Windows executable was installed for the final runtime check.
+**The Ubuntu gap v0.6.0 left open is now closed.** v0.6.0 shipped from a
+Windows host and recorded that "Ubuntu desktop integration was not
+re-exercised"; on 2026-09-07 the published Linux asset was
+checksum-verified, installed and exercised on the reference Ubuntu
+machine. Desktop-layer states, pixel liveness, herdr observation with 8
+panes and all three provider refreshes were confirmed — see Runtime
+evidence above and the dated rows in TEST_PLAN.
+
+Also confirmed this session: the v0.5.3 wire-drift fix has held since
+2026-09-04 (every Claude ⟳ succeeded), and v0.6.0's release profile move
+to the workspace root cut the Linux binary from 25.13 MiB to 15.07 MiB —
+`[profile.release]` had been sitting in a non-root workspace member where
+cargo ignored it, so `strip`/`lto`/`codegen-units = 1` had never applied
+to any earlier release.
 
 Next meaningful units, in order:
 
-1. **Published baseline** — v0.6.0 and both platform downloads are verified.
-   Release notes are in `docs/05-ops/releases/v0.6.0.md`; keep subsequent
-   changes separate from this tagged baseline.
-2. **Operator verification pass** — the TEST_PLAN ⏳ rows (overview /
-   lock / suspend / hotplug / fullscreen), a plain-tmux backend check,
-   and the personal-org login into `~/claude-personal` (registry
-   already wired; pick the PERSONAL org at the CLI's organization step,
-   which also clears the standing 401 on that row).
-3. **Docs backfill** — review older specifications and risk entries
-   against the implemented behavior and dated field evidence.
-4. **Backlog** — tile→pane focus jump remains the highest-value small
-   item.
+1. **Operator verification pass** — the TEST_PLAN ⏳ rows that need a
+   human at the machine (GNOME overview, lock/unlock, suspend/resume,
+   monitor hotplug, fullscreen), a plain-tmux backend check, and the
+   personal-org login into `~/claude-personal` (registry already wired;
+   pick the PERSONAL org at the CLI's organization step, which also
+   clears the standing 401 on that row).
+2. **Windows field breadth** — Windows evidence is one host and one smoke
+   check. Terminal-pane attribution there is unimplemented by design, so
+   the honest Windows claim stays "account quota widget", not "session
+   HUD".
+3. **Backlog** — tile→pane focus jump remains the highest-value small
+   item; then the GNOME Shell extension, upstream `ObserveSnapshot`
+   export and unpin, `.deb` packaging, agy multi-account.

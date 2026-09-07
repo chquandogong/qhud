@@ -1,6 +1,6 @@
 # DECISION_LOG
 
-> Status: living · Date: 2026-09-04 · Owner: chquandogong
+> Status: living · Date: 2026-09-07 · Owner: chquandogong
 
 Format: context → options → decision → rationale → residual risk.
 
@@ -342,6 +342,8 @@ Format: context → options → decision → rationale → residual risk.
 - **Decision**: extend D-014's "network only on request" with a third
   kind of on-request path — asking the provider's OWN process:
   `codex -s read-only -a untrusted app-server` (JSON-RPC over stdio,
+  **amended v0.6.0: the approval option is now the supported
+  `-a on-request`; the sandbox stays `read-only`**,
   `account/rateLimits/read`) as a fallback for the active login, and
   agy's loopback Connect RPC `RetrieveUserQuotaSummary` (tokenless,
   machine-local, /proc port discovery). In both, credential custody and
@@ -385,6 +387,15 @@ Format: context → options → decision → rationale → residual risk.
 - **Evidence**: unit-tested decision ladder; "armed" line on deploy;
   field result 2026-08-13→14: three freezes, three sub-minute remap
   heals, zero re-execs, zero operator-visible incidents.
+- **Field tally, superseding the figure above** (journal-captured window
+  2026-08-26 → 09-07): **28 freezes, 28 first-rung heals, 0 re-execs, 0
+  operator-visible incidents.** Freezes cluster minutes apart after a
+  display sleep, so the guard runs far more often than the first days
+  suggested. Two consequences worth keeping: the Restart rung has still
+  never fired in the field, and the earlier counts came from a
+  terminal-attached instance whose stderr never reached the journal, so
+  they cannot be re-derived. Linux only since v0.6.0 (D-020) — the guard
+  is compiled out on Windows, where this failure mode has no analogue.
 
 ## D-018 · A quota row's identity is (account, organization)
 

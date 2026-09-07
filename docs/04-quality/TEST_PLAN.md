@@ -30,8 +30,17 @@ publication waits for both Ubuntu and Windows tests and builds to succeed.
 passed on `1514e09`: Ubuntu fmt/clippy, **98/98 tests** and release build;
 Windows **98/98 tests**, release build and canonical dependency-file check.
 The local Windows script also passed 98/98 tests and the release build.
-Existing Ubuntu desktop evidence below predates v0.6.0 and is not a new
-desktop integration pass.
+
+2026-09-07, Ubuntu re-verification of the published v0.6.0 Linux asset —
+the pass v0.6.0 recorded as missing. The release tarball was downloaded,
+its SHA-256 matched its sidecar, and that exact binary (installed to
+`~/.local/bin/qhud`, hash-compared against the asset) was relaunched on
+the reference machine. Environment: Ubuntu 24.04.3, GNOME Shell 46.0
+Wayland, kernel 7.0.0-28, eDP-1 2560×1600 + HDMI-1 3840×2160 both at
+scale 1, webkit2gtk 2.52.6, herdr 0.7.5, rustc 1.94.1. The same tree
+also passed locally: fmt clean, clippy `-D warnings` clean, 98/98 tests,
+and a release build in 6 m 21 s from the pinned Git dependency with no
+sibling checkout.
 
 ## Unit coverage
 
@@ -48,16 +57,21 @@ desktop integration pass.
 
 Run on the target machine after any window-layer change:
 
-| Check                 | Command / action                                                                       | Pass criteria (historical evidence: 2026-08-05; v0.6.0 recheck pending)                 |
+| Check                 | Command / action                                                                       | Pass criteria — evidence date                                                           |
 | --------------------- | -------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| Below + sticky + skip | `xprop -id $(xdotool search --name '^qhud$' \| tail -1) _NET_WM_STATE _NET_WM_DESKTOP` | `_NET_WM_STATE_BELOW`, `_STICKY`, `_SKIP_TASKBAR`, `_SKIP_PAGER`; desktop `4294967295` |
+| Below + sticky + skip | `xprop -id $(xdotool search --class qhud \| tail -1) _NET_WM_STATE _NET_WM_DESKTOP` | all four states present; desktop `4294967295` — **passed 2026-09-07 on the published v0.6.0 asset** |
 | Stays under windows   | drag any app over the widget                                                           | widget never raises                                                                    |
 | Workspace pinned      | switch workspaces                                                                      | widget visible on all                                                                  |
 | Cross-monitor move    | drag topbar to the other monitor                                                       | position persists after restart                                                        |
 | Resize                | drag ◢ grip                                                                            | content reflows; persists after restart                                                |
 | Local fallback        | stop the active tmux/herdr server                                                       | real accounts and dated quota remain; no example panes or `DEMO` badge                 |
+| Real data by default  | `qhud --dump` and `qhud --demo --dump`                                                  | without the flag `source` is `live`/`local` with real panes; with it `source` is `demo` with the three mockup panes — **passed 2026-09-07** |
 | Explicit demo         | launch `qhud --demo` after closing the existing instance                               | `DEMO` badge; tiles mirror the mockup                                                  |
-| Live recovery         | start tmux + an AI CLI                                                                 | live data within ≤12 s (10 s re-probe + 2 s poll)                                       |
+| Live recovery         | start tmux + an AI CLI                                                                 | live data within ≤12 s (10 s re-probe + 2 s poll) — 2026-08-05                          |
+| Live observation      | read the startup line in the widget's stderr                                            | `live via herdr` with the pane list — **passed 2026-09-07** (8 panes, strip built 3 sections / 7 rows) |
+| Every provider refreshes | `qhud --refresh-all`, then read the widget's stderr                                  | all three providers answer with no error — **passed 2026-09-07** (claude 5h 3% / 7d 67% / 3 scoped, agy 2 pools, codex 1 workspace) |
+| Pixels are painting   | `xwd -id <window> \| md5sum` twice, a few seconds apart                                 | the two hashes **differ** (the footer clock repaints every second) — **passed 2026-09-07**; identical hashes mean a frozen frame (D-017) |
+| Frame guard is armed  | grep the widget's stderr for `frame guard armed`                                        | exactly one line per process start — **passed 2026-09-07**; its absence means the sampler failed and a freeze would go undetected |
 | Visual parity         | compare with `docs/assets/widget-*.png`                                                | palette/tiles/gauges/pills match mockup                                                |
 | GNOME overview        | open Activities / workspace gestures                                                   | ⏳ widget may appear as a window (accepted quirk R2); must return below afterwards     |
 | Lock / unlock         | lock screen, unlock                                                                    | ⏳ still below + sticky (`xprop` re-check)                                             |
@@ -66,7 +80,13 @@ Run on the target machine after any window-layer change:
 | Monitor hotplug       | unplug/replug the external monitor                                                     | ⏳ recoverable via tray → Reset position                                               |
 
 ⏳ rows were added from the Codex cross-validation (CV log) and are
-pending their first on-machine verification pass.
+pending their first on-machine verification pass. Two of them —
+lock/unlock and suspend/resume — are exactly the display-sleep
+conditions that trigger the D-017 freeze, which was found in the field
+rather than by this checklist. Until they are run, the frame guard's
+field tally is the only evidence for that path: **28 detections, 28
+first-rung heals, 0 re-execs, 0 operator-visible incidents** over the
+journal-captured window 2026-08-26 → 09-07.
 
 2026-08-05 (D-008): click delivery, drag-move, and grip-resize
 re-verified pixel-exact on both monitors with the self-driven geometry
