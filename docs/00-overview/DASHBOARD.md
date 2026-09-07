@@ -1,6 +1,6 @@
 # DASHBOARD — qhud
 
-> Status: v0.6.0 validated for release · Date: 2026-09-07 · Owner: chquandogong
+> Status: v0.6.0 released · Date: 2026-09-07 · Owner: chquandogong
 > Single source of truth = this git repo. This board is the handoff
 > surface: read it first when resuming work on another session/agent.
 
@@ -8,7 +8,7 @@
 
 | Item               | Value                                                                                                   |
 | ------------------ | ------------------------------------------------------------------------------------------------------- |
-| Version            | v0.6.0 in preparation; last published v0.5.3 (2026-09-04) — [releases](https://github.com/chquandogong/qhud/releases) |
+| Version            | [v0.6.0 released](https://github.com/chquandogong/qhud/releases/tag/v0.6.0) — Linux x86_64 tarball + Windows x86_64 ZIP |
 | Pipeline dep       | qmonster @ `6a21c44`; canonical Git dependency on Linux, command-scoped Windows patch with lockfile restoration |
 | Platforms          | Ubuntu 24.04 / GNOME and native Windows x64 / WebView2; Windows terminal-tab observation remains unsupported |
 | Runtime evidence   | Historical Ubuntu: GNOME 46 Wayland, 2 monitors, herdr live (2026-09-03). Windows v0.6.0: native display, email, reset, Codex refresh and app-server fallback verified |
@@ -48,7 +48,7 @@ D-019 lenient wire numbers, and a rejected body names its field.
 | Claude ⟳ dead two days on a float `used_credits`: lenient wire numbers + a parse error that names the field (v0.5.3, D-019)      | done 2026-09-04                  | claude+chquandogong |
 | Native Windows account widget; local fallback without a mux; model/reset visibility and ownership safeguards (v0.6.0)       | implemented; local tests 98/98  | codex+chquandogong |
 | Portable Linux dependency manifest; Windows script-scoped patch; Ubuntu + Windows CI/release gates                          | both platform CI jobs passed    | codex+chquandogong |
-| v0.6.0 release build and Windows final smoke                                                                               | passed; publication uses gated tag workflow | codex+chquandogong |
+| v0.6.0 release publication and verified downloads                                                                         | [Release 34127575141 passed](https://github.com/chquandogong/qhud/actions/runs/34127575141); both archive checksums match | codex+chquandogong |
 | ⏳ TEST_PLAN pending rows (overview / lock / suspend / hotplug / fullscreen)                                                     | **todo — first on-machine pass** | operator            |
 | Live verification with a plain tmux server (fallback path)                                                                       | todo                             | operator            |
 | Personal-org login into `~/claude-personal` (pick the PERSONAL org at the CLI org step; registry already wired; OAuth keeps auto-selecting the team session) | todo — operator, whenever wanted | operator            |
@@ -78,14 +78,16 @@ fmt/clippy, 98 tests and release build; Windows 98 tests and release build.
 The local Windows v0.6.0 executable also passed a display/account-refresh
 smoke check, including its app-server fallback. Ubuntu desktop integration
 was not re-exercised on this Windows host; the field evidence above remains
-historical. Publication is gated by the tagged release workflow.
+historical. The final tag `v0.6.0` points to `cfdd850`; its main CI and
+dual-platform release workflow both passed. All four downloads were
+published, both archive SHA-256 checksums matched, and the published
+Windows executable was installed for the final runtime check.
 
 Next meaningful units, in order:
 
-1. **Release verification** — confirm the v0.6.0 tag workflow and its
-   Linux/Windows downloads on GitHub Releases. The workflow publishes only
-   after both platform jobs succeed and uses
-   `docs/05-ops/releases/v0.6.0.md` for the release body.
+1. **Published baseline** — v0.6.0 and both platform downloads are verified.
+   Release notes are in `docs/05-ops/releases/v0.6.0.md`; keep subsequent
+   changes separate from this tagged baseline.
 2. **Operator verification pass** — the TEST_PLAN ⏳ rows (overview /
    lock / suspend / hotplug / fullscreen), a plain-tmux backend check,
    and the personal-org login into `~/claude-personal` (registry

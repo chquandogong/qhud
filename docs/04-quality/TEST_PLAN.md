@@ -91,6 +91,16 @@ Installed executable SHA-256:
 `3D688DB2F90E6D4780C0F016CB0CED1572189AC83FC1658F73A6688D1477F9FF`.
 This identifies the local MSVC build, not the separate GitHub release artifact.
 
+The final tag `v0.6.0` (`cfdd850`) passed
+[main CI](https://github.com/chquandogong/qhud/actions/runs/34127575130) and
+[Release](https://github.com/chquandogong/qhud/actions/runs/34127575141).
+Both published archives were downloaded and matched their SHA-256 files.
+The published Windows executable was installed; its SHA-256 is
+`1233E4E7D58B8E6A0C855D3B528C7810FFD99DA476509F9C19509A3B5F094917`.
+The installed published process responds and emits its account rows. Its final
+compositor screenshot is pending because the Windows session entered the lock
+screen; the earlier local-build visual check remains the direct pixel evidence.
+
 ## Ubuntu input-verification protocol (mandatory since D-010)
 
 **XTEST (xdotool) alone is inadmissible for interaction claims** — it
