@@ -453,3 +453,21 @@ Format: context → options → decision → rationale → residual risk.
   names the mismatch and does not echo the body. Live after the fix,
   the widget's own ⟳ logged
   `claude usage ok [default] (5h 49%, 7d 7%, 3 scoped)`.
+
+## D-020 · Windows adaptation stays scoped; usage keeps its account and window
+
+- **Context**: adding a Windows widget must not make an ordinary Linux clone
+  depend on a developer's sibling directory. Model-only quota responses also
+  need to survive serialization and display without inventing absent limits.
+- **Decision**: Linux retains its pinned Git dependency, GTK frame guard and
+  X11/tmux/herdr paths. The Windows build script applies a checked-in dependency
+  patch through command-scoped Cargo configuration and restores the canonical
+  lockfile bytes afterward. CI tests/builds both platforms; release publication
+  waits for both. Shared quota fixes preserve account identity, model scope and
+  each reset instant, tolerate nullable limit maps, and never synthesize a model
+  the server did not return.
+- **Common behavior changes**: no-mux startup shows real local accounts with
+  zero panes; demo data is explicit. Home/config environment overrides are
+  respected, and snapshots without a matching account identity require refresh.
+- **Boundary**: native Windows terminal-pane attribution is not implemented.
+  Windows support does not replace the Linux desktop integration.

@@ -1,8 +1,11 @@
 # RUNBOOK
 
-> Status: living · Date: 2026-09-04 · Owner: chquandogong
+> Status: living · Date: 2026-09-07 · Owner: chquandogong
 
 ## Install
+
+**Windows x64:** use the ZIP release or the checked-in build script described
+in [WINDOWS](WINDOWS.md). The Linux instructions below remain unchanged in scope.
 
 **Release tarball** (Linux x86_64):
 
@@ -21,13 +24,14 @@ Runtime deps (Ubuntu 24.04 names): `libwebkit2gtk-4.1-0`, `libgtk-3-0`,
 sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev \
   libayatana-appindicator3-dev librsvg2-dev pkg-config
 git clone https://github.com/chquandogong/qhud && cd qhud
-cargo build --release          # binary at target/release/qhud
+cargo build --release --locked # binary at target/release/qhud
 ```
 
 ## Run / quit
 
-- Start: `./qhud &` — the widget appears on the desktop layer and
-  shows `DEMO` until a tmux server with AI CLI panes exists.
+- Start: `./qhud &` — the widget appears on the desktop layer. Without a
+  multiplexer it shows real local account snapshots and zero panes. `--demo`
+  explicitly selects example data.
 - Move: drag the top bar (or footer). Resize: drag the ◢ grip.
 - Quit: tray icon → _Quit qhud_, or `pkill qhud` (no titlebar by
   design).
@@ -171,3 +175,23 @@ instance (single-instance guard, v0.3.0).
 Bump the `rev` in `src-tauri/Cargo.toml`, `cargo build`, fix whatever
 the compiler surfaces in `view.rs`/`poll.rs`, re-run the TEST_PLAN
 manual checklist.
+
+## Release procedure
+
+1. Update README, CHANGELOG, platform instructions, and
+   `docs/05-ops/releases/v<version>.md` before publishing. Keep the package,
+   Tauri config and Cargo lock package version aligned.
+2. Push a `codex/` preparation branch and require both Ubuntu and Windows CI
+   to pass. Linux uses the canonical pinned Git dependency; Windows runs
+   `scripts/Build-Windows.ps1 -Test` and verifies that the manifest/lock are
+   restored. Do not run simultaneous Cargo commands in that Windows checkout.
+3. Integrate the tested revision into `main` without overwriting unrelated
+   commits. Create an annotated `v<version>` tag on the release revision and
+   push it.
+4. The Release workflow tests/builds both platforms, packages the existing
+   Linux x86_64 tarball and Windows x86_64 ZIP with SHA-256 checksums, and
+   attests them. Its publish job runs only after both builds succeed and
+   uses the checked-in release notes.
+5. Confirm the workflow succeeded and all platform downloads/checksums are
+   attached. A passed CI build is not a substitute for a live desktop check;
+   record any desktop integration that has not been exercised.

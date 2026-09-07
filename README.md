@@ -127,6 +127,14 @@ one that admits them.
 
 ## Install
 
+**Windows x64:** download the Windows ZIP from
+[Releases](https://github.com/chquandogong/qhud/releases), extract it, and run
+`qhud.exe`. Microsoft Edge WebView2 Runtime is required. See
+[Windows build and run](docs/05-ops/WINDOWS.md) for prerequisites and source builds.
+The native WebView2 app shows real account usage without requiring a terminal
+multiplexer; terminal-pane monitoring still requires tmux/herdr. Demo data is
+available only with `--demo`.
+
 Prebuilt Linux x86_64 tarball from
 [Releases](https://github.com/chquandogong/qhud/releases):
 
@@ -140,7 +148,7 @@ From source (Rust 1.88+, a WebKitGTK dev environment, and
 [qmonster](https://github.com/chquandogong/qmonster)'s own prerequisites):
 
 ```sh
-cargo build --release --manifest-path src-tauri/Cargo.toml
+cargo build --release --locked --manifest-path src-tauri/Cargo.toml
 install -Dm755 target/release/qhud ~/.local/bin/qhud
 ```
 
@@ -168,7 +176,8 @@ bindable to GNOME shortcuts.
 
 ## Accounts and plans
 
-Display names live in `~/.config/qhud/accounts.json`, **outside this
+Display names live in `~/.config/qhud/accounts.json` on Linux and
+`%APPDATA%\qhud\accounts.json` on a new Windows installation, **outside this
 repository on purpose** — it holds your emails and account ids, and this
 repo is public. It sets labels and plan text, lists accounts that have ever
 connected (so they can appear as placeholders), records the ones you have
@@ -178,6 +187,13 @@ dirs you keep signed in: `claude_config_dirs` for additional
 credential dirs. qhud's own ⟳ results persist next to it in
 `fetched-usage.json` (same privacy rule). Schema and rules:
 [RUNBOOK](docs/05-ops/RUNBOOK.md).
+
+`QHUD_CONFIG_DIR` overrides that directory. `XDG_CONFIG_HOME` and an existing
+`~/.config/qhud` are respected; provider homes follow `CODEX_HOME` and
+`CLAUDE_CONFIG_DIR`. Use account labels in `accounts.json` when Codex's local
+identity supplies only a workspace ID. Model limits such as Spark 5H/7D appear
+only when the provider returns them for that signed-in workspace. Long labels
+wrap, the quota strip scrolls, and hovering a gauge shows the exact reset time.
 
 ## When a number looks wrong
 
@@ -224,7 +240,9 @@ History: [CHANGELOG](CHANGELOG.md)
 ## Scope
 
 One workstation, 1–12 AI panes, GNOME/Wayland via XWayland as the primary
-target. Other desktops are best-effort. Beyond ~12 panes the interaction
+terminal-monitoring target. Windows x64 supports the native widget and account
+usage; Windows Terminal/PowerShell pane discovery is not implemented. Other
+desktops are best-effort. Beyond ~12 panes the interaction
 model should change rather than be stretched.
 
 ## License

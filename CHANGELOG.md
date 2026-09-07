@@ -2,6 +2,41 @@
 
 All notable changes to qhud. Format: [Keep a Changelog](https://keepachangelog.com/), versioning: [SemVer](https://semver.org/).
 
+## [0.6.0] — 2026-09-07
+
+### Added
+
+- Native Windows x64 widget with WebView2, Windows account/config paths,
+  desktop Codex CLI discovery, and hidden provider helper processes.
+- Reproducible Windows build script and a Windows ZIP release alongside the
+  existing Linux x86_64 tarball. Ubuntu and Windows tests/builds gate publishing.
+- Scrollable account usage and full wrapped model labels. Gauge tooltips and
+  expanded model details show the exact reset date and time.
+
+### Fixed
+
+- Codex app-server fallback uses the supported `on-request` approval option.
+  Missing/null legacy or per-model limit fields no longer hide the other valid
+  readings; the main pool is retained once, without duplication.
+- Model-only snapshots, including Spark 5H/7D, keep their percentages and
+  individual reset times across restarts.
+- Concurrent provider refreshes preserve each other's saved results. Cached
+  usage is matched to the current account before being displayed after a login
+  change.
+
+### Compatibility
+
+- Linux keeps its pinned Git dependency, GTK frame guard, X11 behavior and
+  tmux/herdr observation. Windows dependency patching is confined to the Windows
+  build command; a normal Linux source build needs no sibling checkout.
+- On either platform, starting without a multiplexer now displays real local
+  account snapshots with zero panes. Example data requires `--demo`.
+- `QHUD_CONFIG_DIR`, `XDG_CONFIG_HOME`, `CODEX_HOME` and `CLAUDE_CONFIG_DIR` are
+  honored. Existing default Linux paths continue to work. Older Antigravity
+  snapshots without an account identity require one explicit refresh.
+- Native Windows terminal-pane/process attribution is not implemented. A model
+  absent from the provider's current response is not synthesized as a 0% limit.
+
 ## [0.5.3] — 2026-09-04
 
 The usage endpoint changed how it writes one number. qhud stopped

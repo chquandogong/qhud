@@ -1,6 +1,6 @@
 # DASHBOARD — qhud
 
-> Status: v0.5.3 released · Date: 2026-09-04 · Owner: chquandogong
+> Status: v0.6.0 release preparation · Date: 2026-09-07 · Owner: chquandogong
 > Single source of truth = this git repo. This board is the handoff
 > surface: read it first when resuming work on another session/agent.
 
@@ -8,14 +8,15 @@
 
 | Item               | Value                                                                                                   |
 | ------------------ | ------------------------------------------------------------------------------------------------------- |
-| Version            | v0.5.3 — [releases](https://github.com/chquandogong/qhud/releases) (v0.5.1 2026-08-14, v0.5.2 2026-08-17, v0.5.3 2026-09-04) |
-| Pipeline dep       | qmonster @ `6a21c44` (pinned rev — carries the cwd/attribution fixes)                                   |
-| Verified on        | Ubuntu 24.04 · GNOME 46 Wayland · 2 monitors (scale 1) · herdr live (8 agent panes on 2026-09-03)       |
-| Quality gates      | fmt ✅ · clippy -D warnings ✅ · tests 79 ✅ · release build ✅ (CI was red on main 08-07→08-10; fixed) |
-| Input verification | **compositor-path only** (Mutter RemoteDesktop injection or human hand — XTEST inadmissible, D-010)     |
+| Version            | v0.6.0 in preparation; last published v0.5.3 (2026-09-04) — [releases](https://github.com/chquandogong/qhud/releases) |
+| Pipeline dep       | qmonster @ `6a21c44`; canonical Git dependency on Linux, command-scoped Windows patch with lockfile restoration |
+| Platforms          | Ubuntu 24.04 / GNOME and native Windows x64 / WebView2; Windows terminal-tab observation remains unsupported |
+| Runtime evidence   | Historical Ubuntu: GNOME 46 Wayland, 2 monitors, herdr live (2026-09-03). Local Windows port: display and account refresh exercised; final v0.6.0 smoke pending |
+| Quality gates      | Local Windows script `-Test`: **98/98 passed**; release build in progress. New remote Ubuntu and Windows CI: **not run yet** |
+| Input verification | Ubuntu: **compositor-path only** (Mutter RemoteDesktop injection or human hand — XTEST inadmissible, D-010) |
 | Cross-validation   | Codex/GPT — AGREE-WITH-CHANGES, CV-1..4 adopted (CROSS_VALIDATION_LOG)                                  |
 | Frame guard field  | 08-26 → 09-04 (journal coverage): **21 freezes, 21 remap heals, 0 re-execs, 0 visible incidents** (D-017)  |
-| Known live gap     | `~/claude-personal` credential expired 2026-08-17 → that row 401s on every ⟳ until re-login (harmless)  |
+| Known live gap     | Last Ubuntu report (2026-09-04): `~/claude-personal` credential expired; a fresh login is needed for that row. This release does not renew credentials |
 
 ## Decision index (full entries in DECISION_LOG)
 
@@ -45,6 +46,9 @@ D-019 lenient wire numbers, and a rejected body names its field.
 | "Selection doesn't work" saga: ptr/qsel input forensics → strip rows select, ⟳-only network → pixel frame guard (v0.5.1, D-017) | done 2026-08-14                  | claude+chquandogong |
 | Row identity = (account, org) — one login, two orgs, separate pools (v0.5.2)                                                     | done 2026-08-17                  | claude+chquandogong |
 | Claude ⟳ dead two days on a float `used_credits`: lenient wire numbers + a parse error that names the field (v0.5.3, D-019)      | done 2026-09-04                  | claude+chquandogong |
+| Native Windows account widget; local fallback without a mux; model/reset visibility and ownership safeguards (v0.6.0)       | implemented; local tests 98/98  | codex+chquandogong |
+| Portable Linux dependency manifest; Windows script-scoped patch; Ubuntu + Windows CI/release gates                          | implemented; remote CI pending  | codex+chquandogong |
+| v0.6.0 release build, final smoke, tag and dual-platform publication                                                         | in progress; not released      | codex+chquandogong |
 | ⏳ TEST_PLAN pending rows (overview / lock / suspend / hotplug / fullscreen)                                                     | **todo — first on-machine pass** | operator            |
 | Live verification with a plain tmux server (fallback path)                                                                       | todo                             | operator            |
 | Personal-org login into `~/claude-personal` (pick the PERSONAL org at the CLI org step; registry already wired; OAuth keeps auto-selecting the team session) | todo — operator, whenever wanted | operator            |
@@ -62,23 +66,31 @@ until the companion extension exists.
 
 ## Resume point
 
-v0.5.3 tagged and released (the Claude ⟳ parse fix). The installed
-binary at `~/.local/bin/qhud` is the v0.5.3 build, relaunched
-2026-09-03 16:46; its own ⟳ answers live.
+v0.6.0 adds the native Windows account widget while preserving the
+Ubuntu source-build path. With no mux, both platforms now show real
+local accounts and dated quota; demo panes require `--demo`. Model-only
+snapshots survive restarts, and the quota area scrolls when rows exceed
+the window. Model pools missing from a live provider response are not
+invented.
+
+The Windows build script's 98 QHUD tests have passed; its release build
+is still running. Remote CI has not run on either platform, so Ubuntu
+regression status and the v0.6.0 release remain pending. Do not treat the
+historical Ubuntu field evidence above as a v0.6.0 verification result.
 
 Next meaningful units, in order:
 
-1. **Operator verification pass** — the TEST_PLAN ⏳ rows (overview /
+1. **Finish v0.6.0 verification and publication** — complete the local
+   Windows release build and smoke check, push a `codex/**` test branch,
+   and inspect Ubuntu and Windows CI. Resolve failures before tagging.
+   The release workflow publishes only after both platform jobs succeed
+   and uses `docs/05-ops/releases/v0.6.0.md` for the release body.
+2. **Operator verification pass** — the TEST_PLAN ⏳ rows (overview /
    lock / suspend / hotplug / fullscreen), a plain-tmux backend check,
    and the personal-org login into `~/claude-personal` (registry
    already wired; pick the PERSONAL org at the CLI's organization step,
    which also clears the standing 401 on that row).
-2. **Docs backfill** — SPEC still says "implemented through v0.5.0" and
-   has no FRs for v0.5.1–v0.5.3; ARCHITECTURE is a v0.4.0 document (its
-   module table predates `agy_usage.rs`, `fetched_store.rs`,
-   `frame_guard.rs` and every line count is stale, and `:162` still
-   claims pixels are not verifiable, which D-017 disproved); README's
-   last edit was 08-12. RISK_REGISTER has no row for the display-sleep
-   frame freeze, now the most frequent field event by far.
-3. **Backlog** — tile→pane focus jump remains the highest-value small
+3. **Docs backfill** — review older specifications and risk entries
+   against the implemented behavior and dated field evidence.
+4. **Backlog** — tile→pane focus jump remains the highest-value small
    item.

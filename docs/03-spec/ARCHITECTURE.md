@@ -6,7 +6,8 @@
 
 A Rust thread polls [qmonster](https://github.com/chquandogong/qmonster)'s
 observation pipeline every 2 s, flattens the result into a small display-only
-JSON payload, and emits it to a static WebKitGTK page that patches its DOM in
+JSON payload, and emits it to a static Tauri webview (WebKitGTK on Linux,
+WebView2 on Windows) that patches its DOM in
 place. Everything else in this document exists to keep that loop **passive**:
 it reads local files and the mux, and nothing else.
 
@@ -43,14 +44,14 @@ Two consequences worth keeping:
 | File              | Lines | Responsibility                                                                                                        |
 | ----------------- | ----- | --------------------------------------------------------------------------------------------------------------------- |
 | `main.rs`         | 282   | Tauri setup, tray, X11 window states, single-instance argv relay, `#[tauri::command]`s, and the diagnostic CLI flags  |
-| `poll.rs`         | 193   | the 2 s loop: build a live context, run one observe tick, assemble the payload, emit; demo fallback and live re-probe |
+| `poll.rs`         | —     | the 2 s loop: observe panes or show real local account snapshots; explicit demo mode and live re-probe |
 | `view.rs`         | 697   | `PaneReport` → payload (schema v1). Owns the account-scoped quota rollup and the `attach_*` enrichment steps          |
 | `accounts.rs`     | 428   | who is signed in, from local files only (D-013)                                                                       |
 | `registry.rs`     | 298   | operator intent: display names, ever-connected accounts, dismissals                                                   |
 | `usage_cache.rs`  | 267   | Claude's on-disk usage snapshot, and the parser shared with the live fetch                                            |
 | `claude_usage.rs` | 112   | the one outbound request, on click                                                                                    |
 | `codex_usage.rs`  | 536   | Codex per-workspace usage, on request                                                                                 |
-| `demo.rs`         | 171   | the mockup fixture rendered when no mux is reachable                                                                  |
+| `demo.rs`         | 171   | the mockup fixture rendered only in explicit demo mode                                                                |
 | `ui/app.js`       | 1264  | DOM patching, gauges, the collapsed placeholder list, and the render breadcrumbs                                      |
 
 ## The rollup: facts render at the scope where they are true

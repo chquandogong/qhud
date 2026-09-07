@@ -1,35 +1,61 @@
 # TEST_PLAN
 
-> Status: living · Date: 2026-08-07 · Owner: chquandogong
+> Status: v0.6.0 verification in progress · Date: 2026-09-07 · Owner: chquandogong
 
-## Automated gates (CI on every push/PR)
+## Automated gates
+
+CI runs on pushes to `main` and `codex/**`, and on pull requests. Ubuntu
+24.04 uses the canonical pinned Git dependency and runs:
 
 ```bash
 cargo fmt --all --check
-cargo clippy --all-targets -- -D warnings
-cargo test --all-targets      # view.rs contract helpers
-cargo build --release
+cargo clippy --locked --all-targets -- -D warnings
+cargo test --locked --all-targets
+cargo build --locked --release
 ```
 
-## Unit coverage (v0.1)
+Windows MSVC uses the scoped dependency patch through the build script:
+
+```powershell
+./scripts/Build-Windows.ps1 -Test -VisualStudioPath '<Visual Studio installation>'
+git diff --exit-code -- Cargo.toml Cargo.lock
+```
+
+`-Test` runs QHUD tests and then builds in the same dependency context.
+The script restores the canonical lockfile after Windows commands; Linux
+builds do not require a sibling checkout or the Windows patch. Release
+publication waits for both Ubuntu and Windows tests and builds to succeed.
+
+2026-09-07 verification status: the local Windows `-Test` run passed
+**98/98 QHUD tests**; its release build is in progress. The new remote
+Ubuntu and Windows CI jobs have not run yet. Existing Ubuntu desktop
+evidence below predates v0.6.0 and is not a new-platform regression pass.
+
+## Unit coverage
 
 - `view.rs`: percent clamping/rounding, byte humanization, `~` folding,
   label truncation. (Full `PaneReport` construction is upstream-private;
   mapping is covered by the live checklist below.)
+- Saved quota ownership after an account switch; local account rows with
+  no running mux; scoped-only and extra-only snapshots after restart.
+- Codex model pools preserve the model name, 5H/7D duration, usage and
+  reset through both provider parsers and the account-row merge. Fixtures
+  do not establish that a live account currently has those pools.
 
-## Manual verification checklist — desktop layer
+## Manual verification checklist — Ubuntu desktop layer
 
 Run on the target machine after any window-layer change:
 
-| Check                 | Command / action                                                                       | Pass criteria (2026-08-05 evidence: ✅)                                                |
+| Check                 | Command / action                                                                       | Pass criteria (historical evidence: 2026-08-05; v0.6.0 recheck pending)                 |
 | --------------------- | -------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
 | Below + sticky + skip | `xprop -id $(xdotool search --name '^qhud$' \| tail -1) _NET_WM_STATE _NET_WM_DESKTOP` | `_NET_WM_STATE_BELOW`, `_STICKY`, `_SKIP_TASKBAR`, `_SKIP_PAGER`; desktop `4294967295` |
 | Stays under windows   | drag any app over the widget                                                           | widget never raises                                                                    |
 | Workspace pinned      | switch workspaces                                                                      | widget visible on all                                                                  |
 | Cross-monitor move    | drag topbar to the other monitor                                                       | position persists after restart                                                        |
 | Resize                | drag ◢ grip                                                                            | content reflows; persists after restart                                                |
-| Demo fallback         | stop tmux server                                                                       | `DEMO` badge within 2 s; tiles mirror the mockup                                       |
-| Live recovery         | start tmux + an AI CLI                                                                 | live data within ≤12 s (10 s re-probe + 2 s poll), badge disappears                    |
+| Local fallback        | stop the active tmux/herdr server                                                       | real accounts and dated quota remain; no example panes or `DEMO` badge                 |
+| Explicit demo         | launch `qhud --demo` after closing the existing instance                               | `DEMO` badge; tiles mirror the mockup                                                  |
+| Live recovery         | start tmux + an AI CLI                                                                 | live data within ≤12 s (10 s re-probe + 2 s poll)                                       |
 | Visual parity         | compare with `docs/assets/widget-*.png`                                                | palette/tiles/gauges/pills match mockup                                                |
 | GNOME overview        | open Activities / workspace gestures                                                   | ⏳ widget may appear as a window (accepted quirk R2); must return below afterwards     |
 | Lock / unlock         | lock screen, unlock                                                                    | ⏳ still below + sticky (`xprop` re-check)                                             |
@@ -44,7 +70,23 @@ pending their first on-machine verification pass.
 re-verified pixel-exact on both monitors with the self-driven geometry
 implementation (synthetic-input evidence in DECISION_LOG D-008).
 
-## Input-verification protocol (mandatory since D-010)
+## Manual verification checklist — Windows and account usage
+
+- Start the native WebView2 app, move and resize it, and verify the tray,
+  existing-instance `--peek`, and explicit refresh controls.
+- With no tmux/herdr backend, confirm zero panes and real account rows.
+  Refresh results remain dated after restart; no mock usage is substituted.
+- Shrink the window or use multiple account/model rows. Every quota and
+  reset remains reachable by scrolling; pane and footer controls remain.
+- Confirm readable model names and reset countdowns. Server-absent model
+  limits remain absent; no zero-filled values or another account's usage.
+- Verify that background CLI probes do not open console windows. Native
+  Windows terminal-tab monitoring is outside the current supported scope.
+
+Local Windows display/refresh was exercised during the port. The rebuilt
+v0.6.0 binary needs its final smoke check after the current build completes.
+
+## Ubuntu input-verification protocol (mandatory since D-010)
 
 **XTEST (xdotool) alone is inadmissible for interaction claims** — it
 injects inside XWayland and bypasses Mutter's surface picking, which
