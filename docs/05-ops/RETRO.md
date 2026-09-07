@@ -1,3 +1,9 @@
+<!-- qhud:languages -->
+<p align="center">
+  <strong>English</strong> · <a href="../i18n/ko/docs/05-ops/RETRO.md">한국어</a> · <a href="../i18n/zh-CN/docs/05-ops/RETRO.md">简体中文</a>
+</p>
+<!-- /qhud:languages -->
+
 # RETRO — qhud
 
 > Status: living (cycles 1–5) · Date: 2026-09-04 · Owner: chquandogong

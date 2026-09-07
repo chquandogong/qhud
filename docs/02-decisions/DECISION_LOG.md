@@ -1,3 +1,9 @@
+<!-- qhud:languages -->
+<p align="center">
+  <strong>English</strong> · <a href="../i18n/ko/docs/02-decisions/DECISION_LOG.md">한국어</a> · <a href="../i18n/zh-CN/docs/02-decisions/DECISION_LOG.md">简体中文</a>
+</p>
+<!-- /qhud:languages -->
+
 # DECISION_LOG
 
 > Status: living · Date: 2026-09-07 · Owner: chquandogong

@@ -1,3 +1,9 @@
+<!-- qhud:languages -->
+<p align="center">
+  <strong>English</strong> · <a href="../i18n/ko/docs/03-spec/ARCHITECTURE.md">한국어</a> · <a href="../i18n/zh-CN/docs/03-spec/ARCHITECTURE.md">简体中文</a>
+</p>
+<!-- /qhud:languages -->
+
 # ARCHITECTURE — qhud
 
 > Status: living (rewritten from scratch against v0.6.0 source) · Date:
@@ -396,7 +402,7 @@ without asking, and who holds the credential.
 
 |        | Passive, every 2 s                                                                               | On an explicit refresh                                                                                                                                  | Credential custody                                                                         |
 | ------ | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| Claude | statusline through qmonster; Claude Code's own on-disk usage cache; identity from `.claude.json` | `GET https://api.anthropic.com/api/oauth/usage`, once per signed-in config dir                                                                          | qhud, for the length of one request — the only such case                                   |
+| Claude | statusline through qmonster; Claude Code's own on-disk usage cache; identity from `.claude.json` | `GET https://api.anthropic.com/api/oauth/usage`, once per signed-in config dir                                                                          | qhud reads the existing access token for the HTTP request                                  |
 | Codex  | pane statusline for the active login; identity from `auth.json`                                  | `wham/accounts/check` then `wham/usage` per saved credential; on failure of the active login, a short-lived `codex app-server` child answers over stdio | qhud reads an access token for the HTTP path; the CLI owns everything on the fallback path |
 | agy    | pane statusline when a pane exists; identity from `google_accounts.json`                         | a loopback Connect RPC to the running agy process, no token and no CSRF                                                                                 | agy itself — qhud reads no credential at all                                               |
 
@@ -480,8 +486,8 @@ Either way the row is dated with which source it came from.
 
 ## 16. Identity
 
-Identity is read from files the CLIs already keep in cleartext, with zero
-network and without ever opening credential material: Claude's config file,
+Identity fields are selected from local files the CLIs already maintain,
+without provider network requests or using tokens for observation: Claude's config file,
 Codex's `auth.json` account id, agy's active Google account. A provider that
 is logged out contributes no row at all, and any unreadable or malformed file
 is simply an absent account — this is enrichment and must never fail a tick.
@@ -569,8 +575,8 @@ enforced in code and asserted by tests.
   and RPC live behind explicit controls and their command-line twins.
 - **Ownership before age.** A snapshot is only used for the account it belongs
   to.
-- **No refresh grants, ever.** And no credential material is opened for
-  identity.
+- **qhud does not run OAuth refresh grants.** Observation selects identity
+  fields without using provider tokens.
 
 ## 20. Module map
 

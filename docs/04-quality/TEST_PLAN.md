@@ -1,3 +1,9 @@
+<!-- qhud:languages -->
+<p align="center">
+  <strong>English</strong> · <a href="../i18n/ko/docs/04-quality/TEST_PLAN.md">한국어</a> · <a href="../i18n/zh-CN/docs/04-quality/TEST_PLAN.md">简体中文</a>
+</p>
+<!-- /qhud:languages -->
+
 # TEST_PLAN
 
 > Status: v0.6.0 automated gates passed; desktop gaps recorded · Date: 2026-09-07 · Owner: chquandogong

@@ -1,6 +1,28 @@
+<!-- qhud:languages -->
+<p align="center">
+  <strong>English</strong> · <a href="docs/i18n/ko/CHANGELOG.md">한국어</a> · <a href="docs/i18n/zh-CN/CHANGELOG.md">简体中文</a>
+</p>
+<!-- /qhud:languages -->
+
 # Changelog
 
 All notable changes to qhud. Format: [Keep a Changelog](https://keepachangelog.com/), versioning: [SemVer](https://semver.org/).
+
+## [Unreleased]
+
+### Documentation
+
+- Provide complete English, Korean, and Simplified Chinese editions of all
+  23 documentation pages, including architecture, decisions, research,
+  retrospectives, and release history. Add language navigation and corresponding
+  section anchors throughout.
+- Redesign the README with a new banner, labeled demo screenshots, platform
+  support and download tables, and a complete documentation index.
+- Add a practical user guide, contribution guidance, and trilingual issue and
+  pull request templates.
+- Correct installation/configuration examples and clarify passive identity
+  reads versus explicit provider authentication. No application code, dependency,
+  or binary changes; v0.6.1 remains the current release.
 
 ## [0.6.1] — 2026-09-07
 

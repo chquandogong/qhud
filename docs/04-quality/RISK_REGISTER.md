@@ -1,3 +1,9 @@
+<!-- qhud:languages -->
+<p align="center">
+  <strong>English</strong> · <a href="../i18n/ko/docs/04-quality/RISK_REGISTER.md">한국어</a> · <a href="../i18n/zh-CN/docs/04-quality/RISK_REGISTER.md">简体中文</a>
+</p>
+<!-- /qhud:languages -->
+
 # RISK_REGISTER — qhud
 
 > Status: living · Date: 2026-09-07 · Owner: chquandogong

@@ -1,3 +1,9 @@
+<!-- qhud:languages -->
+<p align="center">
+  <strong>English</strong> · <a href="../i18n/ko/docs/03-spec/SPEC.md">한국어</a> · <a href="../i18n/zh-CN/docs/03-spec/SPEC.md">简体中文</a>
+</p>
+<!-- /qhud:languages -->
+
 # SPEC — qhud
 
 > Status: living (rewritten from scratch against v0.6.0 source) · Date:
@@ -84,7 +90,7 @@ pane-fed gauges always belong to the default account's row.
 | FR-20 | Explicit-refresh results persist across restarts and render with their true origin and age; live pane data always wins                                                  | done (v0.5.0)        |
 | FR-21 | One control refreshes every provider concurrently and mirrors the union of their states; per-provider controls remain; `--refresh-all` relays from a shortcut           | done (v0.5.0)        |
 | FR-23 | agy quota on explicit refresh via the CLI's own loopback RPC — no token, machine-local, ports discovered from the operating system; the last read persists              | done (v0.5.0)        |
-| FR-24 | When the active Codex login's direct fetch fails, a short-lived `codex app-server` child answers instead, so the CLI owns token rotation and qhud touches no credential | done (v0.5.0, D-016) |
+| FR-24 | When the active Codex login's direct fetch fails, a short-lived `codex app-server` child answers instead, so the CLI owns token rotation and qhud does not use the token itself on this path | done (v0.5.0, D-016) |
 | FR-33 | Provider refreshes running at the same time preserve each other's saved results                                                                                         | done (v0.6.0)        |
 
 ### Being trustworthy about it
@@ -101,12 +107,12 @@ pane-fed gauges always belong to the default account's row.
 notifications. The TUI owns that state and the alerting (D-004).
 
 **Passive by default; network only on request** (D-013, D-014, D-016). The 2 s
-loop reads local files and the multiplexer, opens no socket, and touches no
-credential. Its only other work is a window-geometry checkpoint every ~30 s
+loop reads local files and the multiplexer, makes no provider API requests,
+and selects identity fields without using tokens for observation. Its only other work is a window-geometry checkpoint every ~30 s
 and, on Linux, a pixel sample every ~28 s. Everything that reaches further
 runs from an explicit operator gesture or its command-line twin, and never
 runs an OAuth refresh grant. On the fetch paths qhud reads an access token for
-Claude and Codex, and no credential at all for agy or the Codex fallback.
+Claude and Codex; agy needs no credential, and the Codex fallback delegates authentication to the CLI.
 
 **Selecting is not fetching.** Since v0.5.1 no selection, expansion or row
 click performs network work. Only the refresh controls and the relay flags do.

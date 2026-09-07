@@ -1,3 +1,9 @@
+<!-- qhud:languages -->
+<p align="center">
+  <strong>English</strong> · <a href="../i18n/ko/docs/05-ops/RUNBOOK.md">한국어</a> · <a href="../i18n/zh-CN/docs/05-ops/RUNBOOK.md">简体中文</a>
+</p>
+<!-- /qhud:languages -->
+
 # RUNBOOK
 
 > Status: living · Date: 2026-09-07 · Owner: chquandogong
@@ -99,11 +105,12 @@ cargo build --release --locked # binary at target/release/qhud
   CODEX_HOME=~/.codex-dogu codex login          # same idea for codex
   ```
 
-  ```jsonc
-  // ~/.config/qhud/accounts.json
+  Save valid JSON in `accounts.json` (comments and trailing commas are not supported):
+
+  ```json
   {
     "claude_config_dirs": ["~/claude-personal"],
-    "codex_homes": ["~/.codex-dogu"],
+    "codex_homes": ["~/.codex-dogu"]
   }
   ```
 
@@ -166,7 +173,7 @@ instance (single-instance guard, v0.3.0).
 | Wrong monitor after unplug                                                                                                                       | geometry restore points at a gone monitor — delete the window-state file under `~/.config/xyz.dogu.qhud/` and restart                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | No tray icon                                                                                                                                     | AppIndicator extension missing — widget still runs; quit via `pkill qhud`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | Blurry on HiDPI                                                                                                                                  | fractional scaling + XWayland on GNOME 46 blurs X11 clients; run displays at integer scale or upgrade to GNOME 47+ (`xwayland-native-scaling`)                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
-| Stuck in `DEMO` with tmux running                                                                                                                | qhud probes every 10 s; check the same config the TUI uses (`~/.qmonster/config/qmonster.toml` `[mux]/[tmux]` target)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| No panes detected with tmux running                                                                                                              | qhud probes every 10 s; check the same config the TUI uses (`~/.qmonster/config/qmonster.toml` `[mux]/[tmux]` target). Restart without `--demo` if example data was explicitly selected.                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | Drag/resize ignores the outermost ~10px of the window                                                                                            | that border strip belongs to tao's built-in edge handler (D-008) — grab the topbar/footer interior to move, the ◢ glyph to resize                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | Widget visible but ignores ALL real mouse input (synthetic/xdotool works)                                                                        | Ubuntu's Desktop Icons NG extension swallows real pointer input over the desktop layer (D-010): `gnome-extensions disable ding@rastersoft.com`. Icon users: companion-extension coexistence is on the backlog. Check `qhud ui:` stderr breadcrumbs to confirm whether clicks reach the widget                                                                                                                                                                                                                                                                                                                   |
 

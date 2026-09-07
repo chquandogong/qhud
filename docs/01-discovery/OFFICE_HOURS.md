@@ -1,3 +1,9 @@
+<!-- qhud:languages -->
+<p align="center">
+  <strong>English</strong> · <a href="../i18n/ko/docs/01-discovery/OFFICE_HOURS.md">한국어</a> · <a href="../i18n/zh-CN/docs/01-discovery/OFFICE_HOURS.md">简体中文</a>
+</p>
+<!-- /qhud:languages -->
+
 # OFFICE_HOURS — pressure review result
 
 > Status: done · Date: 2026-08-05 · Owner: chquandogong

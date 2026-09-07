@@ -1,0 +1,61 @@
+name: Bug report · 오류 제보 · 问题报告
+description: Report a reproducible problem in English, Korean, or Chinese.
+title: "[Bug] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting a problem. English, 한국어, 简体中文 are welcome.
+        오류를 재현할 수 있는 정보를 적어 주세요. 请提供可复现问题的信息。
+
+        Do not attach credentials, auth.json, or .credentials.json. Redact personal data from logs and screenshots.
+        인증 파일을 첨부하지 말고 로그·화면의 개인정보를 가려 주세요.
+        请勿上传凭据文件；请隐去日志和截图中的个人信息。
+  - type: input
+    id: version
+    attributes:
+      label: qhud version · 버전 · 版本
+      placeholder: v0.6.1
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: OS and desktop · 운영체제·데스크톱 · 系统和桌面
+      placeholder: Windows 11 / Ubuntu 24.04 GNOME Wayland
+    validations:
+      required: true
+  - type: dropdown
+    id: installation
+    attributes:
+      label: Installation · 설치 방법 · 安装方式
+      options:
+        - Release archive · 배포 압축 파일 · 发布压缩包
+        - Source build · 소스 빌드 · 源码构建
+        - Other · 기타 · 其他
+    validations:
+      required: true
+  - type: input
+    id: provider
+    attributes:
+      label: Provider or component · 제공자·구성요소 · 服务商或组件
+      placeholder: Claude Code / Codex / Antigravity / window / installation
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce · 재현 절차 · 复现步骤
+      description: Include relevant commands and whether the desktop was unlocked. / 명령어와 화면 잠금 여부도 적어 주세요. / 请说明命令及桌面是否解锁。
+    validations:
+      required: true
+  - type: textarea
+    id: result
+    attributes:
+      label: Expected and actual results · 예상·실제 결과 · 预期与实际结果
+      description: For usage issues, state whether the value came from a fresh refresh or a saved snapshot. / 새로 조회한 값인지 저장된 스냅샷인지 적어 주세요. / 用量问题请注明是刚刷新还是已保存的快照。
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Redacted logs or screenshots · 가린 로그·화면 · 脱敏日志或截图
+      description: Optional. Inspect before sharing. / 선택 사항이며 공유 전에 검토해 주세요. / 可选，请先检查再分享。

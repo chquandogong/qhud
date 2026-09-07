@@ -1,3 +1,9 @@
+<!-- qhud:languages -->
+<p align="center">
+  <strong>English</strong> · <a href="../i18n/ko/docs/01-discovery/FEASIBILITY_REPORT.md">한국어</a> · <a href="../i18n/zh-CN/docs/01-discovery/FEASIBILITY_REPORT.md">简体中文</a>
+</p>
+<!-- /qhud:languages -->
+
 # FEASIBILITY_REPORT
 
 > Status: done · Date: 2026-08-05 · Owner: chquandogong

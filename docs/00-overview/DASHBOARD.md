@@ -1,3 +1,9 @@
+<!-- qhud:languages -->
+<p align="center">
+  <strong>English</strong> · <a href="../i18n/ko/docs/00-overview/DASHBOARD.md">한국어</a> · <a href="../i18n/zh-CN/docs/00-overview/DASHBOARD.md">简体中文</a>
+</p>
+<!-- /qhud:languages -->
+
 # DASHBOARD — qhud
 
 > Status: v0.6.1 released · Date: 2026-09-07 · Owner: chquandogong

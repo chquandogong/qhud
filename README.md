@@ -1,252 +1,158 @@
-<div align="center">
-  <img src="docs/assets/qhud-banner.svg" alt="qhud — ambient desktop HUD for AI CLI sessions" width="100%">
-</div>
+<!-- qhud:languages -->
+<p align="center">
+  <strong>English</strong> · <a href="README.ko.md">한국어</a> · <a href="README.zh-CN.md">简体中文</a>
+</p>
+<!-- /qhud:languages -->
 
-<div align="center">
-  <a href="https://github.com/chquandogong/qhud/releases"><img alt="GitHub release" src="https://img.shields.io/github/v/release/chquandogong/qhud?display_name=tag&sort=semver"></a>
-  <a href="LICENSE"><img alt="License" src="https://img.shields.io/github/license/chquandogong/qhud"></a>
-  <img alt="Rust 1.88+" src="https://img.shields.io/badge/Rust-1.88%2B-b7410e?logo=rust">
-  <img alt="Tauri 2" src="https://img.shields.io/badge/Tauri-2-24C8DB?logo=tauri&logoColor=white">
-  <a href="https://github.com/chquandogong/qmonster"><img alt="qmonster family" src="https://img.shields.io/badge/family-qmonster-46b8b0"></a>
-</div>
+<p align="center">
+  <img src="docs/assets/qhud-banner.svg" alt="qhud — AI usage, resets, and sessions at a glance" width="100%">
+</p>
 
-## What it is
+<p align="center">
+  A quiet desktop companion for <strong>Claude Code, Codex, and Antigravity</strong>.<br>
+  See account usage, reset times, and supported terminal sessions in one place.
+</p>
 
-A small always-there panel on your desktop wallpaper that answers one
-question without you switching to anything: **how much room is left on each
-AI CLI account, and when does it reset?**
+<p align="center">
+  <a href="https://github.com/chquandogong/qhud/releases/latest"><img src="https://img.shields.io/github/v/release/chquandogong/qhud?style=flat-square&color=28a99e" alt="Latest release"></a>
+  <a href="https://github.com/chquandogong/qhud/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/chquandogong/qhud/ci.yml?branch=main&style=flat-square&label=build" alt="Ubuntu and Windows build status"></a>
+  <img src="https://img.shields.io/badge/platforms-Linux%20%7C%20Windows-52677d?style=flat-square" alt="Linux and Windows">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-52677d?style=flat-square" alt="MIT license"></a>
+</p>
 
-If you run Claude Code, Codex and Antigravity side by side — and especially
-if you hold more than one account per provider — the answer normally lives
-in three different TUIs behind three different keystrokes. qhud puts it in
-one place, below your windows, always visible.
+<p align="center">
+  <a href="#install">Download</a> · <a href="docs/GUIDE.md">User guide</a> · <a href="docs/README.md">Documentation</a> · <a href="CONTRIBUTING.md">Contribute</a>
+</p>
 
-It is a second frontend for [qmonster](https://github.com/chquandogong/qmonster):
-the observation pipeline is qmonster's, re-rendered as a desktop widget.
+---
 
-<div align="center">
-  <img src="docs/assets/widget-compact.png" width="330" alt="qhud compact — provider quota strip and per-pane status + CTX tiles">
-  &nbsp;&nbsp;
-  <img src="docs/assets/widget-expanded.png" width="330" alt="qhud expanded — selected pane shows model/effort/flags/cwd config and a cross-pane conflict banner">
-</div>
+## One view for your AI work
 
-## What it shows
+qhud brings account quotas and session signals out of separate command-line
+interfaces and into a small desktop widget. It uses the observation pipeline
+from [qmonster](https://github.com/chquandogong/qmonster), with a Rust/Tauri
+backend and a lightweight webview. No Node.js or npm is required to build it.
 
-```
-CLAUDE
-  chquan@dogu.xyz     team (max_5x)  extra $0.00       ⟳
-    5H        ███░░░░░░░   8%   resets 2h10m
-    7D        ██░░░░░░░░  15%   resets 5d
-    Fable 7D  ██░░░░░░░░  22%   resets 5d
-  me@gmail.com        pro (max_20x)         ⟳ 12m ago
-    5H        ████░░░░░░  42%   resets 1h03m
-CODEX
-  chquan17@gmail.com · personal   ChatGPT Pro 5x
-    5H        ██░░░░░░░░  12%   resets 2h05m
-    7D        ████████░░  80%   resets 3d
-  ↳ business          ChatGPT Business  1 ws · ⟳ 3m ago
-    7D        ██░░░░░░░░  15%   resets 3d
-AGY
-  chquan17@gmail.com  Google AI Pro                    ⟳
-    5H        ░░░░░░░░░░   0%   resets 4h
-    7D        ░░░░░░░░░░   0%   resets 6d
-    3p 5H     ░░░░░░░░░░   0%   resets 4h
-⌵ 4 accounts need auth
-```
+| See | What you get |
+| --- | --- |
+| **Usage and resets** | Account windows, model-specific pools when available, reset countdowns, and exact reset timestamps. |
+| **Account context** | Separate account/workspace rows, configurable display names, and dated snapshots after restart. |
+| **Session activity** | On supported Linux setups: status, context pressure, model, effort, branch, working directory, and conflict indicators. |
+| **Freshness** | Local observation every 2 seconds. Provider usage requests run when you explicitly refresh. |
 
-Provider is the outer axis — it is what you pick when deciding where to run
-the next task. Under it sit the accounts (with their plans) — **several per
-provider** if you keep each signed in under its own config dir — and under
-each one gauge per window. One fact renders once, named: the active Codex
-login's workspace lives ON its account row (`· personal`), and a `↳` row
-appears only for OTHER workspaces, so the same 7D pool never shows twice
-with clock skew. Every number that did not come from a live pane wears its
-provenance (`⟳ 12m ago` for qhud's own last refresh, `~22h old` for the
-CLI's cache), so a stored reading can never pass for a live one. Below the
-live rows, accounts you have connected before but that have no usable
-credential right now collapse into one line: their quota is still being
-consumed, so hiding them would be a lie of omission.
+## A compact view, with room for detail
 
-Per-pane tiles underneath show status, context pressure, model, effort,
-branch, cwd, memory, cost, and cross-pane file conflicts.
+<table>
+  <tr>
+    <td align="center"><img src="docs/assets/widget-compact.png" width="330" alt="Linux demo with a compact provider strip and session tiles"><br><sub>Compact session overview</sub></td>
+    <td align="center"><img src="docs/assets/widget-expanded.png" width="330" alt="Linux demo with an expanded session and conflict details"><br><sub>Details when you need them</sub></td>
+  </tr>
+</table>
 
-## Where the numbers come from
+*These screenshots show Linux demo fixtures with illustrative values. The
+current account layout and available model windows depend on the provider,
+login, and platform.*
 
-This is the part worth reading, because the honest answer differs per
-provider and the failure modes are not obvious.
+## Platform support
 
-| Provider                      | Source                                                                         | Freshness                           |
-| ----------------------------- | ------------------------------------------------------------------------------ | ----------------------------------- |
-| Claude 5H / 7D                | statusLine JSON the CLI already writes                                         | live, every prompt                  |
-| Claude per-model, extra usage | `GET /api/oauth/usage` on ⟳ — once per signed-in account                       | on ⟳; last result kept dated        |
-| Codex                         | `/wham/usage` per credential; `codex app-server` when the active token expired | on ⟳; last result kept dated        |
-| Antigravity                   | the CLI's own loopback RPC — no token at all                                   | on ⟳ while agy runs; last read kept |
-| Accounts, plans, tiers        | local files the CLIs keep in cleartext                                         | live                                |
+| Capability | Linux x86_64 | Windows x64 |
+| --- | --- | --- |
+| Native desktop widget | GTK / WebKitGTK | WebView2; no WSL required |
+| Account usage and reset times | Supported | Supported |
+| Multiple signed-in config directories | Supported | Supported |
+| Terminal-pane observation | tmux / herdr | Native Windows terminal tabs are not supported |
+| Desktop integration | Reference: Ubuntu 24.04, GNOME/Wayland through XWayland | Native window and tray; Linux desktop-layer behavior is not guaranteed |
+| Distribution | Portable `.tar.gz` | Portable `.zip` |
 
-**The 2-second poll loop never opens a socket and never touches a
-credential.** Everything that reaches further runs from an explicit
-gesture — the topbar ⟳ (all providers at once), a row's own ⟳/click, or
-their CLI twins — and none of it ever runs an OAuth refresh grant, because
-rotating a refresh token out from under your CLI is how you lose a login.
-When the Codex token has expired anyway, qhud asks a short-lived
-`codex app-server` child instead: the CLI owns its rotation, qhud reads no
-token. Every ⟳ result is persisted (dated), so a restart shows the last
-thing qhud actually knew instead of a day-old CLI cache.
-
-Claude's per-model windows need that button because nothing else can produce
-them: the statusLine feed does not carry them, and nothing qhud can run
-refreshes the CLI's on-disk cache (verified — not `--version`, not `doctor`,
-not even a real headless `--print`). That cache only moves when you open
-`/usage` yourself, which is precisely when you do not need a widget.
-
-## What it cannot do
-
-Stated plainly, because a widget that hides its blind spots is worse than
-one that admits them.
-
-- **One live login per provider is the default, not the ceiling** — but
-  lifting it is on you: keep each extra Claude account signed in under its
-  own dir (`CLAUDE_CONFIG_DIR=~/claude-personal claude`) and list the dir
-  in the registry (D-015). Without that, all three CLIs store a single
-  active credential and `codex login` revokes the previous token.
-- **A pane's account is not attributable**, so pane-fed gauges always land
-  on the default account's row — an extra account's numbers come from its
-  own snapshot and ⟳ only.
-- **agy multi-account is not possible yet** (live token in the OS keyring;
-  not reverse-engineered).
-- **Codex will not re-scope a token to another workspace.** The
-  `chatgpt-account-id` header is ignored; a response describing a different
-  workspace is dropped rather than mislabelled. Workspaces of one login are
-  covered per credential file; another login needs its own `codex_homes`
-  entry.
-- **Per-model windows are only as fresh as your last ⟳** — they persist
-  across restarts now, but always wearing their age.
-- **Wire plan values are not display names.** `prolite` is your _ChatGPT Pro
-  5x_, `team` is _ChatGPT Business_. Display names come from your own
-  registry file and are never derived from the wire value.
+Other Linux desktops are best effort. No macOS package is published.
+Without a supported multiplexer, qhud shows real local accounts and zero panes.
+Example data is available only with `--demo`.
 
 ## Install
 
-**Windows x64:** download the Windows ZIP from
-[Releases](https://github.com/chquandogong/qhud/releases), extract it, and run
-`qhud.exe`. Microsoft Edge WebView2 Runtime is required. See
-[Windows build and run](docs/05-ops/WINDOWS.md) for prerequisites and source builds.
-The native WebView2 app shows real account usage without requiring a terminal
-multiplexer; terminal-pane monitoring still requires tmux/herdr. Demo data is
-available only with `--demo`.
+**Current release: [v0.6.1](https://github.com/chquandogong/qhud/releases/tag/v0.6.1).**
+Both platform build/test jobs gate publication. Each archive has a SHA-256 file.
 
-Prebuilt Linux x86_64 tarball from
-[Releases](https://github.com/chquandogong/qhud/releases):
+| Download | Verify |
+| --- | --- |
+| [Windows x64 ZIP](https://github.com/chquandogong/qhud/releases/download/v0.6.1/qhud-v0.6.1-windows-x86_64.zip) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.6.1/qhud-v0.6.1-windows-x86_64.zip.sha256) |
+| [Linux x86_64 tarball](https://github.com/chquandogong/qhud/releases/download/v0.6.1/qhud-v0.6.1-linux-x86_64.tar.gz) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.6.1/qhud-v0.6.1-linux-x86_64.tar.gz.sha256) |
 
-```sh
-tar xzf qhud-*-linux-x86_64.tar.gz
-install -Dm755 qhud ~/.local/bin/qhud
-qhud
-```
+### Windows
 
-From source (Rust 1.88+, a WebKitGTK dev environment, and
-[qmonster](https://github.com/chquandogong/qmonster)'s own prerequisites):
+Extract the ZIP and run `qhud.exe` inside its versioned directory. Microsoft
+Edge WebView2 Runtime is required. The portable package does not register
+shortcuts or automatic startup. See the [Windows guide](docs/05-ops/WINDOWS.md)
+for prerequisites, source builds, and configuration.
 
-```sh
-cargo build --release --locked --manifest-path src-tauri/Cargo.toml
-install -Dm755 target/release/qhud ~/.local/bin/qhud
-```
+### Linux
 
-Autostart and an app-grid entry: see [RUNBOOK](docs/05-ops/RUNBOOK.md).
-
-## Using it
-
-| Action                 | How                                                      |
-| ---------------------- | -------------------------------------------------------- |
-| Move / resize          | drag the top or footer bar; ◢ grip to resize             |
-| Zoom                   | Ctrl+wheel over the widget (70–160%, persisted)          |
-| Expand a pane          | click its tile                                           |
-| Inspect an account     | click its strip row (expands the details inline)         |
-| Peek above windows     | tray → _Pin above windows_, or `qhud --peek`             |
-| Refresh everything     | the ⟳ in the topbar, or `qhud --refresh-all`             |
-| Refresh Claude usage   | the ⟳ on a Claude row, or `qhud --refresh-claude`        |
-| Fetch Codex workspaces | the ⟳ on the Codex row, or `qhud --fetch-codex`          |
-| Read agy quota         | the ⟳ on the agy row (loopback RPC, only while agy runs) |
-| Forget an account      | ✕ on its collapsed row                                   |
-
-The widget takes no keyboard focus and is pointer-only by design. Every
-network path also has a CLI trigger, because a keep-below window cannot
-receive synthesized pointer input — which also makes those triggers
-bindable to GNOME shortcuts.
-
-## Accounts and plans
-
-Display names live in `~/.config/qhud/accounts.json` on Linux and
-`%APPDATA%\qhud\accounts.json` on a new Windows installation, **outside this
-repository on purpose** — it holds your emails and account ids, and this
-repo is public. It sets labels and plan text, lists accounts that have ever
-connected (so they can appear as placeholders), records the ones you have
-dismissed, and — the multi-account part (D-015) — lists the extra config
-dirs you keep signed in: `claude_config_dirs` for additional
-`CLAUDE_CONFIG_DIR` accounts, `codex_homes` for additional `CODEX_HOME`
-credential dirs. qhud's own ⟳ results persist next to it in
-`fetched-usage.json` (same privacy rule). Schema and rules:
-[RUNBOOK](docs/05-ops/RUNBOOK.md).
-
-`QHUD_CONFIG_DIR` overrides that directory. `XDG_CONFIG_HOME` and an existing
-`~/.config/qhud` are respected; provider homes follow `CODEX_HOME` and
-`CLAUDE_CONFIG_DIR`. Use account labels in `accounts.json` when Codex's local
-identity supplies only a workspace ID. Model limits such as Spark 5H/7D appear
-only when the provider returns them for that signed-in workspace. Long labels
-wrap, the quota strip scrolls, and hovering a gauge shows the exact reset time.
-
-## When a number looks wrong
+After downloading the archive and its SHA-256 file into the same directory:
 
 ```sh
-qhud --dump                                   # the exact payload being rendered
-QMONSTER_SIDEFILE_DIAG=1 qhud --dump 2>&1 >/dev/null   # why attribution declined
-qhud --claude-usage   qhud --codex-usage   qhud --agy-usage   # each fetch, standalone
-qhud --codex-appserver                        # the expired-token fallback, on demand
-QHUD_EXTRA_DIAG=1 qhud --claude-usage         # extra-usage shape drift (identity-free)
+sha256sum -c qhud-v0.6.1-linux-x86_64.tar.gz.sha256
+tar -xzf qhud-v0.6.1-linux-x86_64.tar.gz
+install -Dm755 qhud-v0.6.1-linux-x86_64/qhud "$HOME/.local/bin/qhud"
+"$HOME/.local/bin/qhud"
 ```
 
-The widget also reports what it built to stderr — the structure it rendered,
-the text of every row, and any frontend exception. Read those as proof of
-logic, never of paint: **the absence of an error is not proof anything
-painted**. Pixels are checked separately, because they are checkable —
-`xwd -id <window> | md5sum` twice a few seconds apart must differ (the footer
-clock repaints every second), and the widget runs that check on itself every
-~28 s and heals a frozen frame on its own (D-017).
+Runtime dependencies on Ubuntu 24.04 include `libwebkit2gtk-4.1-0`,
+`libgtk-3-0`, and `libayatana-appindicator3-1` for the tray.
+[Source builds and GNOME autostart →](docs/05-ops/RUNBOOK.md)
 
-## Design notes
+## Everyday use
 
-Decisions and their reasoning live in
-[DECISION_LOG](docs/02-decisions/DECISION_LOG.md). The ones that will bite
-you if you change this code:
+- **Move and resize:** drag the header or footer; use the corner grip to resize.
+- **Inspect:** select an account row or session tile; hover a gauge for its exact reset time.
+- **Refresh:** use the top-bar ⟳ for all providers or the ⟳ next to an account.
+- **Peek:** use the tray's *Pin above windows* action.
+- **Quit:** choose *Quit qhud* from the tray.
 
-- **D-008** — all window geometry is self-driven; compositor interactive ops
-  are not used.
-- **D-010** — Ubuntu's desktop-icons extension intercepts real pointer
-  input, so input must be verified through the compositor path.
-- **D-011** — facts render at the scope where they are true: quota is an
-  account fact, not a pane fact.
-- **D-012** — **never install Unix signal handlers** in a Tauri/WebKitGTK
-  process. JavaScriptCore reserves SIGUSR1 for thread suspension; hooking it
-  segfaults the webview.
-- **D-013 / D-014** — account identity is read locally only; "no network"
-  became "passive by default, network only on request".
-- **D-015** — multi-account = per-account CLI config dirs; qhud never owns
-  a login or runs a refresh grant.
-- **D-016** — the provider's own process may do the talking (`codex
-app-server`, agy loopback RPC); credential custody stays with the CLI.
+For an **already running** widget, the equivalent shortcuts are:
 
-Architecture: [ARCHITECTURE](docs/03-spec/ARCHITECTURE.md) ·
-Requirements and payload contract: [SPEC](docs/03-spec/SPEC.md) ·
-History: [CHANGELOG](CHANGELOG.md)
+```sh
+qhud --refresh-all
+qhud --peek
+```
 
-## Scope
+[Commands, account setup, and troubleshooting →](docs/GUIDE.md)
 
-One workstation, 1–12 AI panes, GNOME/Wayland via XWayland as the primary
-terminal-monitoring target. Windows x64 supports the native widget and account
-usage; Windows Terminal/PowerShell pane discovery is not implemented. Other
-desktops are best-effort. Beyond ~12 panes the interaction
-model should change rather than be stretched.
+## Understand the numbers
 
-## License
+A percentage belongs to an **account and a time window**. Model-specific
+limits, including Spark 5H/7D, appear only when the provider returns them for
+that login. Missing limits are never filled with invented zeros, and an
+account's saved usage is not reused under another account's name.
 
-[MIT](LICENSE)
+Saved readings carry their age. A remaining reset time is a countdown;
+hovering a gauge reveals the exact date and time. Local observation does not
+make provider API requests. An explicit refresh may read existing access
+tokens for the provider's usage endpoint; qhud does not run OAuth refresh
+grants itself. Codex can delegate its fallback fetch to its own CLI, and
+Antigravity uses the running CLI's loopback service.
+
+Account settings stay outside the repository. See the
+[configuration and data guide](docs/GUIDE.md#configuration-and-local-data).
+
+## Explore the documentation
+
+Every document, including design decisions and historical records, is available
+in English, Korean, and Simplified Chinese.
+
+| Start here | Go deeper |
+| --- | --- |
+| [User guide](docs/GUIDE.md) | [Architecture](docs/03-spec/ARCHITECTURE.md) |
+| [Windows setup](docs/05-ops/WINDOWS.md) · [Linux operations](docs/05-ops/RUNBOOK.md) | [Specification](docs/03-spec/SPEC.md) · [Decision log](docs/02-decisions/DECISION_LOG.md) |
+| [Contributing](CONTRIBUTING.md) | [Test plan](docs/04-quality/TEST_PLAN.md) · [Risk register](docs/04-quality/RISK_REGISTER.md) |
+| [Changelog](CHANGELOG.md) | [Complete documentation index](docs/README.md) |
+
+## Contribute
+
+Bug reports, documentation corrections, and translation improvements are
+welcome in **English, 한국어, or 简体中文**. Start with the
+[contribution guide](CONTRIBUTING.md) or [open an issue](https://github.com/chquandogong/qhud/issues/new/choose).
+
+qhud is an independent project and is not affiliated with Anthropic, OpenAI,
+or Google. Provider names identify compatible tools.
+
+[MIT License](LICENSE) · Built on [qmonster](https://github.com/chquandogong/qmonster)

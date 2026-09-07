@@ -1,0 +1,23 @@
+name: Feature request · 기능 제안 · 功能建议
+description: Explain a use case in English, Korean, or Chinese.
+title: "[Feature] "
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or use case · 문제·사용 사례 · 问题或使用场景
+      description: What are you trying to do? / 어떤 작업을 하려는 건가요? / 您希望完成什么任务？
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior · 원하는 동작 · 期望行为
+      description: Describe the result and affected platform/provider. / 결과와 운영체제·제공자를 적어 주세요. / 请说明期望结果及涉及的平台或服务商。
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives or context · 대안·배경 · 替代方案或背景
+      description: Optional. / 선택 사항. / 可选。

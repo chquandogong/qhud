@@ -1,3 +1,9 @@
+<!-- qhud:languages -->
+<p align="center">
+  <strong>English</strong> · <a href="../i18n/ko/docs/01-discovery/ASSUMPTIONS.md">한국어</a> · <a href="../i18n/zh-CN/docs/01-discovery/ASSUMPTIONS.md">简体中文</a>
+</p>
+<!-- /qhud:languages -->
+
 # ASSUMPTIONS — qhud
 
 > Status: living · Date: 2026-09-07 · Owner: chquandogong
