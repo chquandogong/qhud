@@ -1,6 +1,6 @@
 [package]
 name = "qhud"
-version = "0.5.3"
+version = "0.6.0"
 edition = "2024"
 rust-version = "1.88"
 license = "MIT"
@@ -28,9 +28,5 @@ reqwest = { version = "0.13.4", default-features = false, features = ["json", "r
 tokio = { version = "1.53.1", features = ["rt-multi-thread", "process", "io-util", "time"] }
 # Same gtk tauri/tao already link — the frame guard hashes a strip of the
 # widget's own window to catch presentation freezes (see frame_guard.rs).
+[target.'cfg(target_os = "linux")'.dependencies]
 gtk = "0.18"
-
-[profile.release]
-strip = true
-lto = true
-codegen-units = 1

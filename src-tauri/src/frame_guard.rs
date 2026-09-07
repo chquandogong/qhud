@@ -17,15 +17,20 @@
 //!
 //! Silent while healthy; every detection and heal leaves a stderr line.
 
+#[cfg(target_os = "linux")]
 use std::sync::atomic::{AtomicU8, AtomicU64, Ordering};
 
+#[cfg(target_os = "linux")]
 use tauri::Manager;
 
+#[cfg(target_os = "linux")]
 static LAST_HASH: AtomicU64 = AtomicU64::new(0);
+#[cfg(target_os = "linux")]
 static PHASE: AtomicU8 = AtomicU8::new(0);
 
 /// What the state machine wants done after a sample.
 #[derive(Debug, PartialEq, Clone, Copy)]
+#[cfg(any(target_os = "linux", test))]
 pub enum Action {
     /// Painting normally (or first sample).
     None,
@@ -37,6 +42,7 @@ pub enum Action {
 
 /// Pure decision: compare this sample against the previous one.
 /// `prev == 0` means "no sample yet" (FNV never yields 0 on real input).
+#[cfg(any(target_os = "linux", test))]
 pub fn decide(prev: u64, cur: u64, phase: u8) -> (Action, u8) {
     if prev == 0 || cur != prev {
         return (Action::None, 0);
@@ -49,6 +55,7 @@ pub fn decide(prev: u64, cur: u64, phase: u8) -> (Action, u8) {
 }
 
 /// FNV-1a, 64 bit — stable, dependency-free, plenty for change detection.
+#[cfg(any(target_os = "linux", test))]
 pub fn fnv64(bytes: &[u8]) -> u64 {
     let mut hash: u64 = 0xcbf2_9ce4_8422_2325;
     for b in bytes {
@@ -61,6 +68,7 @@ pub fn fnv64(bytes: &[u8]) -> u64 {
 
 /// Called from the poll loop every tick; samples every 14th (~28 s).
 /// All GTK/GDK access happens on the main thread.
+#[cfg(target_os = "linux")]
 pub fn tick(app: &tauri::AppHandle, tick: u64) {
     if !tick.is_multiple_of(14) {
         return;
@@ -69,6 +77,12 @@ pub fn tick(app: &tauri::AppHandle, tick: u64) {
     let _ = app.clone().run_on_main_thread(move || sample(&app));
 }
 
+/// The sampled freeze is specific to WebKitGTK/X11. Windows uses
+/// WebView2, so GTK pixel sampling and its recovery ladder do not apply.
+#[cfg(not(target_os = "linux"))]
+pub fn tick(_app: &tauri::AppHandle, _tick: u64) {}
+
+#[cfg(target_os = "linux")]
 fn sample(app: &tauri::AppHandle) {
     use gtk::gdk::prelude::*;
     use gtk::prelude::*;

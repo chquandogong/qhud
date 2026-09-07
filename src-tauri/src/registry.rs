@@ -179,9 +179,7 @@ pub fn forget(existing_json: &str, provider: &str, key: &str) -> Result<String, 
 }
 
 fn path() -> Option<std::path::PathBuf> {
-    std::env::var_os("HOME")
-        .map(std::path::PathBuf::from)
-        .map(|h| h.join(".config/qhud/accounts.json"))
+    crate::paths::config_dir().map(|d| d.join("accounts.json"))
 }
 
 /// Reads the registry from disk; an absent file is an empty registry.
@@ -197,7 +195,7 @@ pub fn load() -> Registry {
 /// Written temp+rename so a reader never sees a torn file — the same
 /// hazard that made the statusline sidefiles blink out.
 pub fn forget_and_save(provider: &str, key: &str) -> Result<(), String> {
-    let p = path().ok_or("HOME is not set")?;
+    let p = path().ok_or("qhud configuration directory is unavailable")?;
     if let Some(dir) = p.parent() {
         std::fs::create_dir_all(dir).map_err(|e| format!("cannot create {dir:?}: {e}"))?;
     }

@@ -347,7 +347,10 @@
     chip.querySelector(".q-fill").style.width = g.pct + "%";
     chip.querySelector(".q-val").firstChild.nodeValue = g.pct;
     const reset = chip.querySelector(".q-reset");
+    const label = chip.querySelector(".q-label").textContent;
+    chip.title = `${label}: ${g.pct}% used`;
     if (g.reset_unix) {
+      chip.title += ` · resets ${new Date(g.reset_unix * 1000).toLocaleString()}`;
       reset.dataset.resetUnix = g.reset_unix;
       reset.classList.toggle(
         "soon",
@@ -828,7 +831,7 @@
       .filter((x) => scopedChipLabel(x))
       .map(
         (x) =>
-          `${scopedChipLabel(x)} ${x.pct}%${age ? ` (snapshot ~${age} old)` : ""}`,
+          `${scopedChipLabel(x)} ${x.pct}%${x.reset_unix ? ` · resets ${new Date(x.reset_unix * 1000).toLocaleString()}` : ""}${age ? ` (snapshot ~${age} old)` : ""}`,
       );
   }
 
@@ -896,7 +899,9 @@
               // The fetch key IS the config dir (or "default"): with one
               // account in two orgs, account_id alone would feed one
               // org's numbers to both rows.
-              (r) => r.key === (q.account?.config_dir || "default"),
+              (r) =>
+                r.key === (q.account?.config_dir || "default") &&
+                r.account_id && r.account_id === q.account?.account_id,
             )
           : null;
       // The active codex workspace is merged into this row (its ↳ row
@@ -918,7 +923,9 @@
       // dated.
       const liveUsage =
         liveFetch?.usage ||
-        (q.provider === "agy" && agyFetch.state === "done"
+        (q.provider === "agy" && agyFetch.state === "done" &&
+          agyFetch.data?.account_id &&
+          agyFetch.data.account_id === (q.account?.account_id || q.account?.email)
           ? agyFetch.data
           : null) ||
         (activeWs && codexFetch.state === "done" ? wsToUsage(activeWs) : null);
@@ -1198,11 +1205,8 @@
     if (p.panes.length === 0) {
       if (!tilesEl.querySelector(".empty")) {
         const empty = el("div", "empty");
-        empty.append(
-          "no AI CLI panes found — start ",
-          el("code", null, "claude / codex / gemini"),
-          " inside tmux",
-        );
+        empty.textContent =
+          "No connected terminal panes. Account usage is available above; use ⟳ to refresh.";
         tilesEl.append(empty);
       }
     } else {

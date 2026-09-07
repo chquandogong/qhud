@@ -57,8 +57,7 @@ pub fn parse(json: &str) -> FetchedStore {
 /// it deliberately OUTSIDE this public repo: fetch results carry account
 /// ids.
 fn store_path() -> Option<std::path::PathBuf> {
-    let home = std::env::var_os("HOME").map(std::path::PathBuf::from)?;
-    Some(home.join(".config/qhud/fetched-usage.json"))
+    crate::paths::config_dir().map(|d| d.join("fetched-usage.json"))
 }
 
 pub fn load_from(path: &std::path::Path) -> FetchedStore {
@@ -91,12 +90,22 @@ pub fn load() -> FetchedStore {
 /// the fetch that produced the data already succeeded.
 fn record(update: impl FnOnce(&mut FetchedStore)) {
     let Some(path) = store_path() else { return };
-    let mut store = load_from(&path);
-    store.schema = SCHEMA_VERSION;
-    update(&mut store);
-    if let Err(e) = save_to(&path, &store) {
+    if let Err(e) = record_at(&path, update) {
         eprintln!("qhud: fetched-usage store not saved: {e}");
     }
+}
+
+fn record_at(path: &std::path::Path, update: impl FnOnce(&mut FetchedStore)) -> Result<(), String> {
+    // The three provider refreshes run concurrently. Hold the lock across
+    // load, merge and atomic replacement so one result cannot erase another.
+    static WRITE_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+    let _guard = WRITE_LOCK
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    let mut store = load_from(path);
+    store.schema = SCHEMA_VERSION;
+    update(&mut store);
+    save_to(path, &store)
 }
 
 pub fn record_claude(usage: &CachedUsage) {
@@ -175,6 +184,7 @@ mod tests {
         let store = sample();
         save_to(&path, &store).expect("save succeeds");
         assert_eq!(load_from(&path), store, "what was saved is what loads");
+        save_to(&path, &store).expect("an existing Windows store can be replaced");
 
         // The atomic write must not leave its temp file behind.
         let leftovers: Vec<_> = std::fs::read_dir(&dir)
@@ -187,6 +197,34 @@ mod tests {
             "temp files left behind: {leftovers:?}"
         );
         std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn concurrent_refresh_results_are_all_preserved() {
+        let path =
+            std::env::temp_dir().join(format!("qhud-concurrent-store-{}.json", std::process::id()));
+        save_to(&path, &FetchedStore::default()).unwrap();
+        let barrier = std::sync::Arc::new(std::sync::Barrier::new(8));
+        let handles: Vec<_> = (0..8)
+            .map(|index| {
+                let path = path.clone();
+                let barrier = barrier.clone();
+                std::thread::spawn(move || {
+                    barrier.wait();
+                    record_at(&path, |store| {
+                        store
+                            .claude_extras
+                            .insert(format!("account-{index}"), sample().claude.unwrap());
+                    })
+                    .unwrap();
+                })
+            })
+            .collect();
+        for handle in handles {
+            handle.join().unwrap();
+        }
+        assert_eq!(load_from(&path).claude_extras.len(), 8);
+        std::fs::remove_file(path).unwrap();
     }
 
     #[test]

@@ -296,7 +296,13 @@ pub fn attach_usage_cache(
         }
         return;
     }
-    if cache.five_hour.is_none() && cache.seven_day.is_none() {
+    // Some accounts expose only model-specific pools or extra spend.
+    // Those are useful readings even when no primary window exists.
+    if cache.five_hour.is_none()
+        && cache.seven_day.is_none()
+        && cache.scoped.is_empty()
+        && cache.extra.is_none()
+    {
         return;
     }
     payload.quotas.push(ProviderQuota {
@@ -793,6 +799,29 @@ mod tests {
     }
 
     #[test]
+    fn extra_spend_without_primary_windows_survives_a_restart() {
+        let mut saved = cache(20, 3);
+        saved.five_hour = None;
+        saved.seven_day = None;
+        saved.scoped.clear();
+        let mut p = payload_of(vec![]);
+
+        attach_usage_cache(&mut p, "claude", Some(&saved), "fetched");
+
+        assert_eq!(p.quotas.len(), 1);
+        let row = &p.quotas[0];
+        assert!(row.h5.is_none() && row.d7.is_none());
+        assert_eq!(row.extra, saved.extra);
+        assert_eq!(row.origin, Some("fetched"));
+        assert_eq!(row.cache_fetched_at_ms, Some(saved.fetched_at_ms));
+
+        saved.extra = None;
+        let mut empty = payload_of(vec![]);
+        attach_usage_cache(&mut empty, "claude", Some(&saved), "fetched");
+        assert!(empty.quotas.is_empty(), "an empty snapshot is not usage");
+    }
+
+    #[test]
     fn extra_account_rows_sit_after_the_default_and_keep_their_origin() {
         let mut p = payload_of(vec![pane("claude", "claude:1:main", Some(36), None)]);
         attach_usage_cache(&mut p, "claude", Some(&cache(20, 3)), "cache");
@@ -972,6 +1001,49 @@ mod tests {
         assert!(empty.codex_workspaces.is_empty());
         assert!(empty.codex_fetched_at_ms.is_none());
         assert!(empty.quotas.is_empty());
+    }
+
+    #[test]
+    fn active_codex_model_pools_without_primary_windows_survive_a_restart() {
+        use crate::codex_usage::{UsageWindow, WorkspaceUsage};
+        let saved = crate::fetched_store::CodexFetched {
+            fetched_at_ms: 1_786_000_000_000,
+            workspaces: vec![WorkspaceUsage {
+                account_id: "ws-active".into(),
+                active: true,
+                windows: vec![
+                    UsageWindow {
+                        label: "5h".into(),
+                        used_percent: 12,
+                        reset_unix: Some(1_786_011_600),
+                        scope: Some("GPT-5.3-Codex-Spark".into()),
+                    },
+                    UsageWindow {
+                        label: "weekly".into(),
+                        used_percent: 34,
+                        reset_unix: Some(1_786_557_600),
+                        scope: Some("GPT-5.3-Codex-Spark".into()),
+                    },
+                ],
+                ..Default::default()
+            }],
+        };
+        let mut p = payload_of(vec![]);
+
+        attach_fetched_codex(&mut p, Some(&saved));
+
+        assert_eq!(p.quotas.len(), 1, "the active workspace uses one row");
+        let row = &p.quotas[0];
+        assert!(row.h5.is_none() && row.d7.is_none());
+        assert_eq!(row.origin, Some("fetched"));
+        assert_eq!(row.cache_fetched_at_ms, Some(saved.fetched_at_ms));
+        assert_eq!(row.scoped.len(), 2, "both model windows remain visible");
+        for (limit, window) in row.scoped.iter().zip(&saved.workspaces[0].windows) {
+            assert_eq!(limit.kind, format!("pool_{}", window.label));
+            assert_eq!(limit.scope, window.scope);
+            assert_eq!(limit.pct, window.used_percent);
+            assert_eq!(limit.reset_unix, window.reset_unix);
+        }
     }
 
     #[test]

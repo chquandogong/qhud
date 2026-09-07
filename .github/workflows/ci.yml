@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, "codex/**"]
   pull_request:
 
 env:
@@ -29,10 +29,30 @@ jobs:
         run: cargo fmt --all --check
 
       - name: Clippy
-        run: cargo clippy --all-targets -- -D warnings
+        run: cargo clippy --locked --all-targets -- -D warnings
 
       - name: Test
-        run: cargo test --all-targets
+        run: cargo test --locked --all-targets
 
       - name: Build
-        run: cargo build --release
+        run: cargo build --locked --release
+
+  windows-x86_64:
+    name: Windows MSVC · test · build
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Test and build with the Windows dependency patch
+        shell: pwsh
+        run: |
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $vsPath = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if (-not $vsPath) { throw 'Visual Studio C++ build tools were not found.' }
+          & ./scripts/Build-Windows.ps1 -Test -VisualStudioPath $vsPath
+
+      - name: Verify the canonical dependency files are unchanged
+        run: git diff --exit-code -- Cargo.toml Cargo.lock

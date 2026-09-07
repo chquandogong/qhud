@@ -1,0 +1,314 @@
+diff --git a/src/adapters/process_memory.rs b/src/adapters/process_memory.rs
+index ba9276e..68267bf 100644
+--- a/src/adapters/process_memory.rs
++++ b/src/adapters/process_memory.rs
+@@ -730,6 +730,7 @@ mod tests {
+     }
+ 
+     #[test]
++    #[cfg(unix)]
+     fn cli_process_descriptor_includes_pid_comm_argv_and_exe() {
+         let tmp = tempdir().unwrap();
+         let root = tmp.path();
+diff --git a/src/app/cli_version.rs b/src/app/cli_version.rs
+index 8fa0bb3..a54f9af 100644
+--- a/src/app/cli_version.rs
++++ b/src/app/cli_version.rs
+@@ -1,11 +1,11 @@
+ use std::collections::HashMap;
+ use std::path::{Path, PathBuf};
+-use std::process::Command;
+ 
+ use crate::adapters::process_memory::CliProcessDescriptor;
+ use crate::domain::identity::Provider;
+ use crate::domain::origin::SourceKind;
+ use crate::domain::signal::{RuntimeFact, RuntimeFactKind};
++use crate::process::command;
+ 
+ pub(crate) type CliVersionCache = HashMap<CliVersionCacheKey, Option<RuntimeFact>>;
+ 
+@@ -81,7 +81,7 @@ pub(crate) fn parse_cli_version_from_tail(provider: Provider, tail: &str) -> Opt
+ 
+ pub(crate) fn probe_cli_version(desc: &CliProcessDescriptor) -> Option<RuntimeFact> {
+     let (program, args) = version_probe_command(desc)?;
+-    let out = Command::new(program).args(args).output().ok()?;
++    let out = command(program).args(args).output().ok()?;
+     if !out.status.success() {
+         return None;
+     }
+@@ -187,15 +187,21 @@ fn cli_version_fact(version: String, provider: Option<Provider>) -> RuntimeFact
+ #[cfg(test)]
+ mod tests {
+     use super::*;
++    #[cfg(unix)]
+     use crate::adapters::process_memory::CliProcessDescriptor;
+     use crate::domain::identity::Provider;
+     use crate::domain::origin::SourceKind;
+     use crate::domain::signal::RuntimeFactKind;
++    #[cfg(unix)]
+     use std::fs;
++    #[cfg(unix)]
+     use std::os::unix::fs::PermissionsExt;
++    #[cfg(unix)]
+     use std::path::Path;
++    #[cfg(unix)]
+     use tempfile::tempdir;
+ 
++    #[cfg(unix)]
+     fn write_executable(path: &Path, body: &str) {
+         fs::write(path, body).unwrap();
+         let mut perms = fs::metadata(path).unwrap().permissions();
+@@ -253,6 +259,7 @@ mod tests {
+     }
+ 
+     #[test]
++    #[cfg(unix)]
+     fn native_cli_probe_uses_exact_proc_exe() {
+         let tmp = tempdir().unwrap();
+         let exe = tmp.path().join("claude-exact");
+@@ -272,6 +279,7 @@ mod tests {
+     }
+ 
+     #[test]
++    #[cfg(unix)]
+     fn agy_native_cli_probe_reads_version() {
+         // v3.1.1: agy was added to the version-probe allow-list so its
+         // `CLI <version>` badge shows like Claude/Codex. `agy --version` → "1.0.14".
+@@ -292,6 +300,7 @@ mod tests {
+     }
+ 
+     #[test]
++    #[cfg(unix)]
+     fn node_cli_probe_uses_exact_interpreter_and_script() {
+         let tmp = tempdir().unwrap();
+         let node = tmp.path().join("node-exact");
+diff --git a/src/app/git_info.rs b/src/app/git_info.rs
+index 91ae971..bf2d58e 100644
+--- a/src/app/git_info.rs
++++ b/src/app/git_info.rs
+@@ -1,8 +1,9 @@
+ use std::path::{Path, PathBuf};
+-use std::process::Command;
+ 
+ use anyhow::Context as _;
+ 
++use crate::process::command;
++
+ const GIT_LABEL_WIDTH: usize = 10;
+ const RECENT_COMMIT_LIMIT: usize = 5;
+ const CONTRIBUTOR_LIMIT: usize = 5;
+@@ -312,7 +313,7 @@ fn summarize_status_lines(lines: &[String]) -> (usize, usize, usize) {
+ }
+ 
+ fn run_git(repo_root: &Path, args: &[&str]) -> anyhow::Result<String> {
+-    let output = Command::new("git")
++    let output = command("git")
+         .arg("-C")
+         .arg(repo_root)
+         .args(args)
+diff --git a/src/app/version_drift.rs b/src/app/version_drift.rs
+index 4261dd7..49016dc 100644
+--- a/src/app/version_drift.rs
++++ b/src/app/version_drift.rs
+@@ -1,9 +1,10 @@
+ use std::collections::BTreeMap;
+ use std::path::Path;
+-use std::process::Command;
+ 
+ use serde::{Deserialize, Serialize};
+ 
++use crate::process::command;
++
+ /// Snapshot of CLI tool versions known to Qmonster. Persisted to
+ /// `~/.qmonster/versions.json` in Phase 2 so drift can be detected
+ /// across restarts (not just within a single session).
+@@ -107,7 +108,7 @@ pub fn capture_versions() -> VersionSnapshot {
+ }
+ 
+ fn cli_version(cmd: &str, args: &[&str]) -> String {
+-    match Command::new(cmd).args(args).output() {
++    match command(cmd).args(args).output() {
+         Ok(out) if out.status.success() => {
+             let stdout = String::from_utf8_lossy(&out.stdout);
+             let first_line = stdout.lines().next().unwrap_or("").trim();
+diff --git a/src/app/worktree_info.rs b/src/app/worktree_info.rs
+index 659b657..7500a9f 100644
+--- a/src/app/worktree_info.rs
++++ b/src/app/worktree_info.rs
+@@ -1,7 +1,8 @@
+ use std::path::{Path, PathBuf};
+-use std::process::Command;
+ use std::time::Duration;
+ 
++use crate::process::command;
++
+ #[derive(Debug, Clone, PartialEq, Eq)]
+ pub(crate) struct WorktreeSplitSuggestion {
+     pub command: String,
+@@ -75,7 +76,7 @@ fn first_available_branch_name(repo_root: &Path, base: &str) -> Option<String> {
+ }
+ 
+ fn branch_exists(repo_root: &Path, branch: &str) -> bool {
+-    Command::new("git")
++    command("git")
+         .arg("-C")
+         .arg(repo_root)
+         .args(["rev-parse", "--verify", "--quiet"])
+@@ -150,7 +151,7 @@ fn shell_quote(value: &str) -> String {
+ }
+ 
+ fn run_git(repo_root: &Path, args: &[&str]) -> Option<String> {
+-    let output = Command::new("git")
++    let output = command("git")
+         .arg("-C")
+         .arg(repo_root)
+         .args(args)
+@@ -333,7 +334,7 @@ mod tests {
+     use super::*;
+ 
+     fn git(path: &Path, args: &[&str]) {
+-        let output = Command::new("git")
++        let output = command("git")
+             .arg("-C")
+             .arg(path)
+             .args(args)
+diff --git a/src/herdr/commands.rs b/src/herdr/commands.rs
+index 77d243d..1d6e37e 100644
+--- a/src/herdr/commands.rs
++++ b/src/herdr/commands.rs
+@@ -3,10 +3,10 @@
+ //! Mirrors `tmux/commands.rs` + `tmux/polling_process.rs`: builders are
+ //! pure and unit-tested; `run_herdr` is the only process boundary.
+ 
+-use std::process::Command;
+ use std::thread;
+ use std::time::Duration;
+ 
++use crate::process::command;
+ use crate::tmux::polling::PollingError;
+ 
+ /// herdr's canonical Enter key name for `pane send-keys` (verified
+@@ -101,7 +101,7 @@ fn run_command_with_timeout(
+     use std::io::Read;
+     use std::process::Stdio;
+ 
+-    let mut child = Command::new(bin)
++    let mut child = command(bin)
+         .args(args)
+         .stdin(Stdio::null())
+         .stdout(Stdio::piped())
+@@ -219,11 +219,13 @@ mod tests {
+         assert_eq!(HERDR_KEY_SETTLE_DELAY.as_millis(), 80);
+     }
+ 
++    #[cfg(unix)]
+     fn args(list: &[&str]) -> Vec<String> {
+         list.iter().map(|s| s.to_string()).collect()
+     }
+ 
+     #[test]
++    #[cfg(unix)]
+     fn run_command_with_timeout_returns_stdout_on_success() {
+         let out = run_command_with_timeout(
+             "/bin/sh",
+@@ -235,6 +237,7 @@ mod tests {
+     }
+ 
+     #[test]
++    #[cfg(unix)]
+     fn run_command_with_timeout_kills_wedged_process() {
+         // Also locks that the call RETURNS promptly: `sh -c "sleep 30"`
+         // may fork, and a surviving grandchild keeps the stdout pipe
+@@ -259,6 +262,7 @@ mod tests {
+     }
+ 
+     #[test]
++    #[cfg(unix)]
+     fn run_command_with_timeout_reports_status_and_stderr() {
+         let err = run_command_with_timeout(
+             "/bin/sh",
+@@ -272,6 +276,7 @@ mod tests {
+     }
+ 
+     #[test]
++    #[cfg(unix)]
+     fn run_command_with_timeout_falls_back_to_stdout_diagnostics() {
+         // herdr sometimes reports structured errors on stdout.
+         let err = run_command_with_timeout(
+diff --git a/src/lib.rs b/src/lib.rs
+index dc855a5..7f338cb 100644
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -14,6 +14,7 @@ pub mod domain;
+ pub mod herdr;
+ pub mod notify;
+ pub mod policy;
++mod process;
+ pub mod store;
+ pub mod tmux;
+ pub mod ui;
+diff --git a/src/tmux/control_process.rs b/src/tmux/control_process.rs
+index e2c3aa0..459c7b1 100644
+--- a/src/tmux/control_process.rs
++++ b/src/tmux/control_process.rs
+@@ -1,5 +1,7 @@
+ use std::io::{BufReader, Read, Write};
+-use std::process::{Child, ChildStderr, ChildStdin, ChildStdout, Command, Stdio};
++use std::process::{Child, ChildStderr, ChildStdin, ChildStdout, Stdio};
++
++use crate::process::command;
+ 
+ use crate::tmux::polling::PollingError;
+ 
+@@ -21,7 +23,7 @@ impl ControlModeProcess {
+     }
+ 
+     fn attach_current_with(args: &[&str]) -> Result<Self, PollingError> {
+-        let mut child = Command::new("tmux")
++        let mut child = command("tmux")
+             .args(args)
+             .stdin(Stdio::piped())
+             .stdout(Stdio::piped())
+diff --git a/src/tmux/polling_process.rs b/src/tmux/polling_process.rs
+index df32177..bb6b513 100644
+--- a/src/tmux/polling_process.rs
++++ b/src/tmux/polling_process.rs
+@@ -1,9 +1,9 @@
+-use std::process::Command;
++use crate::process::command;
+ 
+ use crate::tmux::polling::PollingError;
+ 
+ pub(crate) fn run_tmux(args: &[String]) -> Result<String, PollingError> {
+-    let output = Command::new("tmux")
++    let output = command("tmux")
+         .args(args)
+         .output()
+         .map_err(|e| PollingError::Command(e.to_string()))?;
+diff --git a/src/process.rs b/src/process.rs
+new file mode 100644
+--- /dev/null
++++ b/src/process.rs
+@@ -0,0 +1,22 @@
++//! Process setup shared by the terminal and desktop front ends.
++
++use std::ffi::OsStr;
++use std::process::Command;
++
++/// Background probes must not create a console window when the library is
++/// hosted by a Windows GUI. Other platforms retain the standard behavior.
++pub(crate) fn command(program: impl AsRef<OsStr>) -> Command {
++    let mut command = Command::new(program);
++    configure(&mut command);
++    command
++}
++
++#[cfg(windows)]
++fn configure(command: &mut Command) {
++    use std::os::windows::process::CommandExt;
++    const CREATE_NO_WINDOW: u32 = 0x0800_0000;
++    command.creation_flags(CREATE_NO_WINDOW);
++}
++
++#[cfg(not(windows))]
++fn configure(_command: &mut Command) {}

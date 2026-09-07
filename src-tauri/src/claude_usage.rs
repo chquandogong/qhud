@@ -36,16 +36,21 @@ fn read_token_at(cred: &std::path::Path) -> Result<String, String> {
 }
 
 fn default_credentials() -> Result<std::path::PathBuf, String> {
-    std::env::var_os("HOME")
-        .map(std::path::PathBuf::from)
-        .map(|h| h.join(".claude/.credentials.json"))
-        .ok_or_else(|| "HOME is not set".to_string())
+    crate::paths::claude_config_dir()
+        .map(|dir| dir.join(".credentials.json"))
+        .ok_or_else(|| "Claude configuration directory could not be determined".to_string())
 }
 
 /// `claude-code/<installed version>`. The User-Agent is load-bearing: without
 /// a real one this endpoint answers 429 with no Retry-After.
 fn user_agent() -> String {
-    let ver = std::process::Command::new("claude")
+    let mut command = std::process::Command::new("claude");
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        command.creation_flags(0x0800_0000); // CREATE_NO_WINDOW
+    }
+    let ver = command
         .arg("--version")
         .output()
         .ok()
@@ -81,10 +86,10 @@ pub async fn fetch_all(now_ms: u64) -> Result<Vec<AccountFetch>, String> {
     let mut out = Vec::new();
     let mut errs = Vec::new();
 
-    let home = std::env::var_os("HOME").map(std::path::PathBuf::from);
+    let home = crate::paths::home_dir();
     match fetch(now_ms).await {
         Ok(mut usage) => {
-            usage.account_id = home.as_ref().and_then(|h| ident(&h.join(".claude.json")));
+            usage.account_id = crate::paths::claude_config_file().and_then(|p| ident(&p));
             crate::fetched_store::record_claude(&usage);
             out.push(AccountFetch {
                 key: "default".into(),

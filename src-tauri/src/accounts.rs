@@ -262,13 +262,16 @@ pub fn extra_claude_accounts(
 /// map. A missing or unreadable file is simply an absent account: this is
 /// best-effort enrichment and must never fail a poll tick.
 pub fn detect_all() -> Vec<(String, AccountLabel)> {
-    let Some(home) = std::env::var_os("HOME").map(std::path::PathBuf::from) else {
+    let Some(home) = crate::paths::home_dir() else {
         return Vec::new();
     };
     let read = |rel: &str| std::fs::read_to_string(home.join(rel)).ok();
+    let claude = crate::paths::claude_config_file().and_then(|p| std::fs::read_to_string(p).ok());
+    let codex =
+        crate::paths::codex_home().and_then(|p| std::fs::read_to_string(p.join("auth.json")).ok());
     let mut found = detect_all_from(
-        read(".claude.json").as_deref(),
-        read(".codex/auth.json").as_deref(),
+        claude.as_deref(),
+        codex.as_deref(),
         read(".gemini/google_accounts.json").as_deref(),
     );
 
@@ -297,12 +300,13 @@ pub fn detect_all() -> Vec<(String, AccountLabel)> {
             .map(|(id, org)| (id.as_str(), org.as_deref())),
     ));
 
-    let labels = read(".config/qhud/accounts.json")
-        .map(|s| parse_inventory(&s))
+    let inventory = crate::paths::config_dir()
+        .and_then(|d| std::fs::read_to_string(d.join("accounts.json")).ok());
+    let labels = inventory
+        .as_deref()
+        .map(parse_inventory)
         .unwrap_or_default();
-    let plans = read(".config/qhud/accounts.json")
-        .map(|s| parse_plans(&s))
-        .unwrap_or_default();
+    let plans = inventory.as_deref().map(parse_plans).unwrap_or_default();
     for (provider, acct) in &mut found {
         apply_labels(provider, acct, &labels);
         let keys = [acct.account_id.as_deref(), acct.email.as_deref()];

@@ -7,6 +7,7 @@ mod codex_usage;
 mod demo;
 mod fetched_store;
 mod frame_guard;
+mod paths;
 mod poll;
 mod registry;
 mod usage_cache;
@@ -172,6 +173,7 @@ fn main() {
     // set QHUD_NO_X11_FORCE=1 to opt out (e.g. on wlroots compositors
     // where you prefer native Wayland and manage layering yourself).
     // SAFETY: runs before any other thread is spawned.
+    #[cfg(target_os = "linux")]
     unsafe {
         if std::env::var_os("GDK_BACKEND").is_none()
             && std::env::var_os("QHUD_NO_X11_FORCE").is_none()
@@ -221,11 +223,8 @@ fn main() {
         match poll::dump_once() {
             Some(json) => println!("{json}"),
             None => {
-                eprintln!("qhud: no live mux source — demo payload follows");
-                println!(
-                    "{}",
-                    serde_json::to_string_pretty(&demo::payload()).unwrap_or_default()
-                );
+                eprintln!("qhud: unable to serialize the account payload");
+                std::process::exit(1);
             }
         }
         return;

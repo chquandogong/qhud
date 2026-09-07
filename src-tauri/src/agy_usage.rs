@@ -10,9 +10,9 @@
 //! running (statusline sidefile). With it, ⟳ works whenever agy runs
 //! anywhere; when agy is closed the last stored reading renders, dated.
 //!
-//! Port discovery is /proc only: agy's listening loopback sockets are
-//! read from `/proc/<pid>/fd` socket inodes joined against
-//! `/proc/net/tcp`. The HTTPS listener rejects plain HTTP, so each
+//! Linux discovers agy's listening loopback sockets through `/proc`.
+//! Windows asks the local TCP table for 127.0.0.1 listeners owned by an
+//! `agy.exe` process. The HTTPS listener rejects plain HTTP, so each
 //! candidate port is simply tried in order.
 
 use crate::usage_cache::{CachedUsage, CachedWindow, ScopedLimit, parse_reset};
@@ -117,6 +117,7 @@ pub fn parse_quota_summary(body: &str, fetched_at_ms: u64) -> Option<CachedUsage
 
 /// LISTEN rows of `/proc/net/tcp` bound to 127.0.0.1 whose socket inode
 /// is in `inodes`, as ports. Pure so the hex parsing is testable.
+#[cfg(any(target_os = "linux", test))]
 pub fn listen_ports_from(tcp: &str, inodes: &std::collections::HashSet<u64>) -> Vec<u16> {
     tcp.lines()
         .skip(1)
@@ -137,6 +138,7 @@ pub fn listen_ports_from(tcp: &str, inodes: &std::collections::HashSet<u64>) -> 
         .collect()
 }
 
+#[cfg(target_os = "linux")]
 fn agy_pids() -> Vec<u32> {
     let Ok(entries) = std::fs::read_dir("/proc") else {
         return Vec::new();
@@ -151,6 +153,7 @@ fn agy_pids() -> Vec<u32> {
         .collect()
 }
 
+#[cfg(target_os = "linux")]
 fn socket_inodes(pid: u32) -> std::collections::HashSet<u64> {
     let mut out = std::collections::HashSet::new();
     let Ok(fds) = std::fs::read_dir(format!("/proc/{pid}/fd")) else {
@@ -169,25 +172,100 @@ fn socket_inodes(pid: u32) -> std::collections::HashSet<u64> {
 
 /// Loopback ports a running agy is listening on, in ascending order.
 /// Empty when agy is not running (the caller words the error).
-pub fn discover_ports() -> Vec<u16> {
+#[cfg(target_os = "linux")]
+pub async fn discover_ports() -> Result<Vec<u16>, String> {
     let mut ports: Vec<u16> = Vec::new();
     let Ok(tcp) = std::fs::read_to_string("/proc/net/tcp") else {
-        return ports;
+        return Ok(ports);
     };
     for pid in agy_pids() {
         ports.extend(listen_ports_from(&tcp, &socket_inodes(pid)));
     }
     ports.sort_unstable();
     ports.dedup();
-    ports
+    Ok(ports)
+}
+
+#[cfg(any(windows, test))]
+fn windows_ports_from(output: &str) -> Result<Vec<u16>, String> {
+    let mut ports = Vec::new();
+    for line in output
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty())
+    {
+        let port = line
+            .parse::<u16>()
+            .ok()
+            .filter(|port| *port != 0)
+            .ok_or_else(|| "Windows returned an invalid agy listening port".to_string())?;
+        ports.push(port);
+    }
+    ports.sort_unstable();
+    ports.dedup();
+    Ok(ports)
+}
+
+#[cfg(windows)]
+pub async fn discover_ports() -> Result<Vec<u16>, String> {
+    // Only numeric ports leave this subprocess. It neither reads process
+    // command lines nor credentials, and never probes another process's port.
+    const SCRIPT: &str = r#"
+$ErrorActionPreference = 'Stop'
+$agyPids = @(Get-Process -Name agy -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Id)
+if ($agyPids.Count -eq 0) { exit 0 }
+Get-NetTCPConnection -State Listen -ErrorAction Stop |
+    Where-Object { $_.LocalAddress -eq '127.0.0.1' -and $agyPids -contains $_.OwningProcess } |
+    Select-Object -ExpandProperty LocalPort -Unique
+"#;
+    let powershell = std::env::var_os("SystemRoot")
+        .map(std::path::PathBuf::from)
+        .map(|root| root.join("System32/WindowsPowerShell/v1.0/powershell.exe"))
+        .unwrap_or_else(|| "powershell.exe".into());
+    let mut command = tokio::process::Command::new(powershell);
+    command
+        .args([
+            "-NoLogo",
+            "-NoProfile",
+            "-NonInteractive",
+            "-Command",
+            SCRIPT,
+        ])
+        .creation_flags(0x0800_0000) // CREATE_NO_WINDOW
+        .stdin(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .kill_on_drop(true);
+    let output = tokio::time::timeout(std::time::Duration::from_secs(10), command.output())
+        .await
+        .map_err(|_| "Windows agy port discovery timed out".to_string())?
+        .map_err(|e| format!("Windows agy port discovery could not start PowerShell: {e}"))?;
+    if !output.status.success() {
+        return Err("Windows could not read agy listening ports with Get-NetTCPConnection".into());
+    }
+    let ports = String::from_utf8(output.stdout)
+        .map_err(|_| "Windows agy port discovery returned invalid text".to_string())?;
+    windows_ports_from(&ports)
+}
+
+#[cfg(not(any(target_os = "linux", windows)))]
+pub async fn discover_ports() -> Result<Vec<u16>, String> {
+    Err("agy port discovery is supported on Windows and Linux only".into())
 }
 
 /// One RPC round per candidate port until one parses. The HTTPS listener
 /// answers plain HTTP with an error body, which simply fails the parse.
 pub async fn fetch(now_ms: u64) -> Result<CachedUsage, String> {
-    let ports = discover_ports();
+    // Bind the reading to the identity present when refresh began so a
+    // subsequent sign-in cannot relabel a persisted quota snapshot.
+    let account_id = crate::accounts::detect_all()
+        .into_iter()
+        .find(|(provider, _)| provider == "agy")
+        .and_then(|(_, account)| account.account_id.or(account.email));
+    let ports = discover_ports().await?;
     if ports.is_empty() {
-        return Err("agy is not running — its quota RPC only exists while it does".into());
+        return Err(
+            "no running agy process has a 127.0.0.1 quota listener — start agy and retry".into(),
+        );
     }
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(5))
@@ -205,7 +283,8 @@ pub async fn fetch(now_ms: u64) -> Result<CachedUsage, String> {
         {
             Ok(resp) => {
                 let body = resp.text().await.unwrap_or_default();
-                if let Some(usage) = parse_quota_summary(&body, now_ms) {
+                if let Some(mut usage) = parse_quota_summary(&body, now_ms) {
+                    usage.account_id = account_id;
                     return Ok(usage);
                 }
                 last = format!("port {port}: body did not parse");
@@ -223,6 +302,18 @@ pub async fn fetch(now_ms: u64) -> Result<CachedUsage, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn windows_ports_accept_only_valid_ports_and_deduplicate() {
+        assert_eq!(
+            windows_ports_from("41912\r\n 3000 \r\n41912\r\n").unwrap(),
+            vec![3000, 41912]
+        );
+        assert!(windows_ports_from("\r\n").unwrap().is_empty());
+        assert!(windows_ports_from("0").is_err());
+        assert!(windows_ports_from("65536").is_err());
+        assert!(windows_ports_from("Access is denied").is_err());
+    }
 
     // Live shape (2026-08-10), values synthetic. `3p-5h` has NO
     // remainingFraction on purpose: proto3-JSON omits default values,

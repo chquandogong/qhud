@@ -274,7 +274,7 @@ pub fn parse_app_server_rate_limits(line: &str, account_id: &str) -> Option<Work
     struct RpcResult {
         rate_limits: Option<Limits>,
         #[serde(default)]
-        rate_limits_by_limit_id: std::collections::BTreeMap<String, Limits>,
+        rate_limits_by_limit_id: Option<std::collections::BTreeMap<String, Limits>>,
     }
     #[derive(Deserialize)]
     #[serde(rename_all = "camelCase")]
@@ -322,53 +322,103 @@ pub fn parse_app_server_rate_limits(line: &str, account_id: &str) -> Option<Work
         return None;
     }
     let result = rpc.result?;
-    let top = result.rate_limits?;
+    let top = result.rate_limits;
+    let mut by_id = result.rate_limits_by_limit_id.unwrap_or_default();
+    if top.is_none() && by_id.is_empty() {
+        return None;
+    }
 
-    let mut windows: Vec<UsageWindow> = Vec::new();
-    if result.rate_limits_by_limit_id.is_empty() {
-        windows.extend(
-            [top.primary, top.secondary]
+    let main_id = top
+        .as_ref()
+        .and_then(|l| l.limit_id.as_deref())
+        .unwrap_or("codex");
+    let mapped_main = by_id.remove(main_id);
+    let plan_type = top
+        .as_ref()
+        .and_then(|l| l.plan_type.clone())
+        .or_else(|| mapped_main.as_ref().and_then(|l| l.plan_type.clone()));
+    let credits_balance = top
+        .as_ref()
+        .and_then(|l| l.credits.as_ref())
+        .and_then(|c| c.balance.clone())
+        .or_else(|| {
+            mapped_main
+                .as_ref()
+                .and_then(|l| l.credits.as_ref())
+                .and_then(|c| c.balance.clone())
+        });
+
+    // Prefer the main pool in the map, but retain the top-level main
+    // when the map contains only extra pools. Consume it once so the
+    // same weekly window is never rendered twice. A null top-level
+    // value must not hide real per-model readings from the map.
+    let pools = mapped_main.or(top).into_iter().map(|l| (None, l)).chain(
+        by_id
+            .into_iter()
+            .map(|(id, l)| (Some(l.limit_name.clone().unwrap_or(id)), l)),
+    );
+    let windows = pools
+        .flat_map(|(scope, l)| {
+            [l.primary, l.secondary]
                 .into_iter()
                 .flatten()
-                .filter_map(win),
-        );
-    } else {
-        // The by-id map carries every pool including the main one, so it
-        // is the whole truth when present. The main pool stays unscoped;
-        // every other pool wears its name (both are "weekly" by duration,
-        // and one label over two values is the D-011 mistake).
-        let main_id = top.limit_id.clone();
-        for (id, l) in result.rate_limits_by_limit_id {
-            let is_main = main_id.as_deref().map_or(id == "codex", |m| id == m);
-            let scope = if is_main {
-                None
-            } else {
-                l.limit_name.clone().or(Some(id))
-            };
-            windows.extend(
-                [l.primary, l.secondary]
-                    .into_iter()
-                    .flatten()
-                    .filter_map(win)
-                    .map(|mut w| {
-                        w.scope = scope.clone();
-                        w
-                    }),
-            );
-        }
-    }
+                .filter_map(win)
+                .map(move |mut w| {
+                    w.scope = scope.clone();
+                    w
+                })
+        })
+        .collect();
     Some(WorkspaceUsage {
         account_id: account_id.to_string(),
         name: None,
-        plan_type: top.plan_type,
+        plan_type,
         windows,
-        credits_balance: top.credits.and_then(|c| c.balance),
+        credits_balance,
         active: false,
     })
 }
 
+/// Prefer an explicit CLI, then the user's PATH. The Windows desktop app
+/// also installs versioned CLI binaries outside PATH.
+fn codex_binary() -> std::path::PathBuf {
+    if let Some(path) = std::env::var_os("QHUD_CODEX_BIN").filter(|p| !p.is_empty()) {
+        return path.into();
+    }
+    #[cfg(windows)]
+    {
+        if let Some(path) = std::env::var_os("PATH") {
+            for dir in std::env::split_paths(&path) {
+                for name in ["codex.exe", "codex.cmd", "codex.bat"] {
+                    let candidate = dir.join(name);
+                    if candidate.is_file() {
+                        return candidate;
+                    }
+                }
+            }
+        }
+        if let Some(local) = std::env::var_os("LOCALAPPDATA") {
+            let root = std::path::PathBuf::from(local).join("OpenAI/Codex/bin");
+            if let Some(binary) = desktop_codex_binary(&root) {
+                return binary;
+            }
+        }
+    }
+    "codex".into()
+}
+
+#[cfg(any(windows, test))]
+fn desktop_codex_binary(root: &std::path::Path) -> Option<std::path::PathBuf> {
+    std::fs::read_dir(root)
+        .ok()?
+        .flatten()
+        .map(|entry| entry.path().join("codex.exe"))
+        .filter(|path| path.is_file())
+        .max_by_key(|path| path.metadata().ok().and_then(|meta| meta.modified().ok()))
+}
+
 /// Fetches the ACTIVE login's usage by asking a short-lived
-/// `codex app-server` child (read-only sandbox, untrusted approvals) —
+/// `codex app-server` child (read-only sandbox, on-request approvals) —
 /// Codex owns all credentials and its own token rotation, so this path
 /// still works when the on-disk access token has expired and the raw
 /// HTTP path answers 401. qhud reads no token at all here.
@@ -377,15 +427,17 @@ pub async fn fetch_via_app_server() -> Result<WorkspaceUsage, String> {
 
     // The workspace this login is scoped to, for labelling — an identity
     // field read locally, not a credential.
-    let account_id = std::env::var_os("HOME")
-        .map(std::path::PathBuf::from)
-        .and_then(|h| std::fs::read_to_string(h.join(".codex/auth.json")).ok())
+    let account_id = crate::paths::codex_home()
+        .and_then(|dir| std::fs::read_to_string(dir.join("auth.json")).ok())
         .and_then(|s| crate::accounts::codex_account(&s))
         .and_then(|a| a.account_id)
-        .ok_or("no ~/.codex/auth.json identity — run `codex login`")?;
+        .ok_or("no Codex auth.json identity — run `codex login`")?;
 
-    let mut child = tokio::process::Command::new("codex")
-        .args(["-s", "read-only", "-a", "untrusted", "app-server"])
+    let mut command = tokio::process::Command::new(codex_binary());
+    #[cfg(windows)]
+    command.creation_flags(0x0800_0000); // CREATE_NO_WINDOW
+    let mut child = command
+        .args(["-s", "read-only", "-a", "on-request", "app-server"])
         .stdin(std::process::Stdio::piped())
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::null())
@@ -480,17 +532,19 @@ pub fn parse_accounts(body: &str) -> Vec<(String, Option<String>, Option<String>
 /// each token reads its OWN workspace, so reading several files covers several
 /// workspaces with no refresh grant and no new credentials.
 fn read_all_auth() -> Vec<(String, Option<String>, String)> {
-    let Some(home) = std::env::var_os("HOME").map(std::path::PathBuf::from) else {
+    let Some(default_dir) = crate::paths::codex_home() else {
         return Vec::new();
     };
     // The default home first, then each registry extra home (D-015) —
     // order decides which file wins the per-account dedupe below.
-    let home_str = home.to_string_lossy().to_string();
-    let mut dirs = vec![home.join(".codex")];
-    for d in crate::registry::load().codex_homes {
-        dirs.push(std::path::PathBuf::from(crate::registry::expand_tilde(
-            &d, &home_str,
-        )));
+    let mut dirs = vec![default_dir.clone()];
+    if let Some(home) = crate::paths::home_dir() {
+        let home_str = home.to_string_lossy().to_string();
+        for d in crate::registry::load().codex_homes {
+            dirs.push(std::path::PathBuf::from(crate::registry::expand_tilde(
+                &d, &home_str,
+            )));
+        }
     }
 
     let mut out: Vec<(String, Option<String>, String)> = Vec::new();
@@ -538,7 +592,7 @@ fn read_all_auth() -> Vec<(String, Option<String>, String)> {
                     .file_name()
                     .and_then(|n| n.to_str())
                     .unwrap_or("auth.json");
-                let label = if dir == home.join(".codex") {
+                let label = if dir == default_dir {
                     file.to_string()
                 } else {
                     format!(
@@ -592,7 +646,7 @@ async fn get(
 pub async fn fetch_all_workspaces() -> Result<Vec<WorkspaceUsage>, String> {
     let creds = read_all_auth();
     if creds.is_empty() {
-        return Err("no usable ~/.codex/auth.json* credential — run `codex login`".into());
+        return Err("no usable Codex auth.json* credential — run `codex login`".into());
     }
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(10))
@@ -674,6 +728,44 @@ pub async fn fetch_all_workspaces() -> Result<Vec<WorkspaceUsage>, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn desktop_cli_discovery_uses_latest_complete_version() {
+        use std::fs::{self, File, FileTimes};
+        use std::time::{Duration, SystemTime};
+
+        let nonce = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let root =
+            std::env::temp_dir().join(format!("qhud-codex-bin-{}-{nonce}", std::process::id()));
+        for name in ["old", "new", "incomplete"] {
+            fs::create_dir_all(root.join(name)).unwrap();
+        }
+        for (name, seconds) in [("old", 1_700_000_000), ("new", 1_700_001_000)] {
+            File::create(root.join(name).join("codex.exe"))
+                .unwrap()
+                .set_times(
+                    FileTimes::new()
+                        .set_modified(SystemTime::UNIX_EPOCH + Duration::from_secs(seconds)),
+                )
+                .unwrap();
+        }
+        assert_eq!(
+            desktop_codex_binary(&root),
+            Some(root.join("new/codex.exe"))
+        );
+        assert_eq!(desktop_codex_binary(&root.join("missing")), None);
+
+        for name in ["old", "new"] {
+            fs::remove_file(root.join(name).join("codex.exe")).unwrap();
+        }
+        for name in ["old", "new", "incomplete"] {
+            fs::remove_dir(root.join(name)).unwrap();
+        }
+        fs::remove_dir(root).unwrap();
+    }
 
     // Shape verified against the live endpoint (2026-08-07), values
     // altered. Note `primary_window` here IS the weekly window and
@@ -775,6 +867,29 @@ mod tests {
             Some("GPT-5.3-Codex-Spark"),
             "the per-model pool keeps its limit_name"
         );
+        assert_eq!(spark.reset_unix, Some(1786678081));
+    }
+
+    #[test]
+    fn http_usage_preserves_both_spark_windows_with_their_own_resets() {
+        // Synthetic values in the HTTP response's actual window shape.
+        let body = r#"{"additional_rate_limits":[{
+          "limit_name":"GPT-5.3-Codex-Spark","metered_feature":"codex_bengalfox",
+          "rate_limit":{
+            "primary_window":{"used_percent":12,"limit_window_seconds":18000,"reset_at":1786350000},
+            "secondary_window":{"used_percent":34,"limit_window_seconds":604800,"reset_at":1786937652}
+          }}]}"#;
+        let w = parse_usage("acct", body).unwrap();
+        assert_eq!(w.windows.len(), 2);
+        for (window, label, pct, reset) in [
+            (&w.windows[0], "5h", 12, 1786350000),
+            (&w.windows[1], "weekly", 34, 1786937652),
+        ] {
+            assert_eq!(window.scope.as_deref(), Some("GPT-5.3-Codex-Spark"));
+            assert_eq!(window.label, label);
+            assert_eq!(window.used_percent, pct);
+            assert_eq!(window.reset_unix, Some(reset));
+        }
     }
 
     #[test]
@@ -877,6 +992,107 @@ mod tests {
                 .any(|x| x.used_percent == 4 && x.scope.as_deref() == Some("GPT-5.3-Codex-Spark")),
             "per-model pool survives with its limitName as scope"
         );
+        assert_eq!(w.windows.len(), 3, "the main pool is not duplicated");
+        assert_eq!(
+            w.windows
+                .iter()
+                .find(|x| x.scope.is_some())
+                .unwrap()
+                .reset_unix,
+            Some(1786937652)
+        );
+    }
+
+    #[test]
+    fn app_server_uses_top_level_limits_when_the_map_is_absent_null_or_empty() {
+        let mut response: serde_json::Value = serde_json::from_str(APP_SERVER_LINE).unwrap();
+        for map in [
+            None,
+            Some(serde_json::Value::Null),
+            Some(serde_json::json!({})),
+        ] {
+            let result = response["result"].as_object_mut().unwrap();
+            result.remove("rateLimitsByLimitId");
+            if let Some(map) = map {
+                result.insert("rateLimitsByLimitId".into(), map);
+            }
+            let w = parse_app_server_rate_limits(&response.to_string(), "acct").unwrap();
+            assert_eq!(w.windows.len(), 1);
+            assert_eq!(w.windows[0].scope, None);
+            assert_eq!(w.windows[0].label, "weekly");
+            assert_eq!(w.windows[0].used_percent, 41);
+            assert_eq!(w.windows[0].reset_unix, Some(1786937652));
+        }
+    }
+
+    #[test]
+    fn app_server_keeps_top_level_main_when_the_map_has_only_extra_pools() {
+        let mut response: serde_json::Value = serde_json::from_str(APP_SERVER_LINE).unwrap();
+        response["result"]["rateLimitsByLimitId"]
+            .as_object_mut()
+            .unwrap()
+            .remove("codex");
+        let w = parse_app_server_rate_limits(&response.to_string(), "acct").unwrap();
+        assert_eq!(w.windows.len(), 2);
+        let main = w.windows.iter().find(|x| x.scope.is_none()).unwrap();
+        assert_eq!(main.used_percent, 41);
+        assert_eq!(main.reset_unix, Some(1786937652));
+        assert!(
+            w.windows.iter().any(|x| {
+                x.scope.as_deref() == Some("GPT-5.3-Codex-Spark") && x.used_percent == 4
+            })
+        );
+    }
+
+    #[test]
+    fn app_server_reads_main_and_metadata_from_the_map_when_top_is_null() {
+        let mut response: serde_json::Value = serde_json::from_str(APP_SERVER_LINE).unwrap();
+        response["result"]["rateLimits"] = serde_json::Value::Null;
+        response["result"]["rateLimitsByLimitId"]["codex"]["credits"] =
+            serde_json::json!({"balance": "12.5"});
+        let w = parse_app_server_rate_limits(&response.to_string(), "acct").unwrap();
+        assert_eq!(w.plan_type.as_deref(), Some("prolite"));
+        assert_eq!(w.credits_balance.as_deref(), Some("12.5"));
+        assert_eq!(w.windows.len(), 3);
+        assert_eq!(w.windows.iter().filter(|x| x.scope.is_none()).count(), 2);
+    }
+
+    #[test]
+    fn app_server_preserves_spark_five_hour_and_weekly_resets_without_a_main_pool() {
+        // Synthetic usage, not a claim that every plan exposes this pool.
+        let line = r#"{"id":2,"result":{"rateLimits":null,"rateLimitsByLimitId":{
+          "codex_bengalfox":{"limitName":"GPT-5.3-Codex-Spark",
+            "primary":{"usedPercent":12,"windowDurationMins":300,"resetsAt":1786350000},
+            "secondary":{"usedPercent":34,"windowDurationMins":10080,"resetsAt":1786937652}
+          }}}}"#;
+        let w = parse_app_server_rate_limits(line, "acct").unwrap();
+        assert_eq!(w.windows.len(), 2);
+        for (window, label, pct, reset) in [
+            (&w.windows[0], "5h", 12, 1786350000),
+            (&w.windows[1], "weekly", 34, 1786937652),
+        ] {
+            assert_eq!(window.scope.as_deref(), Some("GPT-5.3-Codex-Spark"));
+            assert_eq!(window.label, label);
+            assert_eq!(window.used_percent, pct);
+            assert_eq!(window.reset_unix, Some(reset));
+        }
+        let snapshot = workspace_snapshot(&w, 7);
+        assert!(snapshot.five_hour.is_none());
+        assert!(snapshot.seven_day.is_none());
+        assert_eq!(snapshot.scoped.len(), 2);
+        assert_eq!(snapshot.scoped[0].reset_unix, Some(1786350000));
+        assert_eq!(snapshot.scoped[1].reset_unix, Some(1786937652));
+    }
+
+    #[test]
+    fn app_server_without_either_limit_source_is_not_a_zero_usage_reading() {
+        for line in [
+            r#"{"id":2,"result":{"rateLimits":null,"rateLimitsByLimitId":null}}"#,
+            r#"{"id":2,"result":{"rateLimits":null,"rateLimitsByLimitId":{}}}"#,
+            r#"{"id":2,"result":{}}"#,
+        ] {
+            assert!(parse_app_server_rate_limits(line, "acct").is_none());
+        }
     }
 
     #[test]

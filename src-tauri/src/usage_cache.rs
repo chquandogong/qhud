@@ -362,8 +362,7 @@ pub fn detect_at(config_json: &std::path::Path) -> Option<CachedUsage> {
 
 /// Reads the default account's snapshot from `$HOME/.claude.json`.
 pub fn detect() -> Option<CachedUsage> {
-    let home = std::env::var_os("HOME").map(std::path::PathBuf::from)?;
-    detect_at(&home.join(".claude.json"))
+    detect_at(&crate::paths::claude_config_file()?)
 }
 
 #[cfg(test)]

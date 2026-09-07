@@ -5,9 +5,7 @@ on:
     tags: ["v*"]
 
 permissions:
-  contents: write
-  id-token: write
-  attestations: write
+  contents: read
 
 env:
   CARGO_TERM_COLOR: always
@@ -15,6 +13,10 @@ env:
 jobs:
   linux-x86_64:
     runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
     steps:
       - uses: actions/checkout@v4
 
@@ -28,8 +30,10 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
 
-      - name: Build
-        run: cargo build --release
+      - name: Test and build
+        run: |
+          cargo test --locked --release --all-targets
+          cargo build --locked --release
 
       - name: Package tarball
         id: pkg
@@ -46,14 +50,85 @@ jobs:
         with:
           subject-path: ${{ steps.pkg.outputs.tarball }}
 
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qhud-linux-x86_64
+          path: qhud-*-linux-x86_64.tar.gz*
+          if-no-files-found: error
+
+  windows-x86_64:
+    runs-on: windows-2022
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Test and build with the Windows dependency patch
+        shell: pwsh
+        run: |
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $vsPath = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if (-not $vsPath) { throw 'Visual Studio C++ build tools were not found.' }
+          & ./scripts/Build-Windows.ps1 -Test -VisualStudioPath $vsPath
+
+      - name: Verify the canonical dependency files are unchanged
+        run: git diff --exit-code -- Cargo.toml Cargo.lock
+
+      - name: Package zip
+        id: pkg
+        shell: pwsh
+        run: |
+          $packageDir = "qhud-${env:GITHUB_REF_NAME}-windows-x86_64"
+          New-Item -ItemType Directory -Path $packageDir | Out-Null
+          Copy-Item -LiteralPath 'target/x86_64-pc-windows-msvc/release/qhud.exe', 'README.md', 'LICENSE', 'CHANGELOG.md', 'docs/05-ops/WINDOWS.md' -Destination $packageDir
+          $zip = "$packageDir.zip"
+          Compress-Archive -LiteralPath $packageDir -DestinationPath $zip
+          $sha256 = (Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$sha256  $zip" | Set-Content -LiteralPath "$zip.sha256" -Encoding utf8NoBOM
+          "zip=$zip" >> $env:GITHUB_OUTPUT
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: ${{ steps.pkg.outputs.zip }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qhud-windows-x86_64
+          path: qhud-*-windows-x86_64.zip*
+          if-no-files-found: error
+
+  publish:
+    name: Publish both platforms
+    needs: [linux-x86_64, windows-x86_64]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: qhud-*
+          merge-multiple: true
+          path: dist
+
       - name: Create or update GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           TAG="$GITHUB_REF_NAME"
+          NOTES="docs/05-ops/releases/$TAG.md"
+          test -f "$NOTES"
           if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" ${{ steps.pkg.outputs.tarball }}* --clobber
+            gh release upload "$TAG" dist/* --clobber
+            gh release edit "$TAG" --title "qhud $TAG" --notes-file "$NOTES"
           else
-            gh release create "$TAG" ${{ steps.pkg.outputs.tarball }}* \
-              --title "qhud $TAG" --generate-notes
+            gh release create "$TAG" dist/* --verify-tag \
+              --title "qhud $TAG" --notes-file "$NOTES"
           fi
