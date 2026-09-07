@@ -1,4 +1,6 @@
-//! Demo payload — shown when no tmux server is reachable.
+//! Demo payload — rendered only for an explicit `--demo` (since v0.6.0;
+//! before that it was the no-mux fallback, which now shows real local
+//! accounts instead).
 //!
 //! Mirrors the original design mockup ("Qmonster · AI CLI 모니터")
 //! pane-for-pane, so demo mode doubles as a visual-parity fixture: if

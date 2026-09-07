@@ -481,8 +481,9 @@ pub async fn fetch_via_app_server() -> Result<WorkspaceUsage, String> {
     let _ = child.kill().await;
     out
 }
-// carrying its own `id` and `plan_type`, with `structure: "workspace"`. It is
-// NOT a map keyed by account id.
+// `accounts/check` answers with an ARRAY of workspace entries, each carrying
+// its own `id` and `plan_type`, with `structure: "workspace"`. It is NOT a map
+// keyed by account id — parsing it as one reported "no data" on a 200.
 #[derive(Deserialize)]
 struct AccountsBody {
     #[serde(default)]

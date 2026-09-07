@@ -230,10 +230,11 @@ fn main() {
         return;
     }
 
-    // Diagnostic twin of the CODEX row click: runs the exact same
-    // fetch_all_workspaces() the UI invokes, so the network path can be
-    // verified without synthesizing pointer input into a keep-below widget
-    // (D-010: real input must go through the compositor).
+    // Diagnostic twin of the CLAUDE row refresh: runs the exact same
+    // fetch_all() the UI invokes, so the network path can be verified
+    // without synthesizing pointer input into a keep-below widget
+    // (D-010: real input must go through the compositor). The Codex twin
+    // is --codex-usage below.
     if std::env::args().any(|a| a == "--claude-usage") {
         let rt = match tokio::runtime::Runtime::new() {
             Ok(rt) => rt,

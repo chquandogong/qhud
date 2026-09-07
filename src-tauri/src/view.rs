@@ -21,10 +21,11 @@ pub const SCHEMA_VERSION: u32 = 1;
 #[derive(Serialize, Clone)]
 pub struct Payload {
     pub schema: u32,
-    /// "live" (mux observation) or "demo" (no mux server).
+    /// "live" (mux observation), "local" (no mux: real accounts, zero
+    /// panes) or "demo" (explicit `--demo` only, since v0.6.0).
     pub source: &'static str,
     /// Which mux backend feeds the live payload ("herdr" | "tmux");
-    /// `None` in demo mode. Additive schema-v1 field.
+    /// `None` for both "local" and "demo". Additive schema-v1 field.
     pub backend: Option<String>,
     pub generated_at_ms: u64,
     pub poll_secs: u64,
@@ -198,8 +199,9 @@ pub fn payload(reports: &[PaneReport]) -> Payload {
 /// has already passed belong to an EXPIRED window — their percent is
 /// meaningless now and must not outrank a fresh reading (an idle
 /// pane's 88% from yesterday would otherwise beat today's real 12%
-/// forever). Known limit: assumes one account per provider on this
-/// machine (SPEC scale envelope).
+/// forever). Scope note: this rollup is per PROVIDER because a pane's
+/// account is not attributable; rows for additional accounts are added
+/// later by `attach_extra_account` and keyed by (account, org), D-018.
 pub fn provider_quotas(panes: &[PaneView]) -> Vec<ProviderQuota> {
     let now = SystemTime::now()
         .duration_since(UNIX_EPOCH)

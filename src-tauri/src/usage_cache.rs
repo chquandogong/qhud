@@ -360,7 +360,8 @@ pub fn detect_at(config_json: &std::path::Path) -> Option<CachedUsage> {
     parse_cached_usage(&body)
 }
 
-/// Reads the default account's snapshot from `$HOME/.claude.json`.
+/// Reads the default account's snapshot from the Claude config file
+/// (`$CLAUDE_CONFIG_DIR/.claude.json`, else `~/.claude.json`).
 pub fn detect() -> Option<CachedUsage> {
     detect_at(&crate::paths::claude_config_file()?)
 }
