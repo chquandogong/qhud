@@ -1,6 +1,6 @@
 # TEST_PLAN
 
-> Status: v0.6.0 verification in progress · Date: 2026-09-07 · Owner: chquandogong
+> Status: v0.6.0 automated gates passed; desktop gaps recorded · Date: 2026-09-07 · Owner: chquandogong
 
 ## Automated gates
 
@@ -26,10 +26,12 @@ The script restores the canonical lockfile after Windows commands; Linux
 builds do not require a sibling checkout or the Windows patch. Release
 publication waits for both Ubuntu and Windows tests and builds to succeed.
 
-2026-09-07 verification status: the local Windows `-Test` run passed
-**98/98 QHUD tests**; its release build is in progress. The new remote
-Ubuntu and Windows CI jobs have not run yet. Existing Ubuntu desktop
-evidence below predates v0.6.0 and is not a new-platform regression pass.
+2026-09-07: [CI 34117359064](https://github.com/chquandogong/qhud/actions/runs/34117359064)
+passed on `1514e09`: Ubuntu fmt/clippy, **98/98 tests** and release build;
+Windows **98/98 tests**, release build and canonical dependency-file check.
+The local Windows script also passed 98/98 tests and the release build.
+Existing Ubuntu desktop evidence below predates v0.6.0 and is not a new
+desktop integration pass.
 
 ## Unit coverage
 
@@ -83,8 +85,11 @@ implementation (synthetic-input evidence in DECISION_LOG D-008).
 - Verify that background CLI probes do not open console windows. Native
   Windows terminal-tab monitoring is outside the current supported scope.
 
-Local Windows display/refresh was exercised during the port. The rebuilt
-v0.6.0 binary needs its final smoke check after the current build completes.
+Local Windows v0.6.0 display, account email, per-model/reset rows, explicit
+Codex refresh and the actual app-server fallback were verified after install.
+Installed executable SHA-256:
+`3D688DB2F90E6D4780C0F016CB0CED1572189AC83FC1658F73A6688D1477F9FF`.
+This identifies the local MSVC build, not the separate GitHub release artifact.
 
 ## Ubuntu input-verification protocol (mandatory since D-010)
 

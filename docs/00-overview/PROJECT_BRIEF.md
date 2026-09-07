@@ -56,10 +56,11 @@ reset visibility. Native Windows terminal-tab monitoring is not included.
 
 ## Current verification
 
-The local Windows `-Test` run passed 98/98 QHUD tests on 2026-09-07;
-the associated release build is in progress. Remote Ubuntu and Windows
-CI have not run yet. Earlier Ubuntu runtime evidence is preserved in
-the test plan, and v0.6.0 is not yet a published or fully verified release.
+On 2026-09-07 both remote Ubuntu and Windows CI jobs passed 98/98 QHUD
+tests and release builds; Ubuntu fmt/clippy also passed. The local Windows
+build passed the native display/account-refresh smoke check. See
+[CI 34117359064](https://github.com/chquandogong/qhud/actions/runs/34117359064)
+and TEST_PLAN for evidence and the remaining Ubuntu desktop checks.
 
 ## Documents
 
