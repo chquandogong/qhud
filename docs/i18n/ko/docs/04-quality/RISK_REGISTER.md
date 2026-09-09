@@ -1,6 +1,6 @@
 <!-- qhud:languages -->
 <p align="center">
-  <a href="../../../../04-quality/RISK_REGISTER.md">English</a> · <strong>한국어</strong> · <a href="../../../zh-CN/docs/04-quality/RISK_REGISTER.md">简体中文</a>
+  <strong>한국어</strong> · <a href="../../../../04-quality/RISK_REGISTER.md">English</a> · <a href="../../../zh-CN/docs/04-quality/RISK_REGISTER.md">简体中文</a>
 </p>
 <!-- /qhud:languages -->
 

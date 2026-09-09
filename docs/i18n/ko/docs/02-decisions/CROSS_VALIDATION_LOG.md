@@ -1,6 +1,6 @@
 <!-- qhud:languages -->
 <p align="center">
-  <a href="../../../../02-decisions/CROSS_VALIDATION_LOG.md">English</a> · <strong>한국어</strong> · <a href="../../../zh-CN/docs/02-decisions/CROSS_VALIDATION_LOG.md">简体中文</a>
+  <strong>한국어</strong> · <a href="../../../../02-decisions/CROSS_VALIDATION_LOG.md">English</a> · <a href="../../../zh-CN/docs/02-decisions/CROSS_VALIDATION_LOG.md">简体中文</a>
 </p>
 <!-- /qhud:languages -->
 

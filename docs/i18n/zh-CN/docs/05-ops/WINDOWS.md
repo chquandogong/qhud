@@ -1,6 +1,6 @@
 <!-- qhud:languages -->
 <p align="center">
-  <a href="../../../../05-ops/WINDOWS.md">English</a> · <a href="../../../ko/docs/05-ops/WINDOWS.md">한국어</a> · <strong>简体中文</strong>
+  <a href="../../../ko/docs/05-ops/WINDOWS.md">한국어</a> · <a href="../../../../05-ops/WINDOWS.md">English</a> · <strong>简体中文</strong>
 </p>
 <!-- /qhud:languages -->
 

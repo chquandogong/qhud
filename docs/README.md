@@ -1,6 +1,6 @@
 <!-- qhud:languages -->
 <p align="center">
-  <strong>English</strong> · <a href="i18n/ko/docs/README.md">한국어</a> · <a href="i18n/zh-CN/docs/README.md">简体中文</a>
+  <a href="i18n/ko/docs/README.md">한국어</a> · <strong>English</strong> · <a href="i18n/zh-CN/docs/README.md">简体中文</a>
 </p>
 <!-- /qhud:languages -->
 
@@ -14,7 +14,7 @@ installation to architecture, decisions, and release history.
 
 | Document | What it covers |
 | --- | --- |
-| [Project introduction](../README.md) | Features, screenshots, platform support, and downloads. |
+| [Project introduction](../README.en.md) | Features, screenshots, platform support, and downloads. |
 | [User guide](GUIDE.md) | Usage/reset semantics, commands, multiple accounts, configuration, and troubleshooting. |
 | [Windows setup](05-ops/WINDOWS.md) | WebView2 requirements, portable installation, and native MSVC builds. |
 | [Operations runbook](05-ops/RUNBOOK.md) | Linux setup, GNOME integration, diagnostics, and release procedure. |
@@ -53,10 +53,11 @@ product behavior. Start with the specification and dashboard for the current sta
 
 ## Languages and source fidelity
 
-The English pages remain at their original paths so existing links continue to
-work. Korean and Chinese mirrors preserve those paths inside their language
-directories. Every page links to its counterparts; translated headings retain
-anchors for links from the source documents.
+The repository opens in Korean through `README.md`; English is available in
+`README.en.md`, and `README.ko.md` remains a matching Korean copy for existing
+links. Other English pages keep their original paths. Korean and Chinese mirrors
+preserve those paths inside their language directories. Every page links to its
+counterparts; translated headings retain anchors for source-document links.
 
 Translations include the entire document, not only an overview. Command blocks,
 API/schema identifiers, requirement/decision IDs, dates, and verification values

@@ -1,6 +1,6 @@
 <!-- qhud:languages -->
 <p align="center">
-  <strong>English</strong> · <a href="docs/i18n/ko/CHANGELOG.md">한국어</a> · <a href="docs/i18n/zh-CN/CHANGELOG.md">简体中文</a>
+  <a href="docs/i18n/ko/CHANGELOG.md">한국어</a> · <strong>English</strong> · <a href="docs/i18n/zh-CN/CHANGELOG.md">简体中文</a>
 </p>
 <!-- /qhud:languages -->
 
@@ -12,6 +12,9 @@ All notable changes to qhud. Format: [Keep a Changelog](https://keepachangelog.c
 
 ### Documentation
 
+- Make Korean the default repository README, preserve English in `README.en.md`,
+  and keep `README.ko.md` as a compatible Korean copy. Put Korean first in
+  language navigation.
 - Provide complete English, Korean, and Simplified Chinese editions of all
   23 documentation pages, including architecture, decisions, research,
   retrospectives, and release history. Add language navigation and corresponding

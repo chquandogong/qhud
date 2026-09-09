@@ -1,6 +1,6 @@
 <!-- qhud:languages -->
 <p align="center">
-  <a href="../../../CHANGELOG.md">English</a> · <a href="../ko/CHANGELOG.md">한국어</a> · <strong>简体中文</strong>
+  <a href="../ko/CHANGELOG.md">한국어</a> · <a href="../../../CHANGELOG.md">English</a> · <strong>简体中文</strong>
 </p>
 <!-- /qhud:languages -->
 
@@ -22,6 +22,7 @@
 
 ### 文档
 
+- 将仓库默认 README 改为韩语，英语保留在 `README.en.md`，并保留 `README.ko.md` 韩语副本以兼容已有链接。语言导航优先显示韩语。
 - 为全部 23 篇文档提供完整的英语、韩语和简体中文版本，涵盖架构、决策、研究、回顾和发布历史。为所有文档添加语言导航及对应章节锚点。
 - 重新设计 README，加入新横幅、明确标注为演示的截图、平台支持与下载表，以及完整的文档索引。
 - 添加实用用户指南、贡献说明，以及三语 issue 和 pull request 模板。

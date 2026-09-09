@@ -1,6 +1,6 @@
 <!-- qhud:languages -->
 <p align="center">
-  <a href="../../../CONTRIBUTING.md">English</a> · <a href="../ko/CONTRIBUTING.md">한국어</a> · <strong>简体中文</strong>
+  <a href="../ko/CONTRIBUTING.md">한국어</a> · <a href="../../../CONTRIBUTING.md">English</a> · <strong>简体中文</strong>
 </p>
 <!-- /qhud:languages -->
 
@@ -77,7 +77,7 @@ git diff --exit-code -- Cargo.toml Cargo.lock
 
 ## 文档与翻译
 
-英文源文档位于仓库根和 `docs/`。`README.ko.md`、`README.zh-CN.md` 为本地化入口。完整韩语和简体中文镜像位于 `docs/i18n/ko/`、`docs/i18n/zh-CN/`，保留源文档相对路径。
+默认 `README.md` 为韩语。英语入口为 `README.en.md`，简体中文入口为 `README.zh-CN.md`；为兼容已有链接，保持 `README.ko.md` 与 `README.md` 一致。其他英文源文档仍位于仓库根和 `docs/`。完整韩语和简体中文镜像位于 `docs/i18n/ko/`、`docs/i18n/zh-CN/`，保留源文档相对路径。
 
 修改文档时同步对应翻译。保留命令语法、API 标识符、日期、需求/决策 ID 及完整表格行。历史记录描述当时情况，不要静默把旧观察改成当前事实。MIT 许可证原文保持不变。
 

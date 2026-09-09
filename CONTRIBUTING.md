@@ -1,6 +1,6 @@
 <!-- qhud:languages -->
 <p align="center">
-  <strong>English</strong> · <a href="docs/i18n/ko/CONTRIBUTING.md">한국어</a> · <a href="docs/i18n/zh-CN/CONTRIBUTING.md">简体中文</a>
+  <a href="docs/i18n/ko/CONTRIBUTING.md">한국어</a> · <strong>English</strong> · <a href="docs/i18n/zh-CN/CONTRIBUTING.md">简体中文</a>
 </p>
 <!-- /qhud:languages -->
 
@@ -83,10 +83,12 @@ and [decision log](docs/02-decisions/DECISION_LOG.md) explain these constraints.
 
 ## Documentation and translations
 
-English source documents live at the repository root and under `docs/`.
-`README.ko.md` and `README.zh-CN.md` are the localized entry points. Complete
-Korean and Simplified Chinese mirrors live under `docs/i18n/ko/` and
-`docs/i18n/zh-CN/`, preserving the source-relative document paths.
+The default `README.md` is Korean. `README.en.md` provides English and
+`README.zh-CN.md` provides Simplified Chinese; keep `README.ko.md` identical to
+`README.md` for existing links. Other English source documents remain at the
+repository root and under `docs/`. Complete Korean and Simplified Chinese
+mirrors live under `docs/i18n/ko/` and `docs/i18n/zh-CN/`, preserving the
+source-relative document paths.
 
 For a documentation change, update the matching translations. Preserve command
 syntax, API identifiers, dates, requirement/decision IDs, and complete table

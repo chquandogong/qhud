@@ -1,6 +1,6 @@
 <!-- qhud:languages -->
 <p align="center">
-  <a href="../../../../00-overview/DASHBOARD.md">English</a> · <strong>한국어</strong> · <a href="../../../zh-CN/docs/00-overview/DASHBOARD.md">简体中文</a>
+  <strong>한국어</strong> · <a href="../../../../00-overview/DASHBOARD.md">English</a> · <a href="../../../zh-CN/docs/00-overview/DASHBOARD.md">简体中文</a>
 </p>
 <!-- /qhud:languages -->
 

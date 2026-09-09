@@ -1,6 +1,6 @@
 <!-- qhud:languages -->
 <p align="center">
-  <a href="../../../CHANGELOG.md">English</a> · <strong>한국어</strong> · <a href="../zh-CN/CHANGELOG.md">简体中文</a>
+  <strong>한국어</strong> · <a href="../../../CHANGELOG.md">English</a> · <a href="../zh-CN/CHANGELOG.md">简体中文</a>
 </p>
 <!-- /qhud:languages -->
 
@@ -21,6 +21,7 @@ qhud의 모든 주요 변경 사항을 기록합니다. 형식: [Keep a Changelo
 
 ### 문서
 
+- 저장소의 기본 README를 한국어로 바꾸고 영어는 `README.en.md`에 보존합니다. 기존 링크를 위해 `README.ko.md`도 한국어 사본으로 유지하며, 언어 전환에서 한국어를 먼저 표시합니다.
 - 아키텍처, 의사결정, 조사, 회고, 릴리스 이력을 포함한 문서 23종 전체를 영어·한국어·중국어 간체로 제공합니다. 모든 문서에 언어 전환과 대응하는 절 앵커를 추가합니다.
 - 새 배너, 데모임을 명시한 스크린샷, 플랫폼 지원·다운로드 표, 전체 문서 색인으로 README를 새로 구성합니다.
 - 실용적인 사용자 가이드, 기여 안내, 세 언어로 된 이슈 및 pull request 양식을 추가합니다.

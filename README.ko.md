@@ -1,6 +1,6 @@
 <!-- qhud:languages -->
 <p align="center">
-  <a href="README.md">English</a> · <strong>한국어</strong> · <a href="README.zh-CN.md">简体中文</a>
+  <strong>한국어</strong> · <a href="README.en.md">English</a> · <a href="README.zh-CN.md">简体中文</a>
 </p>
 <!-- /qhud:languages -->
 

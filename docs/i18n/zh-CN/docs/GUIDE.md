@@ -1,6 +1,6 @@
 <!-- qhud:languages -->
 <p align="center">
-  <a href="../../../GUIDE.md">English</a> · <a href="../../ko/docs/GUIDE.md">한국어</a> · <strong>简体中文</strong>
+  <a href="../../ko/docs/GUIDE.md">한국어</a> · <a href="../../../GUIDE.md">English</a> · <strong>简体中文</strong>
 </p>
 <!-- /qhud:languages -->
 

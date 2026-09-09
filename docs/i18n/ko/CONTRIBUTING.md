@@ -1,6 +1,6 @@
 <!-- qhud:languages -->
 <p align="center">
-  <a href="../../../CONTRIBUTING.md">English</a> · <strong>한국어</strong> · <a href="../zh-CN/CONTRIBUTING.md">简体中文</a>
+  <strong>한국어</strong> · <a href="../../../CONTRIBUTING.md">English</a> · <a href="../zh-CN/CONTRIBUTING.md">简体中文</a>
 </p>
 <!-- /qhud:languages -->
 
@@ -77,7 +77,7 @@ git diff --exit-code -- Cargo.toml Cargo.lock
 
 ## 문서 및 번역
 
-영어 원문은 저장소 루트와 `docs/` 아래에 있습니다. `README.ko.md`와 `README.zh-CN.md`가 현지화된 진입점입니다. 전체 한국어 및 중국어 간체 미러는 `docs/i18n/ko/`와 `docs/i18n/zh-CN/` 아래에 있으며, 원문 기준 상대 문서 경로를 유지합니다.
+기본 `README.md`는 한국어입니다. 영어는 `README.en.md`, 중국어 간체는 `README.zh-CN.md`에서 제공합니다. 기존 링크를 위해 `README.ko.md`는 `README.md`와 동일하게 유지하세요. 나머지 영어 원문은 저장소 루트와 `docs/` 아래에 있습니다. 전체 한국어 및 중국어 간체 미러는 `docs/i18n/ko/`와 `docs/i18n/zh-CN/` 아래에 있으며, 원문 기준 상대 문서 경로를 유지합니다.
 
 문서를 변경할 때는 대응하는 번역도 갱신하세요. 명령 문법, API 식별자, 날짜, 요구사항/결정 ID, 표의 모든 행을 보존합니다. 역사 기록은 해당 시점을 설명하므로 과거 관찰을 현재 사실처럼 조용히 바꾸지 마세요. MIT 라이선스 문구는 원문 그대로 유지합니다.
 

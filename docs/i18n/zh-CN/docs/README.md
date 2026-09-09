@@ -1,6 +1,6 @@
 <!-- qhud:languages -->
 <p align="center">
-  <a href="../../../README.md">English</a> · <a href="../../ko/docs/README.md">한국어</a> · <strong>简体中文</strong>
+  <a href="../../ko/docs/README.md">한국어</a> · <a href="../../../README.md">English</a> · <strong>简体中文</strong>
 </p>
 <!-- /qhud:languages -->
 
@@ -65,7 +65,7 @@ qhud 全部文档均提供三种语言，涵盖首次安装、架构、决策和
 
 ## 语言与源文档一致性
 
-英文页面保留原路径，已有链接继续有效。韩文和中文镜像在各语言目录内保留这些路径。每页链接到对应语言页面；翻译标题保留供源文档链接使用的锚点。
+仓库默认通过 `README.md` 显示韩语；英语入口为 `README.en.md`，`README.ko.md` 保留为相同的韩语副本以兼容已有链接。其他英文页面保留原路径。韩文和中文镜像在各语言目录内保留这些路径。每页链接到对应语言页面；翻译标题保留供源文档链接使用的锚点。
 
 翻译覆盖全文，不只是概览。保留命令块、API/schema 标识符、需求/决策 ID、日期及验证值。[MIT 许可证](../../../../LICENSE)保持英文原文。
 

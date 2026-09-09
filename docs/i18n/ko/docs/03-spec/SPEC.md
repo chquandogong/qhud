@@ -1,6 +1,6 @@
 <!-- qhud:languages -->
 <p align="center">
-  <a href="../../../../03-spec/SPEC.md">English</a> · <strong>한국어</strong> · <a href="../../../zh-CN/docs/03-spec/SPEC.md">简体中文</a>
+  <strong>한국어</strong> · <a href="../../../../03-spec/SPEC.md">English</a> · <a href="../../../zh-CN/docs/03-spec/SPEC.md">简体中文</a>
 </p>
 <!-- /qhud:languages -->
 

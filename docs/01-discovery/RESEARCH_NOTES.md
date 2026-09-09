@@ -1,6 +1,6 @@
 <!-- qhud:languages -->
 <p align="center">
-  <strong>English</strong> · <a href="../i18n/ko/docs/01-discovery/RESEARCH_NOTES.md">한국어</a> · <a href="../i18n/zh-CN/docs/01-discovery/RESEARCH_NOTES.md">简体中文</a>
+  <a href="../i18n/ko/docs/01-discovery/RESEARCH_NOTES.md">한국어</a> · <strong>English</strong> · <a href="../i18n/zh-CN/docs/01-discovery/RESEARCH_NOTES.md">简体中文</a>
 </p>
 <!-- /qhud:languages -->
 
