@@ -10,6 +10,19 @@ All notable changes to qhud. Format: [Keep a Changelog](https://keepachangelog.c
 
 ## [Unreleased]
 
+## [0.6.2] — 2026-09-11
+
+### Fixed
+
+- Automatically display the Codex email available in the local `auth.json`
+  ID token in the current Codex home (`CODEX_HOME` is respected). New computers no longer
+  need a manual account-label mapping when the login provides an email.
+- Keep operator labels as the highest-priority display override. Missing or
+  malformed token/email data falls back to the account ID without hiding the
+  account. Account/workspace IDs remain the identity and usage keys.
+- Read the email locally for display only, without network requests, credential
+  writes, or OAuth refresh grants.
+
 ### Documentation
 
 - Make Korean the default repository README, preserve English in `README.en.md`,
@@ -24,8 +37,8 @@ All notable changes to qhud. Format: [Keep a Changelog](https://keepachangelog.c
 - Add a practical user guide, contribution guidance, and trilingual issue and
   pull request templates.
 - Correct installation/configuration examples and clarify passive identity
-  reads versus explicit provider authentication. No application code, dependency,
-  or binary changes; v0.6.1 remains the current release.
+  reads versus explicit provider authentication. Update current download links
+  and document automatic Codex email display in all three languages.
 
 ## [0.6.1] — 2026-09-07
 

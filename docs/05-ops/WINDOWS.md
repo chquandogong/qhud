@@ -12,7 +12,7 @@ Node.js and npm are not required.
 
 ## Install a release
 
-Download `qhud-v0.6.1-windows-x86_64.zip` and its checksum file from
+Download `qhud-v0.6.2-windows-x86_64.zip` and its checksum file from
 [GitHub Releases](https://github.com/chquandogong/qhud/releases). Extract the
 archive and run `qhud.exe` inside its versioned directory. Microsoft Edge
 WebView2 Runtime is required.
@@ -83,9 +83,11 @@ included in the Git repository or release.
 `QHUD_CONFIG_DIR` overrides the configuration location. `XDG_CONFIG_HOME`, or an
 existing `%USERPROFILE%\.config\qhud`, is respected. Provider login information
 is read from `%USERPROFILE%\.codex` and `%USERPROFILE%\.claude` by default, with
-`CODEX_HOME` and `CLAUDE_CONFIG_DIR` overrides. If Codex exposes only a workspace
-ID locally, `labels` in `accounts.json` can provide an email display. See the
-[runbook](RUNBOOK.md) for the schema.
+`CODEX_HOME` and `CLAUDE_CONFIG_DIR` overrides. Codex reads its email from the
+local `auth.json` ID token when available, so a new computer normally needs no
+email mapping. Missing or malformed email data falls back to the account ID.
+`labels` in `accounts.json` still override the displayed email without changing
+the account/workspace identity. See the [runbook](RUNBOOK.md) for the schema.
 
 Model limits such as GPT-5.3-Codex-Spark 5H/7D are displayed when returned by the
 server. Long names wrap and the usage area scrolls when there are many entries.

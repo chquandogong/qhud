@@ -23,20 +23,20 @@
 | Windows x64 | 解压 ZIP，运行解压目录内的 `qhud.exe`。 | Microsoft Edge WebView2 Runtime。见 [Windows 设置](05-ops/WINDOWS.md)。 |
 | Linux x86_64 | 解压 tarball，安装版本目录内的二进制。 | GTK/WebKitGTK；参考系统为 Ubuntu 24.04。见 [Linux 运维](05-ops/RUNBOOK.md)。 |
 
-Linux v0.6.1 下载两个文件后：
+Linux v0.6.2 下载两个文件后：
 
 ```sh
-sha256sum -c qhud-v0.6.1-linux-x86_64.tar.gz.sha256
-tar -xzf qhud-v0.6.1-linux-x86_64.tar.gz
-install -Dm755 qhud-v0.6.1-linux-x86_64/qhud "$HOME/.local/bin/qhud"
+sha256sum -c qhud-v0.6.2-linux-x86_64.tar.gz.sha256
+tar -xzf qhud-v0.6.2-linux-x86_64.tar.gz
+install -Dm755 qhud-v0.6.2-linux-x86_64/qhud "$HOME/.local/bin/qhud"
 "$HOME/.local/bin/qhud"
 ```
 
 Windows 下载后，将显示的摘要与 `.sha256` 文件比较：
 
 ```powershell
-Get-FileHash -Algorithm SHA256 .\qhud-v0.6.1-windows-x86_64.zip
-Get-Content .\qhud-v0.6.1-windows-x86_64.zip.sha256
+Get-FileHash -Algorithm SHA256 .\qhud-v0.6.2-windows-x86_64.zip
+Get-Content .\qhud-v0.6.2-windows-x86_64.zip.sha256
 ```
 
 使用各供应商自身 CLI 登录。qhud 读取现有账户信息，不替代供应商登录流程。启动 qhud 后按 ⟳ 获取用量。便携包不注册快捷方式或自动启动。
@@ -124,7 +124,7 @@ qhud 将配置保存在源码仓库外：
 }
 ```
 
-标签是展示文字，不改变登录。Codex 本地可能只提供工作区 ID，配置标签即可显示邮箱或友好名称。套餐标签应由操作者提供，不要根据传输枚举猜测。
+Codex 会自动显示本地 `auth.json` ID 令牌中的邮箱。这只是尽力读取的显示信息；邮箱缺失或格式错误时回退到账户/工作区 ID。新电脑上的普通邮箱显示不再需要单独的标签文件。匹配的 `labels` 条目仍优先于邮箱，两者均不改变用于区分用量的账户/工作区身份。套餐标签应由操作者提供，不要根据传输枚举猜测。
 
 <!-- qhud:anchor -->
 <a id="more-than-one-account"></a>
@@ -177,7 +177,7 @@ Claude 行区分**账户和组织**。两个目录登录同一账户及组织，
 | 症状 | 检查 |
 | --- | --- |
 | 账户缺失 | 确认供应商 CLI 已登录，qhud 读取预期配置/主目录。 |
-| 邮箱被 ID 替代 | 添加匹配的 `labels` 条目；标签不改变选中账户。 |
+| 邮箱被 ID 替代 | 确认 qhud 为 v0.6.2 或更新版本，并读取预期的 Codex 主目录。如果本地 ID 令牌没有可用邮箱，可添加匹配的 `labels` 条目覆盖显示。 |
 | Spark 或其他模型缺失 | 刷新并检查当前账户响应；不会合成缺失模型。 |
 | 旧读数或 401 错误 | 阅读行的时间/错误，在受影响目录通过供应商 CLI 重新登录。 |
 | 没有终端窗格 | Linux 检查 tmux/herdr；原生 Windows 终端标签页不在本版本支持范围。 |

@@ -16,7 +16,7 @@ qhud 从 v0.6.0 起提供 Windows x64 WebView2 小组件，无需 WSL 即可显�
 
 ## 安装发布版
 
-从 [GitHub Releases](https://github.com/chquandogong/qhud/releases) 下载 `qhud-v0.6.1-windows-x86_64.zip` 及其校验和文件。解压后运行版本目录内的 `qhud.exe`。必须安装 Microsoft Edge WebView2 Runtime。
+从 [GitHub Releases](https://github.com/chquandogong/qhud/releases) 下载 `qhud-v0.6.2-windows-x86_64.zip` 及其校验和文件。解压后运行版本目录内的 `qhud.exe`。必须安装 Microsoft Edge WebView2 Runtime。
 
 ZIP 为便携包，不自动注册安装程序、登录自启动或快捷方式。更新时先通过托盘 **Quit qhud** 退出，再替换可执行文件。设置与供应商登录文件保存在独立位置。
 
@@ -68,7 +68,7 @@ Start-Process -FilePath '.\target\x86_64-pc-windows-msvc\release\qhud.exe'
 
 新 Windows 安装将设置保存在 `%APPDATA%\qhud`。`accounts.json` 保存显示名称和注册账户路径；`fetched-usage.json` 保存带获取时间的用量。Git 仓库和发布包不包含个人设置及获取结果。
 
-`QHUD_CONFIG_DIR` 覆盖配置位置。尊重 `XDG_CONFIG_HOME` 或已存在的 `%USERPROFILE%\.config\qhud`。默认从 `%USERPROFILE%\.codex` 和 `%USERPROFILE%\.claude` 读取供应商登录信息，可通过 `CODEX_HOME` 和 `CLAUDE_CONFIG_DIR` 覆盖。若 Codex 本地只提供工作区 ID，可用 `accounts.json` 的 `labels` 显示邮箱。结构见[运维手册](RUNBOOK.md)。
+`QHUD_CONFIG_DIR` 覆盖配置位置。尊重 `XDG_CONFIG_HOME` 或已存在的 `%USERPROFILE%\.config\qhud`。默认从 `%USERPROFILE%\.codex` 和 `%USERPROFILE%\.claude` 读取供应商登录信息，可通过 `CODEX_HOME` 和 `CLAUDE_CONFIG_DIR` 覆盖。Codex 从本地 `auth.json` 的 ID 令牌读取邮箱，通常无需在新电脑上配置邮箱映射。邮箱缺失或格式错误时显示账户 ID。`accounts.json` 的 `labels` 仍优先于邮箱显示，不改变账户/工作区身份。结构见[运维手册](RUNBOOK.md)。
 
 服务器返回时显示 GPT-5.3-Codex-Spark 5H/7D 等模型限额。长名称自动换行，条目较多时用量区可滚动。右侧时间是距重置的剩余时间；悬停仪表可看准确重置日期和时间。不会把缺失模型限额假定为 0%，也不会用其他账户的读数替代。
 

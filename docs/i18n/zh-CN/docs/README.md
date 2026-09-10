@@ -59,6 +59,7 @@ qhud 全部文档均提供三种语言，涵盖首次安装、架构、决策和
 | [复盘](05-ops/RETRO.md) | 开发过程中记录的经验。 |
 | [v0.6.0 发布说明](05-ops/releases/v0.6.0.md) | 原生 Windows 支持及配额/重置修复。 |
 | [v0.6.1 发布说明](05-ops/releases/v0.6.1.md) | 文档重写与 Ubuntu 验证。 |
+| [v0.6.2 发布说明](05-ops/releases/v0.6.2.md) | 从本地登录信息自动显示 Codex 邮箱。 |
 
 <!-- qhud:anchor -->
 <a id="languages-and-source-fidelity"></a>

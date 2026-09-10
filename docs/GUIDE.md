@@ -20,20 +20,20 @@ contains a versioned directory and comes with a separate SHA-256 file.
 | Windows x64 | Extract the ZIP; run `qhud.exe` inside the extracted directory. | Microsoft Edge WebView2 Runtime. See [Windows setup](05-ops/WINDOWS.md). |
 | Linux x86_64 | Extract the tarball; install the binary inside its versioned directory. | GTK/WebKitGTK; Ubuntu 24.04 is the reference system. See [Linux operations](05-ops/RUNBOOK.md). |
 
-For Linux v0.6.1, after downloading both files:
+For Linux v0.6.2, after downloading both files:
 
 ```sh
-sha256sum -c qhud-v0.6.1-linux-x86_64.tar.gz.sha256
-tar -xzf qhud-v0.6.1-linux-x86_64.tar.gz
-install -Dm755 qhud-v0.6.1-linux-x86_64/qhud "$HOME/.local/bin/qhud"
+sha256sum -c qhud-v0.6.2-linux-x86_64.tar.gz.sha256
+tar -xzf qhud-v0.6.2-linux-x86_64.tar.gz
+install -Dm755 qhud-v0.6.2-linux-x86_64/qhud "$HOME/.local/bin/qhud"
 "$HOME/.local/bin/qhud"
 ```
 
 For a Windows download, compare the displayed digest with the `.sha256` file:
 
 ```powershell
-Get-FileHash -Algorithm SHA256 .\qhud-v0.6.1-windows-x86_64.zip
-Get-Content .\qhud-v0.6.1-windows-x86_64.zip.sha256
+Get-FileHash -Algorithm SHA256 .\qhud-v0.6.2-windows-x86_64.zip
+Get-Content .\qhud-v0.6.2-windows-x86_64.zip.sha256
 ```
 
 Sign in using each provider's own CLI. qhud reads existing account information;
@@ -134,9 +134,12 @@ than discarding other entries.
 }
 ```
 
-A label is presentation text, not a login change. Codex may supply only a
-workspace ID locally; a configured label lets the row show an email or friendly
-name. Keep plan labels operator-supplied rather than guessing them from wire enums.
+Codex automatically shows the email available in the local `auth.json` ID token.
+This is a best-effort display hint: missing or malformed email data falls back
+to the account/workspace ID. No separate label file is needed for ordinary email
+display on a new computer. A matching `labels` entry still takes precedence over
+the email, and neither changes the account/workspace identity used for usage.
+Keep plan labels operator-supplied rather than guessing them from wire enums.
 
 ## More than one account
 
@@ -193,7 +196,7 @@ to qmonster's database.
 | Symptom | Check |
 | --- | --- |
 | Account missing | Confirm the provider CLI is signed in and qhud is reading the intended config/home directory. |
-| Email replaced by an ID | Add a matching `labels` entry; labels do not change the selected account. |
+| Email replaced by an ID | Confirm qhud is v0.6.2 or newer and reads the intended Codex home. If its local ID token has no usable email, add a matching `labels` entry for a display override. |
 | Spark or another model missing | Refresh and inspect the current account's response. An absent model is not synthesized. |
 | Old reading or 401 error | Read the row's age/error and sign in again through that provider's CLI, in the affected directory. |
 | No terminal panes | Check tmux/herdr on Linux. Native Windows terminal tabs are outside this release's support. |

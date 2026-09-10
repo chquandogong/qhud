@@ -16,7 +16,7 @@ qhud는 v0.6.0부터 Windows x64 WebView2 위젯을 제공합니다. WSL 없이 
 
 ## 릴리스 설치
 
-[GitHub Releases](https://github.com/chquandogong/qhud/releases)에서 `qhud-v0.6.1-windows-x86_64.zip`과 체크섬 파일을 받습니다. 압축을 풀고 버전명이 붙은 디렉터리 안의 `qhud.exe`를 실행합니다. Microsoft Edge WebView2 Runtime이 필요합니다.
+[GitHub Releases](https://github.com/chquandogong/qhud/releases)에서 `qhud-v0.6.2-windows-x86_64.zip`과 체크섬 파일을 받습니다. 압축을 풀고 버전명이 붙은 디렉터리 안의 `qhud.exe`를 실행합니다. Microsoft Edge WebView2 Runtime이 필요합니다.
 
 ZIP은 휴대용 배포판입니다. 설치 프로그램, 로그인 자동 시작, 바로가기를 자동 등록하지 않습니다. 업데이트할 때는 트레이의 **Quit qhud**로 종료한 뒤 실행 파일을 교체합니다. 설정과 공급자 로그인 파일은 별도 위치에 유지됩니다.
 
@@ -68,7 +68,7 @@ Start-Process -FilePath '.\target\x86_64-pc-windows-msvc\release\qhud.exe'
 
 새 Windows 설치는 `%APPDATA%\qhud`에 설정을 저장합니다. `accounts.json`은 표시 이름과 등록한 계정 경로, `fetched-usage.json`은 조회 시각을 포함한 사용량을 담습니다. 개인 설정과 조회 결과는 Git 저장소나 릴리스에 포함하지 않습니다.
 
-`QHUD_CONFIG_DIR`이 설정 위치를 재정의합니다. `XDG_CONFIG_HOME`이나 기존 `%USERPROFILE%\.config\qhud`를 존중합니다. 공급자 로그인 정보는 기본적으로 `%USERPROFILE%\.codex`와 `%USERPROFILE%\.claude`에서 읽으며 `CODEX_HOME`, `CLAUDE_CONFIG_DIR`로 바꿀 수 있습니다. Codex가 로컬에 작업 공간 ID만 제공하면 `accounts.json`의 `labels`로 이메일을 표시할 수 있습니다. 스키마는 [운영 가이드](RUNBOOK.md)를 참고하세요.
+`QHUD_CONFIG_DIR`이 설정 위치를 재정의합니다. `XDG_CONFIG_HOME`이나 기존 `%USERPROFILE%\.config\qhud`를 존중합니다. 공급자 로그인 정보는 기본적으로 `%USERPROFILE%\.codex`와 `%USERPROFILE%\.claude`에서 읽으며 `CODEX_HOME`, `CLAUDE_CONFIG_DIR`로 바꿀 수 있습니다. Codex는 로컬 `auth.json`의 ID 토큰에서 이메일을 읽으므로 일반적으로 새 컴퓨터에 이메일 매핑이 필요하지 않습니다. 이메일이 없거나 형식이 잘못되면 계정 ID를 표시합니다. `accounts.json`의 `labels`는 계정/작업 공간 식별자를 바꾸지 않고 이메일 표시보다 우선합니다. 스키마는 [운영 가이드](RUNBOOK.md)를 참고하세요.
 
 GPT-5.3-Codex-Spark 5H/7D 같은 모델 한도는 서버가 반환할 때 표시합니다. 긴 이름은 줄바꿈하고 항목이 많으면 사용량 영역을 스크롤합니다. 오른쪽 시간은 초기화까지 남은 시간이며 계기에 마우스를 올리면 정확한 초기화 날짜와 시각을 확인할 수 있습니다. 누락된 모델 한도를 0%로 가정하거나 다른 계정의 수치를 대신 표시하지 않습니다.
 

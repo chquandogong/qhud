@@ -23,20 +23,20 @@ qhud 설치, 기존 CLI 계정 연결, 저장된 스냅샷과 현재 응답을 �
 | Windows x64 | ZIP을 풀고 추출된 디렉터리 안의 `qhud.exe`를 실행합니다. | Microsoft Edge WebView2 Runtime. [Windows 설정](05-ops/WINDOWS.md)을 참조하세요. |
 | Linux x86_64 | tarball을 풀고 버전 디렉터리 안의 바이너리를 설치합니다. | GTK/WebKitGTK. 기준 시스템은 Ubuntu 24.04입니다. [Linux 운영](05-ops/RUNBOOK.md)을 참조하세요. |
 
-Linux v0.6.1에서 두 파일을 모두 다운로드한 뒤 실행합니다.
+Linux v0.6.2에서 두 파일을 모두 다운로드한 뒤 실행합니다.
 
 ```sh
-sha256sum -c qhud-v0.6.1-linux-x86_64.tar.gz.sha256
-tar -xzf qhud-v0.6.1-linux-x86_64.tar.gz
-install -Dm755 qhud-v0.6.1-linux-x86_64/qhud "$HOME/.local/bin/qhud"
+sha256sum -c qhud-v0.6.2-linux-x86_64.tar.gz.sha256
+tar -xzf qhud-v0.6.2-linux-x86_64.tar.gz
+install -Dm755 qhud-v0.6.2-linux-x86_64/qhud "$HOME/.local/bin/qhud"
 "$HOME/.local/bin/qhud"
 ```
 
 Windows 다운로드는 표시된 해시를 `.sha256` 파일과 비교합니다.
 
 ```powershell
-Get-FileHash -Algorithm SHA256 .\qhud-v0.6.1-windows-x86_64.zip
-Get-Content .\qhud-v0.6.1-windows-x86_64.zip.sha256
+Get-FileHash -Algorithm SHA256 .\qhud-v0.6.2-windows-x86_64.zip
+Get-Content .\qhud-v0.6.2-windows-x86_64.zip.sha256
 ```
 
 각 공급자의 자체 CLI로 로그인합니다. qhud는 기존 계정 정보를 읽으며 공급자의 로그인 절차를 대체하지 않습니다. qhud를 시작한 다음 ⟳를 눌러 사용량을 조회합니다. 포터블 패키지는 바로가기나 자동 시작을 등록하지 않습니다.
@@ -124,7 +124,7 @@ qhud 설정은 소스 저장소 밖에 보관합니다.
 }
 ```
 
-레이블은 표시 텍스트이며 로그인을 변경하지 않습니다. Codex는 로컬에서 작업공간 ID만 제공할 수 있습니다. 레이블을 설정하면 행에 이메일이나 알기 쉬운 이름을 표시할 수 있습니다. 요금제 레이블은 전송 열거형에서 추측하지 말고 운영자가 지정한 값을 유지하세요.
+Codex는 로컬 `auth.json`의 ID 토큰에 있는 이메일을 자동으로 표시합니다. 이메일은 표시용 보조 정보이며 없거나 형식이 잘못되면 계정/작업공간 ID로 대체합니다. 새 컴퓨터에서도 일반적인 이메일 표시에 별도 레이블 파일이 필요하지 않습니다. 일치하는 `labels` 항목은 이메일보다 우선하며, 이메일과 레이블 모두 사용량을 구분하는 계정/작업공간 식별자를 바꾸지 않습니다. 요금제 레이블은 전송 열거형에서 추측하지 말고 운영자가 지정한 값을 유지하세요.
 
 <!-- qhud:anchor -->
 <a id="more-than-one-account"></a>
@@ -177,7 +177,7 @@ Claude 행은 **계정과 조직**을 구별합니다. 두 디렉터리에 같�
 | 증상 | 확인 사항 |
 | --- | --- |
 | 계정이 없음 | 공급자 CLI에 로그인되어 있고 qhud가 의도한 설정/홈 디렉터리를 읽는지 확인합니다. |
-| 이메일 대신 ID 표시 | 일치하는 `labels` 항목을 추가합니다. 레이블은 선택된 계정을 바꾸지 않습니다. |
+| 이메일 대신 ID 표시 | qhud가 v0.6.2 이상이며 의도한 Codex 홈을 읽는지 확인합니다. 로컬 ID 토큰에 사용 가능한 이메일이 없으면 일치하는 `labels` 항목으로 표시를 지정합니다. |
 | Spark 또는 다른 모델이 없음 | 새로고침 후 현재 계정의 응답을 확인합니다. 없는 모델은 만들어 표시하지 않습니다. |
 | 오래된 값 또는 401 오류 | 행의 경과 시간/오류를 읽고, 영향을 받은 디렉터리에서 해당 공급자 CLI로 다시 로그인합니다. |
 | 터미널 창 분할이 없음 | Linux에서는 tmux/herdr를 확인합니다. 네이티브 Windows 터미널 탭은 이 릴리스의 지원 범위 밖입니다. |

@@ -76,6 +76,7 @@ is the mapping every other document should follow.
 | FR-22 | Several Claude accounts render at once via registry config directories, one row per account with its own snapshot and refresh; partial fetch failure stays partial                                                    | done (D-015)                                                                    |
 | FR-27 | A row's identity is (account, organization): one login holding a team seat and a personal organization is two rows with separate pools, and a refresh result is matched to its row by config directory and account id | done (v0.5.2, D-018) — a real second-organization row is still field-unverified |
 | FR-34 | A saved snapshot is used only for the account currently signed in; ownership is checked before age, so a newer reading from a previous login cannot mask this login's older one                                       | done (v0.6.0)                                                                   |
+| FR-35 | Codex reads the local ID-token email for display when available; operator labels take precedence, missing/malformed email falls back to the account ID, and account/workspace identity remains ID-based | done (v0.6.2) |
 
 Known limit, carried since D-015: a pane's account is not attributable, so
 pane-fed gauges always belong to the default account's row.
@@ -108,7 +109,9 @@ notifications. The TUI owns that state and the alerting (D-004).
 
 **Passive by default; network only on request** (D-013, D-014, D-016). The 2 s
 loop reads local files and the multiplexer, makes no provider API requests,
-and selects identity fields without using tokens for observation. Its only other work is a window-geometry checkpoint every ~30 s
+and selects local identity fields, including the Codex ID-token email for
+display, without sending credentials to a provider. Its only other work is a
+window-geometry checkpoint every ~30 s
 and, on Linux, a pixel sample every ~28 s. Everything that reaches further
 runs from an explicit operator gesture or its command-line twin, and never
 runs an OAuth refresh grant. On the fetch paths qhud reads an access token for

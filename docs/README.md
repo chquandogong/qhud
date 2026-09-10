@@ -50,6 +50,7 @@ product behavior. Start with the specification and dashboard for the current sta
 | [Retrospective](05-ops/RETRO.md) | Lessons recorded through development. |
 | [v0.6.0 release notes](05-ops/releases/v0.6.0.md) | Native Windows support and quota/reset fixes. |
 | [v0.6.1 release notes](05-ops/releases/v0.6.1.md) | Documentation rewrite and Ubuntu verification. |
+| [v0.6.2 release notes](05-ops/releases/v0.6.2.md) | Automatic Codex email display from local login data. |
 
 ## Languages and source fidelity
 

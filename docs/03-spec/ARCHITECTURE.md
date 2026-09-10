@@ -9,8 +9,8 @@
 > Status: living (rewritten from scratch against v0.6.0 source) · Date:
 > 2026-09-07 · Owner: chquandogong
 > Companion to SPEC (what it must do) and DECISION_LOG (why it is built this
-> way). Every claim here was read off the tree at `v0.6.1`; line counts and
-> test counts are from that tree.
+> way). The baseline is the `v0.6.1` tree, with v0.6.2 identity handling
+> updated below. Historical module line/test counts remain from v0.6.1.
 
 ## 1. What qhud is, structurally
 
@@ -487,10 +487,15 @@ Either way the row is dated with which source it came from.
 ## 16. Identity
 
 Identity fields are selected from local files the CLIs already maintain,
-without provider network requests or using tokens for observation: Claude's config file,
-Codex's `auth.json` account id, agy's active Google account. A provider that
-is logged out contributes no row at all, and any unreadable or malformed file
-is simply an absent account — this is enrichment and must never fail a tick.
+without provider network requests: Claude's config file, Codex's `auth.json`,
+and agy's active Google account. Since v0.6.2, Codex reads the email claim from
+the local ID-token payload as a best-effort display hint. This local decoding
+does not authenticate requests, verify the token, or refresh credentials.
+A missing or malformed email leaves the account/workspace ID available for
+display. Account and organization IDs remain the identity and usage keys;
+an email never merges distinct workspaces. A provider that is logged out
+contributes no row at all, and an unreadable or malformed auth file is simply
+an absent account — this is enrichment and must never fail a tick.
 
 **A row's identity is the pair (account, organization)** (D-018). One
 claude.ai login can hold a team seat and a personal organization, and those
@@ -499,10 +504,11 @@ duplicate. The frontend keys rows the same way and matches a refresh result to
 its row by config directory **and** account id, because matching on the
 account alone would feed one organization's numbers to both rows of one login.
 
-Display names are operator-supplied and layered on top from a registry file
-that lives outside this repository. They are never "corrected" from a wire
-plan string: those are the provider's internal words, not the name the
-operator sees.
+Display names use the operator's registry label first, then the locally read
+email, then the account ID. The registry lives outside this repository and
+remains an optional override when an email is available. Operator plan labels
+are never "corrected" from a wire plan string: those are the provider's
+internal words, not the name the operator sees.
 
 ## 17. Registry and placeholders
 
@@ -575,8 +581,9 @@ enforced in code and asserted by tests.
   and RPC live behind explicit controls and their command-line twins.
 - **Ownership before age.** A snapshot is only used for the account it belongs
   to.
-- **qhud does not run OAuth refresh grants.** Observation selects identity
-  fields without using provider tokens.
+- **qhud does not run OAuth refresh grants.** Observation selects local
+  identity fields, including the Codex ID-token email, without sending
+  credentials to a provider.
 
 ## 20. Module map
 

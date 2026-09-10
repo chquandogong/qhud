@@ -5,11 +5,12 @@
 //! where the operator holds several logins per provider — and swaps
 //! between them — an unlabelled percentage is ambiguous.
 //!
-//! Every source read here is a plain local file, so this module makes
-//! no network calls and never touches a token. It reads only the
-//! identity fields the CLIs already persist in cleartext; credential
-//! material is never opened.
+//! Every source read here is a local file, so this module makes no
+//! network calls. Codex's ID-token payload is decoded only for an email
+//! display hint; it is not verified or used to authorize anything. Access
+//! and refresh tokens are ignored, and no credentials are logged or written.
 
+use base64::{Engine as _, engine::general_purpose};
 use serde::{Deserialize, Serialize};
 
 /// One quota-bearing scope on an account. A Claude team seat carries
@@ -138,17 +139,75 @@ struct CodexAuth {
 struct CodexTokens {
     #[serde(default)]
     account_id: Option<String>,
+    // A malformed optional display hint must not discard a valid account id.
+    #[serde(default)]
+    id_token: Option<serde_json::Value>,
 }
 
-/// Parses `~/.codex/auth.json`. Only `tokens.account_id` is read; the
-/// sibling token fields are deliberately never touched. Codex keeps no
-/// cleartext email, so the display name comes from the inventory file.
+/// Parses `~/.codex/auth.json`. `tokens.account_id` remains the identity;
+/// the ID token may supply an email for display when no inventory label is
+/// configured. Reading this local hint does not refresh or validate a login.
 pub fn codex_account(auth_json: &str) -> Option<AccountLabel> {
     let auth: CodexAuth = serde_json::from_str(auth_json).ok()?;
-    let account_id = auth.tokens?.account_id?;
+    let tokens = auth.tokens?;
+    let account_id = tokens.account_id?;
+    let email = tokens
+        .id_token
+        .as_ref()
+        .and_then(serde_json::Value::as_str)
+        .and_then(codex_id_token_email);
     Some(AccountLabel {
         account_id: Some(account_id),
+        email,
         ..AccountLabel::default()
+    })
+}
+
+/// Best-effort, unverified display metadata from a JWT payload. Do not use
+/// these claims as an identity or authentication source. A workspace switch
+/// can change `tokens.account_id` while keeping the same user's ID token.
+fn codex_id_token_email(token: &str) -> Option<String> {
+    // This is cosmetic enrichment, so bound the work for unexpected input.
+    if token.len() > 64 * 1024 {
+        return None;
+    }
+    let mut parts = token.split('.');
+    let header = parts.next()?;
+    let payload = parts.next()?;
+    let signature = parts.next()?;
+    if header.is_empty()
+        || payload.is_empty()
+        || payload.len() > 16 * 1024
+        || signature.is_empty()
+        || parts.next().is_some()
+    {
+        return None;
+    }
+    let decoded = general_purpose::URL_SAFE_NO_PAD
+        .decode(payload)
+        .or_else(|_| general_purpose::URL_SAFE.decode(payload))
+        .ok()?;
+    let claims: serde_json::Value = serde_json::from_slice(&decoded).ok()?;
+    let email = |value: &serde_json::Value| {
+        let address = value.as_str()?.trim();
+        // Reject empty, non-address, and whitespace/control-containing
+        // claims without imposing a full mail-delivery validation policy.
+        let (local, domain) = address.split_once('@')?;
+        if address.len() > 254
+            || local.is_empty()
+            || domain.is_empty()
+            || domain.contains('@')
+            || address.chars().any(|c| c.is_whitespace() || c.is_control())
+        {
+            return None;
+        }
+        Some(address.to_owned())
+    };
+    claims.get("email").and_then(email).or_else(|| {
+        claims
+            .get("https://api.openai.com/profile")?
+            .get("email")
+            .and_then(email)
     })
 }
 
@@ -380,7 +439,7 @@ mod tests {
     }
 
     #[test]
-    fn codex_account_reads_only_the_account_id() {
+    fn codex_account_keeps_the_account_id_when_the_id_token_is_unreadable() {
         let json = r#"{"auth_mode":"chatgpt","tokens":{
           "id_token":"REDACTED","access_token":"REDACTED","refresh_token":"REDACTED",
           "account_id":"3f13fa37-2915-46b3-b975-6f982c7e3c36"},
@@ -392,12 +451,256 @@ mod tests {
             acct.account_id.as_deref(),
             Some("3f13fa37-2915-46b3-b975-6f982c7e3c36")
         );
-        assert!(acct.email.is_none(), "codex keeps no cleartext email");
+        assert!(acct.email.is_none());
+        assert_eq!(acct.display().as_deref(), acct.account_id.as_deref());
     }
 
     #[test]
     fn codex_account_absent_when_logged_out() {
         assert!(codex_account(r#"{"auth_mode":null,"tokens":null}"#).is_none());
+    }
+
+    // Synthetic tokens only: no real credentials belong in test fixtures.
+    fn display_token(payload: &[u8], padded: bool) -> String {
+        let encoded = if padded {
+            general_purpose::URL_SAFE.encode(payload)
+        } else {
+            general_purpose::URL_SAFE_NO_PAD.encode(payload)
+        };
+        format!("e30.{encoded}.c2lnbmF0dXJl")
+    }
+
+    fn codex_auth_with_token(token: serde_json::Value) -> String {
+        serde_json::json!({
+            "tokens": {"account_id": "workspace-1", "id_token": token}
+        })
+        .to_string()
+    }
+
+    #[test]
+    fn codex_detects_email_without_a_machine_specific_inventory() {
+        let token = display_token(br#"{"email":"person@example.com"}"#, false);
+        let auth = codex_auth_with_token(serde_json::json!(token));
+        let detected = detect_all_from(None, Some(&auth), None);
+        assert_eq!(detected.len(), 1);
+        assert_eq!(detected[0].0, "codex");
+        let acct = &detected[0].1;
+        assert_eq!(acct.account_id.as_deref(), Some("workspace-1"));
+        assert_eq!(acct.email.as_deref(), Some("person@example.com"));
+        assert_eq!(acct.display().as_deref(), Some("person@example.com"));
+
+        let serialized = serde_json::to_string(acct).unwrap();
+        assert!(
+            !serialized.contains(&token),
+            "never send the token to the UI"
+        );
+    }
+
+    #[test]
+    fn codex_accepts_padded_and_unpadded_payloads_and_unicode_email() {
+        let payload = r#"{"email":"  사용자@example.com  "}"#.as_bytes();
+        let padded = display_token(payload, true);
+        assert!(padded.contains('='), "exercise actual base64 padding");
+        for token in [padded, display_token(payload, false)] {
+            let acct = codex_account(&codex_auth_with_token(serde_json::json!(token))).unwrap();
+            assert_eq!(acct.email.as_deref(), Some("사용자@example.com"));
+        }
+    }
+
+    #[test]
+    fn codex_decodes_the_url_safe_jwt_alphabet() {
+        // Independent fixtures contain '-' and '_' in the payload, where
+        // ordinary base64 would use '+' and '/'. The extra name is ignored.
+        for token in [
+            "e30.eyJlbWFpbCI6InVzZXJAZXhhbXBsZS5jb20iLCJuYW1lIjoi8J-YgCJ9.c2ln",
+            "e30.eyJlbWFpbCI6InVzZXJAZXhhbXBsZS5jb20iLCJuYW1lIjoiPz8_In0=.c2ln",
+        ] {
+            let acct = codex_account(&codex_auth_with_token(serde_json::json!(token))).unwrap();
+            assert_eq!(acct.email.as_deref(), Some("user@example.com"));
+        }
+    }
+
+    #[test]
+    fn codex_uses_only_supported_email_claims_and_prefers_the_standard_claim() {
+        for (claims, expected) in [
+            (
+                serde_json::json!({
+                    "email": "primary@example.com",
+                    "https://api.openai.com/profile": {"email": "profile@example.com"}
+                }),
+                Some("primary@example.com"),
+            ),
+            (
+                serde_json::json!({
+                    "email": 123,
+                    "https://api.openai.com/profile": {"email": "profile@example.com"}
+                }),
+                Some("profile@example.com"),
+            ),
+            (
+                serde_json::json!({
+                    "https://api.openai.com/profile": {"email": "profile@example.com"}
+                }),
+                Some("profile@example.com"),
+            ),
+            (
+                serde_json::json!({
+                    "email": "",
+                    "https://api.openai.com/profile": {"email": "profile@example.com"}
+                }),
+                Some("profile@example.com"),
+            ),
+            (
+                serde_json::json!({"other": {"email": "unrelated@example.com"}}),
+                None,
+            ),
+        ] {
+            let token = display_token(claims.to_string().as_bytes(), false);
+            let acct = codex_account(&codex_auth_with_token(serde_json::json!(token))).unwrap();
+            assert_eq!(acct.email.as_deref(), expected);
+            assert_eq!(acct.account_id.as_deref(), Some("workspace-1"));
+        }
+    }
+
+    #[test]
+    fn codex_ignores_malformed_optional_tokens_without_losing_the_account() {
+        for token in [
+            serde_json::Value::Null,
+            serde_json::json!(false),
+            serde_json::json!(123),
+            serde_json::json!([]),
+            serde_json::json!({}),
+            serde_json::json!(""),
+            serde_json::json!("not-a-jwt"),
+            serde_json::json!("e30.e30"),
+            serde_json::json!("e30.e30.sig.extra"),
+            serde_json::json!(".e30.sig"),
+            serde_json::json!("e30..sig"),
+            serde_json::json!("e30.e30."),
+            serde_json::json!("e30.%%%.sig"),
+            serde_json::json!(display_token(b"not json", false)),
+            serde_json::json!(display_token(&[0xff, 0xfe], false)),
+        ] {
+            let acct = codex_account(&codex_auth_with_token(token)).unwrap();
+            assert_eq!(acct.email, None);
+            assert_eq!(acct.display().as_deref(), Some("workspace-1"));
+        }
+        let acct = codex_account(r#"{"tokens":{"account_id":"workspace-1"}}"#).unwrap();
+        assert_eq!(acct.display().as_deref(), Some("workspace-1"));
+    }
+
+    #[test]
+    fn codex_ignores_missing_non_string_and_invalid_email_claims() {
+        for value in [
+            serde_json::Value::Null,
+            serde_json::json!(true),
+            serde_json::json!(123),
+            serde_json::json!([]),
+            serde_json::json!({}),
+            serde_json::json!(""),
+            serde_json::json!("   "),
+            serde_json::json!("not-an-email"),
+            serde_json::json!("@example.com"),
+            serde_json::json!("user@"),
+            serde_json::json!("user@@example.com"),
+            serde_json::json!("user name@example.com"),
+            serde_json::json!("user\nname@example.com"),
+            serde_json::json!("user\u{0000}name@example.com"),
+            serde_json::json!(format!("{}@example.com", "x".repeat(255))),
+        ] {
+            for claims in [
+                serde_json::json!({"email": value}),
+                serde_json::json!({"https://api.openai.com/profile": {"email": value}}),
+            ] {
+                let token = display_token(claims.to_string().as_bytes(), false);
+                let acct = codex_account(&codex_auth_with_token(serde_json::json!(token))).unwrap();
+                assert_eq!(acct.email, None);
+                assert_eq!(acct.display().as_deref(), Some("workspace-1"));
+            }
+        }
+        for claims in [
+            "{}",
+            "[]",
+            "null",
+            "123",
+            r#"{"https://api.openai.com/profile":false}"#,
+        ] {
+            let token = display_token(claims.as_bytes(), false);
+            let acct = codex_account(&codex_auth_with_token(serde_json::json!(token))).unwrap();
+            assert_eq!(acct.display().as_deref(), Some("workspace-1"));
+        }
+    }
+
+    #[test]
+    fn codex_bounds_cosmetic_token_decoding() {
+        let oversized_payload = serde_json::json!({
+            "email": "person@example.com", "extra": "x".repeat(16 * 1024)
+        });
+        for token in [
+            display_token(oversized_payload.to_string().as_bytes(), false),
+            format!("{}.e30.signature", "x".repeat(64 * 1024)),
+        ] {
+            let acct = codex_account(&codex_auth_with_token(serde_json::json!(token))).unwrap();
+            assert_eq!(acct.email, None);
+            assert_eq!(acct.display().as_deref(), Some("workspace-1"));
+        }
+    }
+
+    #[test]
+    fn codex_never_uses_access_or_refresh_tokens_for_email_or_identity() {
+        let token = display_token(br#"{"email":"wrong@example.com"}"#, false);
+        let auth = serde_json::json!({"tokens": {
+            "account_id": "workspace-1", "access_token": token, "refresh_token": token
+        }});
+        let acct = codex_account(&auth.to_string()).unwrap();
+        assert_eq!(acct.email, None);
+        assert_eq!(acct.display().as_deref(), Some("workspace-1"));
+
+        let missing_id = serde_json::json!({"tokens": {"id_token": token}});
+        assert!(codex_account(&missing_id.to_string()).is_none());
+        assert!(codex_account(r#"{"auth_mode":"apikey","OPENAI_API_KEY":"dummy"}"#).is_none());
+    }
+
+    #[test]
+    fn codex_keeps_workspace_ids_distinct_when_email_is_shared() {
+        let token = display_token(
+            br#"{"email":"person@example.com","https://api.openai.com/auth":{"chatgpt_account_id":"personal-workspace"}}"#,
+            false,
+        );
+        let parse = |id| {
+            codex_account(
+                &serde_json::json!({"tokens": {
+                    "account_id": id, "id_token": token
+                }})
+                .to_string(),
+            )
+            .unwrap()
+        };
+        let personal = parse("personal-workspace");
+        let team = parse("team-workspace");
+        assert_eq!(personal.email.as_deref(), Some("person@example.com"));
+        assert_eq!(team.email, personal.email);
+        assert_eq!(personal.account_id.as_deref(), Some("personal-workspace"));
+        assert_eq!(team.account_id.as_deref(), Some("team-workspace"));
+        assert_ne!(personal.account_id, team.account_id);
+    }
+
+    #[test]
+    fn codex_inventory_labels_override_detected_email_with_account_id_precedence() {
+        let token = display_token(br#"{"email":"person@example.com"}"#, false);
+        let mut acct = codex_account(&codex_auth_with_token(serde_json::json!(token))).unwrap();
+        let labels = parse_inventory(
+            r#"{"labels":{
+            "codex:workspace-1":"work", "codex:person@example.com":"personal"
+        }}"#,
+        );
+        apply_labels("codex", &mut acct, &labels);
+        assert_eq!(acct.display().as_deref(), Some("work"));
+        assert_eq!(acct.email.as_deref(), Some("person@example.com"));
+
+        let labels = parse_inventory(r#"{"labels":{"codex:person@example.com":"personal"}}"#);
+        apply_labels("codex", &mut acct, &labels);
+        assert_eq!(acct.display().as_deref(), Some("personal"));
     }
 
     #[test]
@@ -416,8 +719,7 @@ mod tests {
 
     #[test]
     fn inventory_labels_are_keyed_by_provider_and_account_id_or_email() {
-        // Operator-maintained: the CLIs expose ids and emails but no
-        // human name, and codex exposes no email at all.
+        // Operator-maintained names override the detected id or email.
         let inv = r#"{"schema":1,"labels":{
           "claude:67c22197-ede6-4221-b095-4c89789546dd":"work",
           "codex:3f13fa37-2915-46b3-b975-6f982c7e3c36":"personal",
