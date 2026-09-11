@@ -10,6 +10,33 @@ All notable changes to qhud. Format: [Keep a Changelog](https://keepachangelog.c
 
 ## [Unreleased]
 
+## [0.7.0] — 2026-09-11
+
+### System strip and About
+
+- Add a quiet bottom strip for CPU, memory, supported GPU, physical-disk I/O and
+  network throughput, sampled every 2 seconds with up to 60 seconds of history.
+  Metric buttons expose detail without enlarging the default strip.
+- Use fixed percentage scales for CPU/memory/GPU and adaptive throughput scales
+  for disk/network. Show unavailable/warming values as gaps; preserve valid idle
+  zeroes. Reset rate baselines and history after long gaps or visibility changes.
+- Pause system sampling while hidden/minimized. Keep history in memory; use local
+  native measurements without process scans, monitoring subprocesses or telemetry.
+- Support Windows WDDM GPU Engine counters and Linux AMD sysfs / NVIDIA NVML when
+  available. Retain one selected adapter per sampling session; VRAM details are
+  conditional and currently Linux-only.
+- Add `--system-dump` for a standalone two-sample system diagnostic and synthetic
+  system metrics in explicit demo mode.
+- Add About through the top-left qhud name, showing the running build version,
+  maker Chenghao Quan (chquandogong), the
+  [maker's homepage](https://chquandogong.github.io/CHENGHAO-QUAN/) and repository.
+
+Disk throughput aggregates physical devices; capacity details deduplicate mounted
+local volumes and refresh every 30 seconds. Network throughput excludes loopback
+but may count traffic at both VPN/virtual and physical interfaces. Unsupported
+GPU counters remain unavailable rather than implying the machine has no GPU.
+See the [0.7.0 release notes](docs/05-ops/releases/v0.7.0.md) for support boundaries.
+
 ## [0.6.2] — 2026-09-11
 
 ### Fixed

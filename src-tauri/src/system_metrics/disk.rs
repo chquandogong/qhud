@@ -215,18 +215,31 @@ mod platform {
         let source = disk.name().to_string_lossy();
         // A single filesystem can appear at several bind/subvolume mounts.
         // Device identity deduplicates them while keeping separate partitions.
-        let source = source.split('[').next()?;
-        let id = std::fs::metadata(Path::new(source))
+        let source = Path::new(source.split('[').next()?);
+        let id = std::fs::metadata(source)
             .ok()
             .map(|device| device.rdev())
             .filter(|id| *id != 0)
-            // Some systems report /dev/root without creating that alias.
+            // Some systems report /dev/root without creating that alias. Only
+            // device paths may use this fallback: remote FUSE mounts also have
+            // a nonzero mount.dev(), but are not local storage capacity.
             .or_else(|| {
+                if !may_use_mount_device(source) {
+                    return None;
+                }
                 std::fs::metadata(disk.mount_point())
                     .ok()
                     .map(|mount| mount.dev())
             })?;
         (id != 0).then(|| format!("{id}:{}", disk.file_system().to_string_lossy()))
+    }
+
+    fn may_use_mount_device(source: &Path) -> bool {
+        source != Path::new("/dev")
+            && source.starts_with("/dev")
+            && !source
+                .components()
+                .any(|part| matches!(part, std::path::Component::ParentDir))
     }
 
     #[cfg(test)]
@@ -242,6 +255,28 @@ mod platform {
             assert_eq!(parse_stat("1 2 x 4 5 6 7"), None);
             assert_eq!(parse_stat("1 2 3"), None);
             assert_eq!(parse_stat("1 2 18446744073709551615 4 5 6 7"), None);
+        }
+
+        #[test]
+        fn mount_device_fallback_accepts_device_aliases_but_not_remote_sources() {
+            for source in [
+                "/dev/root",
+                "/dev/disk/by-uuid/local-root",
+                "/dev/mapper/root",
+            ] {
+                assert!(may_use_mount_device(Path::new(source)), "{source}");
+            }
+            for source in [
+                "user@host:/data",
+                "remote:bucket",
+                "pool/dataset",
+                "/device/root",
+                "/dev",
+                "/dev/../mnt/remote",
+                "dev/root",
+            ] {
+                assert!(!may_use_mount_device(Path::new(source)), "{source}");
+            }
         }
     }
 }

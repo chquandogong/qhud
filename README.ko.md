@@ -39,6 +39,7 @@ qhud는 여러 명령행 인터페이스에 흩어진 계정 할당량과 세션
 | **계정 맥락** | 구분된 계정/작업공간 행, 설정 가능한 표시 이름, 재시작 후에도 시점이 표시되는 스냅샷. |
 | **세션 활동** | 지원하는 Linux 환경에서 상태, 컨텍스트 사용 정도, 모델, 추론 노력, 브랜치, 작업 디렉터리, 충돌 표시. |
 | **최신성** | 2초마다 로컬 관찰. 공급자 사용량 요청은 명시적으로 새로고침할 때 실행. |
+| **시스템 사용량과 정보** | CPU·메모리·지원되는 GPU·디스크·네트워크의 작은 기록 그래프. 항목을 선택하면 상세 정보가, About에는 빌드 버전·제작자·홈페이지가 표시됩니다. |
 
 <!-- qhud:anchor -->
 <a id="a-compact-view-with-room-for-detail"></a>
@@ -75,13 +76,13 @@ qhud는 여러 명령행 인터페이스에 흩어진 계정 할당량과 세션
 
 ## 설치
 
-**현재 릴리스: [v0.6.2](https://github.com/chquandogong/qhud/releases/tag/v0.6.2).**
+**현재 릴리스: [v0.7.0](https://github.com/chquandogong/qhud/releases/tag/v0.7.0).**
 두 플랫폼의 빌드/테스트 작업을 통과해야 공개합니다. 각 아카이브에는 SHA-256 파일이 있습니다.
 
 | 다운로드 | 검증 |
 | --- | --- |
-| [Windows x64 ZIP](https://github.com/chquandogong/qhud/releases/download/v0.6.2/qhud-v0.6.2-windows-x86_64.zip) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.6.2/qhud-v0.6.2-windows-x86_64.zip.sha256) |
-| [Linux x86_64 tarball](https://github.com/chquandogong/qhud/releases/download/v0.6.2/qhud-v0.6.2-linux-x86_64.tar.gz) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.6.2/qhud-v0.6.2-linux-x86_64.tar.gz.sha256) |
+| [Windows x64 ZIP](https://github.com/chquandogong/qhud/releases/download/v0.7.0/qhud-v0.7.0-windows-x86_64.zip) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.7.0/qhud-v0.7.0-windows-x86_64.zip.sha256) |
+| [Linux x86_64 tarball](https://github.com/chquandogong/qhud/releases/download/v0.7.0/qhud-v0.7.0-linux-x86_64.tar.gz) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.7.0/qhud-v0.7.0-linux-x86_64.tar.gz.sha256) |
 
 ### Windows
 
@@ -92,9 +93,9 @@ ZIP을 풀고 버전 디렉터리 안의 `qhud.exe`를 실행합니다. Microsof
 아카이브와 SHA-256 파일을 같은 디렉터리에 다운로드한 뒤 실행합니다.
 
 ```sh
-sha256sum -c qhud-v0.6.2-linux-x86_64.tar.gz.sha256
-tar -xzf qhud-v0.6.2-linux-x86_64.tar.gz
-install -Dm755 qhud-v0.6.2-linux-x86_64/qhud "$HOME/.local/bin/qhud"
+sha256sum -c qhud-v0.7.0-linux-x86_64.tar.gz.sha256
+tar -xzf qhud-v0.7.0-linux-x86_64.tar.gz
+install -Dm755 qhud-v0.7.0-linux-x86_64/qhud "$HOME/.local/bin/qhud"
 "$HOME/.local/bin/qhud"
 ```
 

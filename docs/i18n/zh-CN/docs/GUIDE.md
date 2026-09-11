@@ -23,20 +23,20 @@
 | Windows x64 | 解压 ZIP，运行解压目录内的 `qhud.exe`。 | Microsoft Edge WebView2 Runtime。见 [Windows 设置](05-ops/WINDOWS.md)。 |
 | Linux x86_64 | 解压 tarball，安装版本目录内的二进制。 | GTK/WebKitGTK；参考系统为 Ubuntu 24.04。见 [Linux 运维](05-ops/RUNBOOK.md)。 |
 
-Linux v0.6.2 下载两个文件后：
+Linux v0.7.0 下载两个文件后：
 
 ```sh
-sha256sum -c qhud-v0.6.2-linux-x86_64.tar.gz.sha256
-tar -xzf qhud-v0.6.2-linux-x86_64.tar.gz
-install -Dm755 qhud-v0.6.2-linux-x86_64/qhud "$HOME/.local/bin/qhud"
+sha256sum -c qhud-v0.7.0-linux-x86_64.tar.gz.sha256
+tar -xzf qhud-v0.7.0-linux-x86_64.tar.gz
+install -Dm755 qhud-v0.7.0-linux-x86_64/qhud "$HOME/.local/bin/qhud"
 "$HOME/.local/bin/qhud"
 ```
 
 Windows 下载后，将显示的摘要与 `.sha256` 文件比较：
 
 ```powershell
-Get-FileHash -Algorithm SHA256 .\qhud-v0.6.2-windows-x86_64.zip
-Get-Content .\qhud-v0.6.2-windows-x86_64.zip.sha256
+Get-FileHash -Algorithm SHA256 .\qhud-v0.7.0-windows-x86_64.zip
+Get-Content .\qhud-v0.7.0-windows-x86_64.zip.sha256
 ```
 
 使用各供应商自身 CLI 登录。qhud 读取现有账户信息，不替代供应商登录流程。启动 qhud 后按 ⟳ 获取用量。便携包不注册快捷方式或自动启动。
@@ -57,6 +57,42 @@ Get-Content .\qhud-v0.6.2-windows-x86_64.zip.sha256
 缺少模型配额不等于用量为零。例如，只有当前 Codex 账户响应含有 Spark 5H/7D 限额时才显示它。刷新另一账户不能证明当前账户的限额。
 
 受支持 Linux 环境的会话卡片另提供状态、上下文压力、模型、推理力度、分支、工作目录和冲突指示。本版本不原生观测 Windows Terminal、PowerShell 或 WezTerm 标签页。
+
+<!-- qhud:anchor -->
+<a id="system-usage-and-about"></a>
+
+## 系统用量与关于
+
+底部的小图表每 2 秒采样，保留最近约 60 秒内的最多 30 个样本。
+选择 CPU、MEM、GPU、DISK 或 NET 可打开详情；再次选择同一指标可关闭，
+选择其他指标则切换内容。CPU、内存和 GPU 使用固定的 0–100% 刻度；
+磁盘与网络显示读取+写入或接收+发送吞吐量，刻度随近期流量调整。
+将鼠标悬停在指标上可查看当前值；也可按 Tab 选择指标，再按 Enter 或 Space 操作。
+
+| 指标 | 测量范围 |
+| --- | --- |
+| CPU | 所有逻辑处理器的总体 CPU 利用率。 |
+| MEM | 已用物理内存 / 物理内存总量；详情显示字节容量。 |
+| GPU | 在首次有效采样中选择最繁忙的受支持适配器，并在本次采样会话中保持选择。Windows 先合并同一引擎的进程实例，再显示最繁忙引擎的利用率。 |
+| DISK | 物理磁盘的总读取/写入字节速率，避免重复计算分区和堆叠设备的 I/O。详情显示按卷去重的已挂载本地磁盘卷的已用/总容量，每 30 秒更新容量。 |
+| NET | 具有可用 IP 地址的非回环接口总接收/发送速率。Linux 还会过滤运行状态为 down 的接口。VPN、虚拟和物理接口可能重复计算同一流量，因此这不是运营商带宽计量器。 |
+
+GPU 测量取决于设备和驱动：Windows 使用 WDDM GPU Engine 计数器；Linux
+支持 AMD 提供的 busy-percent sysfs 值，以及通过已安装 NVML 库读取 NVIDIA
+数据。仅当 Linux 数据源提供显存用量时显示该值；Windows 暂不显示显存。
+不支持的 GPU 会隐藏。曾经支持的设备暂时读取失败时保留该列并显示缺口。
+首次 CPU/速率采样、计数器重置和不可用读数显示 `--` 或缺口，不会填入虚构的零。
+有效的空闲采样才显示为零。
+
+窗口隐藏或最小化时暂停系统采样。重新显示后重新开始历史记录并预热速率计数器；
+采样间隔过长时也会重置基线。历史只保存在内存中；系统采样不会扫描进程、启动
+监控命令、读取账户凭据或发送遥测。`--demo` 使用明确标注为示例的合成系统数据。
+
+点击左上角 **qhud** 打开 About，可查看运行中构建的版本、作者
+**Chenghao Quan (chquandogong)** 和
+[作者主页](https://chquandogong.github.io/CHENGHAO-QUAN/)。
+通过 ×、Escape 或点击面板外部关闭。运行 `qhud --system-dump` 可输出仅含
+本地系统信息的 JSON；它等待两次采样后退出，不会加载账户信息或打开组件窗口。
 
 <!-- qhud:anchor -->
 <a id="controls-and-commands"></a>
@@ -80,6 +116,7 @@ Windows 使用可执行文件路径，例如 `& '.\qhud.exe' --refresh-all`。�
 
 ```sh
 qhud --dump
+qhud --system-dump
 qhud --claude-usage
 qhud --codex-usage
 qhud --agy-usage

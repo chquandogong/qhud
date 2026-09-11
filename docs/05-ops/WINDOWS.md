@@ -12,7 +12,7 @@ Node.js and npm are not required.
 
 ## Install a release
 
-Download `qhud-v0.6.2-windows-x86_64.zip` and its checksum file from
+Download `qhud-v0.7.0-windows-x86_64.zip` and its checksum file from
 [GitHub Releases](https://github.com/chquandogong/qhud/releases). Extract the
 archive and run `qhud.exe` inside its versioned directory. Microsoft Edge
 WebView2 Runtime is required.

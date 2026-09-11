@@ -23,20 +23,20 @@ qhud 설치, 기존 CLI 계정 연결, 저장된 스냅샷과 현재 응답을 �
 | Windows x64 | ZIP을 풀고 추출된 디렉터리 안의 `qhud.exe`를 실행합니다. | Microsoft Edge WebView2 Runtime. [Windows 설정](05-ops/WINDOWS.md)을 참조하세요. |
 | Linux x86_64 | tarball을 풀고 버전 디렉터리 안의 바이너리를 설치합니다. | GTK/WebKitGTK. 기준 시스템은 Ubuntu 24.04입니다. [Linux 운영](05-ops/RUNBOOK.md)을 참조하세요. |
 
-Linux v0.6.2에서 두 파일을 모두 다운로드한 뒤 실행합니다.
+Linux v0.7.0에서 두 파일을 모두 다운로드한 뒤 실행합니다.
 
 ```sh
-sha256sum -c qhud-v0.6.2-linux-x86_64.tar.gz.sha256
-tar -xzf qhud-v0.6.2-linux-x86_64.tar.gz
-install -Dm755 qhud-v0.6.2-linux-x86_64/qhud "$HOME/.local/bin/qhud"
+sha256sum -c qhud-v0.7.0-linux-x86_64.tar.gz.sha256
+tar -xzf qhud-v0.7.0-linux-x86_64.tar.gz
+install -Dm755 qhud-v0.7.0-linux-x86_64/qhud "$HOME/.local/bin/qhud"
 "$HOME/.local/bin/qhud"
 ```
 
 Windows 다운로드는 표시된 해시를 `.sha256` 파일과 비교합니다.
 
 ```powershell
-Get-FileHash -Algorithm SHA256 .\qhud-v0.6.2-windows-x86_64.zip
-Get-Content .\qhud-v0.6.2-windows-x86_64.zip.sha256
+Get-FileHash -Algorithm SHA256 .\qhud-v0.7.0-windows-x86_64.zip
+Get-Content .\qhud-v0.7.0-windows-x86_64.zip.sha256
 ```
 
 각 공급자의 자체 CLI로 로그인합니다. qhud는 기존 계정 정보를 읽으며 공급자의 로그인 절차를 대체하지 않습니다. qhud를 시작한 다음 ⟳를 눌러 사용량을 조회합니다. 포터블 패키지는 바로가기나 자동 시작을 등록하지 않습니다.
@@ -57,6 +57,46 @@ Get-Content .\qhud-v0.6.2-windows-x86_64.zip.sha256
 모델 할당량이 없는 것은 사용량 0과 다릅니다. 예를 들어 Spark 5H/7D는 현재 Codex 계정의 응답에 해당 한도가 있을 때만 표시합니다. 다른 계정을 새로고침해도 활성 계정의 한도를 확인한 것이 되지는 않습니다.
 
 지원하는 Linux 환경에서는 세션 타일에 상태, 컨텍스트 사용 정도, 모델, 추론 노력, 브랜치, 작업 디렉터리, 충돌 표시가 추가됩니다. 이 릴리스는 Windows Terminal, PowerShell, WezTerm 탭을 네이티브로 관찰하지 않습니다.
+
+<!-- qhud:anchor -->
+<a id="system-usage-and-about"></a>
+
+## 시스템 사용량과 정보
+
+하단의 작은 그래프는 2초마다 측정하여 최근 약 60초의 최대 30개 표본을 표시합니다.
+CPU, MEM, GPU, DISK, NET을 선택하면 상세 정보가 열립니다. 같은 항목을 다시
+선택하면 닫히고 다른 항목을 선택하면 내용이 바뀝니다. CPU·메모리·GPU는 0–100%
+고정 축을 사용하고, 디스크와 네트워크는 읽기+쓰기 또는 수신+송신 속도를 최근 트래픽에
+맞춘 축으로 표시합니다. 마우스를 올리면 현재 값을 볼 수 있습니다.
+키보드는 Tab으로 항목에 이동한 뒤 Enter 또는 Space로 조작합니다.
+
+| 항목 | 측정 범위 |
+| --- | --- |
+| CPU | 논리 프로세서 전체의 CPU 사용률. |
+| MEM | 사용 중인 물리 메모리 / 전체 물리 메모리. 상세 정보에 바이트 용량을 표시합니다. |
+| GPU | 최초 유효 표본에서 가장 바쁜 지원 어댑터 하나를 골라 해당 측정 세션 동안 유지합니다. Windows는 같은 엔진의 프로세스 인스턴스를 합산한 뒤 가장 바쁜 엔진의 사용률을 표시합니다. |
+| DISK | 물리 디스크 전체의 초당 읽기·쓰기 바이트. 파티션과 중첩 장치의 입출력을 중복 합산하지 않습니다. 상세 정보는 볼륨별 중복을 제거한 로컬 디스크 볼륨의 사용/전체 용량이며 30초마다 갱신합니다. |
+| NET | 사용 가능한 IP 주소가 있는 비루프백 인터페이스 전체의 수신·송신 속도. Linux는 작동 상태가 내려간 인터페이스도 제외합니다. VPN·가상·물리 인터페이스에서 같은 트래픽이 중복 집계될 수 있으며 인터넷 회선 속도계는 아닙니다. |
+
+GPU 측정 지원은 장치와 드라이버에 따라 달라집니다. Windows는 WDDM GPU Engine
+카운터를 사용합니다. Linux는 AMD의 사용 가능한 busy-percent sysfs 값과 설치된
+NVML 라이브러리를 통한 NVIDIA 측정을 지원합니다. VRAM 사용량은 Linux 측정원이
+제공할 때만 표시하며 현재 Windows에는 표시하지 않습니다. 미지원 GPU는 숨깁니다.
+이미 지원이 확인된 GPU의 측정이 일시 실패하면 칸을 유지하고 그래프에 빈 구간을 표시합니다.
+첫 CPU·속도 표본, 카운터 초기화, 측정 불가 값은 `--` 또는 빈 구간이며 임의의 0이
+아닙니다. 정상 측정된 유휴 상태는 0으로 표시합니다.
+
+창을 숨기거나 최소화하면 시스템 측정을 중지합니다. 다시 표시하면 기록을 새로 시작하고
+속도 카운터를 준비합니다. 측정 간격이 길어진 경우도 기준값을 초기화합니다. 기록은
+메모리에만 보관하며 시스템 측정은 프로세스 스캔, 모니터링 명령 실행, 계정 자격 증명
+읽기, 원격 측정 전송을 수행하지 않습니다. `--demo`에는 예시임을 밝힌 합성 값을 사용합니다.
+
+왼쪽 위 **qhud**를 클릭하면 About에서 실행 중인 빌드의 버전, 제작자
+**Chenghao Quan (chquandogong)**,
+[제작자 홈페이지](https://chquandogong.github.io/CHENGHAO-QUAN/)를 확인할 수 있습니다.
+×, Escape 또는 패널 바깥을 클릭하면 닫힙니다. 시스템 정보만 JSON으로 진단하려면
+`qhud --system-dump`를 실행합니다. 두 표본을 기다린 뒤 계정 정보를 읽거나
+위젯을 열지 않고 종료합니다.
 
 <!-- qhud:anchor -->
 <a id="controls-and-commands"></a>
@@ -80,6 +120,7 @@ Windows에서는 `& '.\qhud.exe' --refresh-all`처럼 실행 파일 경로를 �
 
 ```sh
 qhud --dump
+qhud --system-dump
 qhud --claude-usage
 qhud --codex-usage
 qhud --agy-usage

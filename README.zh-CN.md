@@ -39,6 +39,7 @@ qhud 将分散在各个命令行界面的账户配额和会话状态集中到小
 | **账户信息** | 独立账户/工作区行、可配置显示名称，以及重启后仍带时间的快照。 |
 | **会话活动** | 在受支持的 Linux 环境中：状态、上下文压力、模型、推理力度、分支、工作目录和冲突指示。 |
 | **新旧程度** | 每 2 秒本地观测；只有显式刷新时才请求供应商用量。 |
+| **系统用量与关于** | 低调显示 CPU、内存、受支持 GPU、磁盘和网络历史；选择指标查看详情。About 显示构建版本、作者和主页。 |
 
 <!-- qhud:anchor -->
 <a id="a-compact-view-with-room-for-detail"></a>
@@ -75,12 +76,12 @@ qhud 将分散在各个命令行界面的账户配额和会话状态集中到小
 
 ## 安装
 
-**当前版本：[v0.6.2](https://github.com/chquandogong/qhud/releases/tag/v0.6.2)。** 两平台构建/测试均为发布门槛，每份压缩包都有 SHA-256 文件。
+**当前版本：[v0.7.0](https://github.com/chquandogong/qhud/releases/tag/v0.7.0)。** 两平台构建/测试均为发布门槛，每份压缩包都有 SHA-256 文件。
 
 | 下载 | 校验 |
 | --- | --- |
-| [Windows x64 ZIP](https://github.com/chquandogong/qhud/releases/download/v0.6.2/qhud-v0.6.2-windows-x86_64.zip) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.6.2/qhud-v0.6.2-windows-x86_64.zip.sha256) |
-| [Linux x86_64 tarball](https://github.com/chquandogong/qhud/releases/download/v0.6.2/qhud-v0.6.2-linux-x86_64.tar.gz) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.6.2/qhud-v0.6.2-linux-x86_64.tar.gz.sha256) |
+| [Windows x64 ZIP](https://github.com/chquandogong/qhud/releases/download/v0.7.0/qhud-v0.7.0-windows-x86_64.zip) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.7.0/qhud-v0.7.0-windows-x86_64.zip.sha256) |
+| [Linux x86_64 tarball](https://github.com/chquandogong/qhud/releases/download/v0.7.0/qhud-v0.7.0-linux-x86_64.tar.gz) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.7.0/qhud-v0.7.0-linux-x86_64.tar.gz.sha256) |
 
 ### Windows
 
@@ -91,9 +92,9 @@ qhud 将分散在各个命令行界面的账户配额和会话状态集中到小
 将压缩包及 SHA-256 文件下载到同一目录后：
 
 ```sh
-sha256sum -c qhud-v0.6.2-linux-x86_64.tar.gz.sha256
-tar -xzf qhud-v0.6.2-linux-x86_64.tar.gz
-install -Dm755 qhud-v0.6.2-linux-x86_64/qhud "$HOME/.local/bin/qhud"
+sha256sum -c qhud-v0.7.0-linux-x86_64.tar.gz.sha256
+tar -xzf qhud-v0.7.0-linux-x86_64.tar.gz
+install -Dm755 qhud-v0.7.0-linux-x86_64/qhud "$HOME/.local/bin/qhud"
 "$HOME/.local/bin/qhud"
 ```
 

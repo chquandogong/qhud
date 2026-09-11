@@ -63,3 +63,11 @@ jobs:
 
       - name: Verify the canonical dependency files are unchanged
         run: git diff --exit-code -- Cargo.toml Cargo.lock
+
+      - name: Keep Windows build for native smoke testing
+        uses: actions/upload-artifact@v4
+        with:
+          name: qhud-windows-smoke
+          path: target/x86_64-pc-windows-msvc/release/qhud.exe
+          retention-days: 3
+          if-no-files-found: error

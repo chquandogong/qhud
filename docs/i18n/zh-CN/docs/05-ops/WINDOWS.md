@@ -16,7 +16,7 @@ qhud 从 v0.6.0 起提供 Windows x64 WebView2 小组件，无需 WSL 即可显�
 
 ## 安装发布版
 
-从 [GitHub Releases](https://github.com/chquandogong/qhud/releases) 下载 `qhud-v0.6.2-windows-x86_64.zip` 及其校验和文件。解压后运行版本目录内的 `qhud.exe`。必须安装 Microsoft Edge WebView2 Runtime。
+从 [GitHub Releases](https://github.com/chquandogong/qhud/releases) 下载 `qhud-v0.7.0-windows-x86_64.zip` 及其校验和文件。解压后运行版本目录内的 `qhud.exe`。必须安装 Microsoft Edge WebView2 Runtime。
 
 ZIP 为便携包，不自动注册安装程序、登录自启动或快捷方式。更新时先通过托盘 **Quit qhud** 退出，再替换可执行文件。设置与供应商登录文件保存在独立位置。
 

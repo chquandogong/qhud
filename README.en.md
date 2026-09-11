@@ -39,6 +39,7 @@ backend and a lightweight webview. No Node.js or npm is required to build it.
 | **Account context** | Separate account/workspace rows, configurable display names, and dated snapshots after restart. |
 | **Session activity** | On supported Linux setups: status, context pressure, model, effort, branch, working directory, and conflict indicators. |
 | **Freshness** | Local observation every 2 seconds. Provider usage requests run when you explicitly refresh. |
+| **System usage and About** | A quiet CPU, memory, optional GPU, disk and network history strip; select a metric for detail. About shows the build version, maker and homepage. |
 
 ## A compact view, with room for detail
 
@@ -70,13 +71,13 @@ Example data is available only with `--demo`.
 
 ## Install
 
-**Current release: [v0.6.2](https://github.com/chquandogong/qhud/releases/tag/v0.6.2).**
+**Current release: [v0.7.0](https://github.com/chquandogong/qhud/releases/tag/v0.7.0).**
 Both platform build/test jobs gate publication. Each archive has a SHA-256 file.
 
 | Download | Verify |
 | --- | --- |
-| [Windows x64 ZIP](https://github.com/chquandogong/qhud/releases/download/v0.6.2/qhud-v0.6.2-windows-x86_64.zip) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.6.2/qhud-v0.6.2-windows-x86_64.zip.sha256) |
-| [Linux x86_64 tarball](https://github.com/chquandogong/qhud/releases/download/v0.6.2/qhud-v0.6.2-linux-x86_64.tar.gz) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.6.2/qhud-v0.6.2-linux-x86_64.tar.gz.sha256) |
+| [Windows x64 ZIP](https://github.com/chquandogong/qhud/releases/download/v0.7.0/qhud-v0.7.0-windows-x86_64.zip) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.7.0/qhud-v0.7.0-windows-x86_64.zip.sha256) |
+| [Linux x86_64 tarball](https://github.com/chquandogong/qhud/releases/download/v0.7.0/qhud-v0.7.0-linux-x86_64.tar.gz) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.7.0/qhud-v0.7.0-linux-x86_64.tar.gz.sha256) |
 
 ### Windows
 
@@ -90,9 +91,9 @@ for prerequisites, source builds, and configuration.
 After downloading the archive and its SHA-256 file into the same directory:
 
 ```sh
-sha256sum -c qhud-v0.6.2-linux-x86_64.tar.gz.sha256
-tar -xzf qhud-v0.6.2-linux-x86_64.tar.gz
-install -Dm755 qhud-v0.6.2-linux-x86_64/qhud "$HOME/.local/bin/qhud"
+sha256sum -c qhud-v0.7.0-linux-x86_64.tar.gz.sha256
+tar -xzf qhud-v0.7.0-linux-x86_64.tar.gz
+install -Dm755 qhud-v0.7.0-linux-x86_64/qhud "$HOME/.local/bin/qhud"
 "$HOME/.local/bin/qhud"
 ```
 

@@ -60,6 +60,7 @@ qhud의 전체 문서를 최초 설치부터 아키텍처, 결정, 릴리스 이
 | [v0.6.0 릴리스 노트](05-ops/releases/v0.6.0.md) | 네이티브 Windows 지원과 할당량/초기화 수정. |
 | [v0.6.1 릴리스 노트](05-ops/releases/v0.6.1.md) | 문서 재작성과 Ubuntu 검증. |
 | [v0.6.2 릴리스 노트](05-ops/releases/v0.6.2.md) | 로컬 로그인 정보에서 Codex 이메일 자동 표시. |
+| [v0.7.0 릴리스 노트](05-ops/releases/v0.7.0.md) | 작은 시스템 사용량 기록, 조건부 GPU 측정, About 정보. |
 
 <!-- qhud:anchor -->
 <a id="languages-and-source-fidelity"></a>

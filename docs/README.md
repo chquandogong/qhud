@@ -51,6 +51,7 @@ product behavior. Start with the specification and dashboard for the current sta
 | [v0.6.0 release notes](05-ops/releases/v0.6.0.md) | Native Windows support and quota/reset fixes. |
 | [v0.6.1 release notes](05-ops/releases/v0.6.1.md) | Documentation rewrite and Ubuntu verification. |
 | [v0.6.2 release notes](05-ops/releases/v0.6.2.md) | Automatic Codex email display from local login data. |
+| [v0.7.0 release notes](05-ops/releases/v0.7.0.md) | Subtle system usage history, conditional GPU measurement, and About. |
 
 ## Languages and source fidelity
 

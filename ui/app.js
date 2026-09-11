@@ -1399,9 +1399,8 @@
     // that actually measures the symptom (pixels) lives in the Rust
     // poll loop: frame_guard.rs.
 
-    // Font size: Ctrl+wheel over the widget zooms the whole page
-    // (pointer-only — the widget never takes keyboard focus), persisted
-    // across restarts. Range 70–160%.
+    // Font size: Ctrl+wheel over the widget zooms the whole page,
+    // persisted across restarts. Range 70–160%.
     const webview =
       tauri.webview && tauri.webview.getCurrentWebview
         ? tauri.webview.getCurrentWebview()

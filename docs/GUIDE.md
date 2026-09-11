@@ -20,20 +20,20 @@ contains a versioned directory and comes with a separate SHA-256 file.
 | Windows x64 | Extract the ZIP; run `qhud.exe` inside the extracted directory. | Microsoft Edge WebView2 Runtime. See [Windows setup](05-ops/WINDOWS.md). |
 | Linux x86_64 | Extract the tarball; install the binary inside its versioned directory. | GTK/WebKitGTK; Ubuntu 24.04 is the reference system. See [Linux operations](05-ops/RUNBOOK.md). |
 
-For Linux v0.6.2, after downloading both files:
+For Linux v0.7.0, after downloading both files:
 
 ```sh
-sha256sum -c qhud-v0.6.2-linux-x86_64.tar.gz.sha256
-tar -xzf qhud-v0.6.2-linux-x86_64.tar.gz
-install -Dm755 qhud-v0.6.2-linux-x86_64/qhud "$HOME/.local/bin/qhud"
+sha256sum -c qhud-v0.7.0-linux-x86_64.tar.gz.sha256
+tar -xzf qhud-v0.7.0-linux-x86_64.tar.gz
+install -Dm755 qhud-v0.7.0-linux-x86_64/qhud "$HOME/.local/bin/qhud"
 "$HOME/.local/bin/qhud"
 ```
 
 For a Windows download, compare the displayed digest with the `.sha256` file:
 
 ```powershell
-Get-FileHash -Algorithm SHA256 .\qhud-v0.6.2-windows-x86_64.zip
-Get-Content .\qhud-v0.6.2-windows-x86_64.zip.sha256
+Get-FileHash -Algorithm SHA256 .\qhud-v0.7.0-windows-x86_64.zip
+Get-Content .\qhud-v0.7.0-windows-x86_64.zip.sha256
 ```
 
 Sign in using each provider's own CLI. qhud reads existing account information;
@@ -60,6 +60,45 @@ On supported Linux setups, session tiles add status, context pressure, model,
 effort, branch, working directory, and conflict indicators. Windows Terminal,
 PowerShell, and WezTerm tabs are not observed natively by this release.
 
+## System usage and About
+
+The small bottom strip samples every 2 seconds and keeps up to 30 points from
+roughly the last 60 seconds. Select CPU, MEM, GPU, DISK or NET to open its details.
+Select the same metric again to close the panel, or another metric to switch it.
+CPU, memory and GPU use a fixed 0–100% scale; disk and network graphs show
+read + write or receive + send throughput with a scale that follows recent traffic.
+Hover a metric for its current values. Keyboard users can Tab to a metric and
+press Enter or Space.
+
+| Metric | What it measures |
+| --- | --- |
+| CPU | Total CPU utilization across logical processors. |
+| MEM | Used physical memory / total physical memory; the details show byte capacities. |
+| GPU | One supported adapter, chosen by the busiest valid initial sample and retained for that sampling session. Windows reports the busiest engine after combining process instances of that engine. |
+| DISK | Aggregate physical-disk read/write speed in bytes per second, excluding duplicate partition/stacked-device I/O. Details show used/total capacity of mounted local disk volumes, deduplicated by volume; capacity refreshes every 30 seconds. |
+| NET | Aggregate receive/send speed on non-loopback interfaces with usable IP addresses. Linux also filters interfaces whose operational state is down. VPN/virtual and physical interfaces can count the same traffic more than once; this is not an ISP bandwidth meter. |
+
+GPU measurement is conditional on the device and driver: Windows uses WDDM GPU
+Engine counters; Linux supports AMD's available busy-percent sysfs value and NVIDIA
+through an installed NVML library. Linux can show VRAM usage when the selected
+provider supplies it; Windows does not currently report VRAM. Unsupported GPUs are
+hidden. If a previously supported reading fails, the column remains with a gap.
+The first CPU/rate sample, counter resets and unavailable readings show `--` or a
+gap, never a fabricated zero. A valid idle sample is zero.
+
+System sampling pauses when the window is hidden or minimized. Showing it again
+starts a new history and warms up rate counters. A long sampling gap also resets
+the baseline. History stays in memory; system sampling does not scan processes,
+launch monitoring commands, read account credentials or send telemetry. `--demo`
+uses clearly identified synthetic system values.
+
+Click **qhud** at the top left to open About. It shows the version embedded in the
+running build, maker **Chenghao Quan (chquandogong)** and the
+[maker's homepage](https://chquandogong.github.io/CHENGHAO-QUAN/).
+Close with ×, Escape or a click outside the panel. For a local system-only JSON
+diagnostic, run `qhud --system-dump`; it waits for two samples and exits without
+loading account information or opening the widget.
+
 ## Controls and commands
 
 Drag the header/footer to move the widget, use the corner grip to resize, and
@@ -83,6 +122,7 @@ These diagnostics run independently:
 
 ```sh
 qhud --dump
+qhud --system-dump
 qhud --claude-usage
 qhud --codex-usage
 qhud --agy-usage

@@ -16,7 +16,7 @@ qhud는 v0.6.0부터 Windows x64 WebView2 위젯을 제공합니다. WSL 없이 
 
 ## 릴리스 설치
 
-[GitHub Releases](https://github.com/chquandogong/qhud/releases)에서 `qhud-v0.6.2-windows-x86_64.zip`과 체크섬 파일을 받습니다. 압축을 풀고 버전명이 붙은 디렉터리 안의 `qhud.exe`를 실행합니다. Microsoft Edge WebView2 Runtime이 필요합니다.
+[GitHub Releases](https://github.com/chquandogong/qhud/releases)에서 `qhud-v0.7.0-windows-x86_64.zip`과 체크섬 파일을 받습니다. 압축을 풀고 버전명이 붙은 디렉터리 안의 `qhud.exe`를 실행합니다. Microsoft Edge WebView2 Runtime이 필요합니다.
 
 ZIP은 휴대용 배포판입니다. 설치 프로그램, 로그인 자동 시작, 바로가기를 자동 등록하지 않습니다. 업데이트할 때는 트레이의 **Quit qhud**로 종료한 뒤 실행 파일을 교체합니다. 설정과 공급자 로그인 파일은 별도 위치에 유지됩니다.
 
