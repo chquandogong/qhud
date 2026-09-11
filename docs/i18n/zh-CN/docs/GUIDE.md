@@ -78,8 +78,8 @@ Get-Content .\qhud-v0.7.0-windows-x86_64.zip.sha256
 | NET | 具有可用 IP 地址的非回环接口总接收/发送速率。Linux 还会过滤运行状态为 down 的接口。VPN、虚拟和物理接口可能重复计算同一流量，因此这不是运营商带宽计量器。 |
 
 GPU 测量取决于设备和驱动：Windows 使用 WDDM GPU Engine 计数器；Linux
-支持 AMD 提供的 busy-percent sysfs 值，以及通过已安装 NVML 库读取 NVIDIA
-数据。仅当 Linux 数据源提供显存用量时显示该值；Windows 暂不显示显存。
+支持 AMD 提供的 busy-percent sysfs 值、Intel i915/xe 空闲驻留计数器的补集，以及
+通过已安装 NVML 库读取 NVIDIA 数据。仅当 Linux 数据源提供显存用量时显示该值；Windows 暂不显示显存。
 不支持的 GPU 会隐藏。曾经支持的设备暂时读取失败时保留该列并显示缺口。
 首次 CPU/速率采样、计数器重置和不可用读数显示 `--` 或缺口，不会填入虚构的零。
 有效的空闲采样才显示为零。

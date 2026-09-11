@@ -276,17 +276,24 @@ mod platform {
 #[cfg(target_os = "linux")]
 mod platform {
     use super::{GpuReading, valid_percent};
-    use std::{fs, path::PathBuf};
+    use std::{
+        fs,
+        path::{Path, PathBuf},
+        time::Instant,
+    };
+
+    const DRM_ROOT: &str = "/sys/class/drm";
 
     pub struct Sampler {
         amd_devices: Vec<(String, PathBuf)>,
+        intel_devices: Vec<intel::Device>,
         nvidia: Option<nvml::Nvml>,
     }
 
     impl Sampler {
         pub fn new() -> Self {
             let mut amd_devices = Vec::new();
-            if let Ok(entries) = fs::read_dir("/sys/class/drm") {
+            if let Ok(entries) = fs::read_dir(DRM_ROOT) {
                 for entry in entries.flatten() {
                     let name = entry.file_name().to_string_lossy().into_owned();
                     if !is_card(&name) {
@@ -301,11 +308,13 @@ mod platform {
             amd_devices.sort_by(|a, b| a.0.cmp(&b.0));
             Self {
                 amd_devices,
+                intel_devices: intel::discover(Path::new(DRM_ROOT)),
                 nvidia: nvml::Nvml::new(),
             }
         }
 
         pub fn sample(&mut self) -> Vec<GpuReading> {
+            let now = Instant::now();
             let mut readings = Vec::new();
             for (name, device) in &self.amd_devices {
                 let Some(usage_percent) = fs::read_to_string(device.join("gpu_busy_percent"))
@@ -326,6 +335,11 @@ mod platform {
                     memory_total_bytes: memory("mem_info_vram_total").filter(|total| *total > 0),
                 });
             }
+            readings.extend(
+                self.intel_devices
+                    .iter_mut()
+                    .filter_map(|device| device.sample(now)),
+            );
             if let Some(nvidia) = &self.nvidia {
                 readings.extend(nvidia.sample());
             }
@@ -340,6 +354,154 @@ mod platform {
 
     fn parse_percent(value: &str) -> Option<f64> {
         value.trim().parse::<f64>().ok().and_then(valid_percent)
+    }
+
+    /// Intel's drivers publish no busy percentage. Both publish the opposite:
+    /// a monotonic counter of the milliseconds each GT spent powered down
+    /// (i915 RC6, xe gtidle). Busy is that counter's complement over the wall
+    /// time between two reads, so a device's first read is a gap in the same
+    /// way the disk and network rates begin with one.
+    mod intel {
+        use super::{GpuReading, is_card, valid_percent};
+        use std::fs;
+        use std::path::{Path, PathBuf};
+        use std::time::Instant;
+
+        pub struct Device {
+            name: String,
+            /// One idle counter per GT — render, media, and so on.
+            counters: Vec<PathBuf>,
+            previous: Option<(Instant, Vec<Option<u64>>)>,
+        }
+
+        impl Device {
+            pub fn sample(&mut self, now: Instant) -> Option<GpuReading> {
+                let current: Vec<Option<u64>> =
+                    self.counters.iter().map(|path| read_ms(path)).collect();
+                let (then, previous) = self.previous.replace((now, current.clone()))?;
+                let elapsed_ms = now.duration_since(then).as_secs_f64() * 1_000.0;
+                // Independent GTs run in parallel, so the busiest one carries
+                // the adapter — the same rule the Windows engine counters use.
+                let usage_percent = previous
+                    .iter()
+                    .zip(&current)
+                    .filter_map(|(before, after)| busy_percent(*before, *after, elapsed_ms))
+                    .reduce(f64::max)?;
+                Some(GpuReading {
+                    name: self.name.clone(),
+                    usage_percent,
+                    // These GPUs render from shared system memory, which the
+                    // MEM graph already reports; neither driver publishes a
+                    // VRAM total here.
+                    memory_used_bytes: None,
+                    memory_total_bytes: None,
+                })
+            }
+        }
+
+        /// Intel cards under a `/sys/class/drm` root that expose a usable idle
+        /// counter, in a stable order.
+        pub fn discover(root: &Path) -> Vec<Device> {
+            let mut devices: Vec<Device> = fs::read_dir(root)
+                .into_iter()
+                .flatten()
+                .filter_map(Result::ok)
+                .filter_map(|entry| {
+                    let name = entry.file_name().to_string_lossy().into_owned();
+                    if !is_card(&name) {
+                        return None;
+                    }
+                    let card = entry.path();
+                    // amdgpu also runs GTs, but it publishes a busy percentage
+                    // the AMD path reads directly; never measure it twice.
+                    if card.join("device").join("gpu_busy_percent").is_file() {
+                        return None;
+                    }
+                    if !matches!(driver(&card).as_deref(), Some("i915" | "xe")) {
+                        return None;
+                    }
+                    let counters = counters(&card);
+                    (!counters.is_empty()).then(|| Device {
+                        name: format!("Intel GPU ({name})"),
+                        counters,
+                        previous: None,
+                    })
+                })
+                .collect();
+            devices.sort_by(|a, b| a.name.cmp(&b.name));
+            devices
+        }
+
+        pub fn busy_percent(
+            before: Option<u64>,
+            after: Option<u64>,
+            elapsed_ms: f64,
+        ) -> Option<f64> {
+            // A suspend or driver reload restarts the counter, which reads as a
+            // decrease. That is a gap, never a fabricated 100%.
+            let idle_ms = after?.checked_sub(before?)? as f64;
+            if !elapsed_ms.is_finite() || elapsed_ms < 1.0 {
+                return None;
+            }
+            // The counter and the sampler tick independently, so residency can
+            // overshoot the window; clamping keeps that an idle GT.
+            valid_percent((100.0 * (1.0 - idle_ms / elapsed_ms)).clamp(0.0, 100.0))
+        }
+
+        fn driver(card: &Path) -> Option<String> {
+            fs::read_to_string(card.join("device").join("uevent"))
+                .ok()?
+                .lines()
+                .find_map(|line| line.strip_prefix("DRIVER="))
+                .map(|driver| driver.trim().to_owned())
+        }
+
+        fn counters(card: &Path) -> Vec<PathBuf> {
+            let mut counters: Vec<PathBuf> = numbered(&card.join("gt"), "gt")
+                .into_iter()
+                .map(|gt| gt.join("rc6_residency_ms"))
+                .chain(
+                    numbered(&card.join("device"), "tile")
+                        .into_iter()
+                        .flat_map(|tile| numbered(&tile, "gt"))
+                        .map(|gt| gt.join("gtidle").join("idle_residency_ms")),
+                )
+                .filter(|path| path.is_file())
+                .collect();
+            if counters.is_empty() {
+                // Single-GT i915 predates the per-GT tree.
+                let legacy = card.join("power").join("rc6_residency_ms");
+                if legacy.is_file() {
+                    counters.push(legacy);
+                }
+            }
+            counters
+        }
+
+        /// Numbered sysfs children such as `gt0` or `tile1`, in a stable order.
+        fn numbered(dir: &Path, prefix: &str) -> Vec<PathBuf> {
+            let mut found: Vec<PathBuf> = fs::read_dir(dir)
+                .into_iter()
+                .flatten()
+                .filter_map(Result::ok)
+                .filter(|entry| {
+                    entry
+                        .file_name()
+                        .to_string_lossy()
+                        .strip_prefix(prefix)
+                        .is_some_and(|suffix| {
+                            !suffix.is_empty() && suffix.bytes().all(|byte| byte.is_ascii_digit())
+                        })
+                })
+                .map(|entry| entry.path())
+                .collect();
+            found.sort();
+            found
+        }
+
+        fn read_ms(path: &Path) -> Option<u64> {
+            fs::read_to_string(path).ok()?.trim().parse::<u64>().ok()
+        }
     }
 
     mod nvml {
@@ -489,7 +651,10 @@ mod platform {
 
     #[cfg(test)]
     mod tests {
+        use super::intel::{busy_percent, discover};
         use super::*;
+        use std::path::Path;
+        use std::time::{Duration, Instant};
 
         #[test]
         fn only_drm_cards_are_probed_not_connector_or_render_nodes() {
@@ -507,6 +672,147 @@ mod platform {
             for invalid in ["", "unavailable", "NaN", "-1", "101"] {
                 assert_eq!(parse_percent(invalid), None);
             }
+        }
+
+        fn fake_drm_root(tag: &str) -> PathBuf {
+            let root = std::env::temp_dir().join(format!("qhud-drm-{tag}-{}", std::process::id()));
+            let _ = fs::remove_dir_all(&root);
+            root
+        }
+
+        fn write(path: PathBuf, contents: &str) {
+            fs::create_dir_all(path.parent().expect("file has a parent")).expect("create");
+            fs::write(path, contents).expect("write");
+        }
+
+        fn card(root: &Path, name: &str, driver: &str) -> PathBuf {
+            let card = root.join(name);
+            write(
+                card.join("device").join("uevent"),
+                &format!("DRIVER={driver}\nPCI_ID=8086:7D55\n"),
+            );
+            card
+        }
+
+        #[test]
+        fn intel_busy_is_the_complement_of_idle_residency_over_the_window() {
+            // 1500 ms of a 2000 ms window spent powered down is 25% busy.
+            assert_eq!(busy_percent(Some(1_000), Some(2_500), 2_000.0), Some(25.0));
+            // A GT that never woke is a valid zero, not a missing reading.
+            assert_eq!(busy_percent(Some(0), Some(2_000), 2_000.0), Some(0.0));
+            // The counter and the sampler are not synchronized, so residency
+            // can overshoot the window by a tick; that is still fully idle.
+            assert_eq!(busy_percent(Some(0), Some(2_040), 2_000.0), Some(0.0));
+            // No residency accrued at all means the GT was busy throughout.
+            assert_eq!(busy_percent(Some(7), Some(7), 2_000.0), Some(100.0));
+        }
+
+        #[test]
+        fn intel_first_reads_resets_and_empty_windows_are_gaps_never_zero() {
+            assert_eq!(busy_percent(None, Some(10), 2_000.0), None);
+            assert_eq!(busy_percent(Some(10), None, 2_000.0), None);
+            // A driver reload or suspend restarts the counter.
+            assert_eq!(busy_percent(Some(2_000), Some(10), 2_000.0), None);
+            // Below its own millisecond resolution the counter says nothing.
+            assert_eq!(busy_percent(Some(0), Some(10), 0.0), None);
+            assert_eq!(busy_percent(Some(0), Some(10), f64::NAN), None);
+        }
+
+        #[test]
+        fn an_intel_card_reports_its_busiest_gt_only_once_it_has_two_reads() {
+            let root = fake_drm_root("busiest");
+            let card = card(&root, "card0", "i915");
+            let render = card.join("gt").join("gt0").join("rc6_residency_ms");
+            let media = card.join("gt").join("gt1").join("rc6_residency_ms");
+            write(render.clone(), "1000\n");
+            write(media.clone(), "1000\n");
+
+            let mut devices = discover(&root);
+            assert_eq!(devices.len(), 1);
+            let device = &mut devices[0];
+            let start = Instant::now();
+            // One read yields no residency delta, exactly like a rate's first
+            // sample: a gap, not an idle GPU.
+            assert!(device.sample(start).is_none());
+
+            write(render, "2500\n"); // 1500 ms idle -> 25% busy
+            write(media, "3000\n"); // 2000 ms idle -> idle
+            let reading = device
+                .sample(start + Duration::from_secs(2))
+                .expect("second read has a window");
+            assert_eq!(reading.name, "Intel GPU (card0)");
+            // Independent GTs run in parallel: the busiest one, never a sum.
+            assert_eq!(reading.usage_percent, 25.0);
+            // Both drivers leave VRAM to shared system memory here.
+            assert_eq!(reading.memory_total_bytes, None);
+            let _ = fs::remove_dir_all(&root);
+        }
+
+        #[test]
+        fn discovery_takes_measurable_intel_cards_and_prefers_per_gt_counters() {
+            let root = fake_drm_root("discovery");
+            // amdgpu publishes a busy percentage; the AMD path already reads it.
+            let amd = card(&root, "card0", "amdgpu");
+            write(amd.join("device").join("gpu_busy_percent"), "7\n");
+            write(
+                amd.join("gt").join("gt0").join("rc6_residency_ms"),
+                "1000\n",
+            );
+            // A single-GT i915 exposes only the legacy card-level counter.
+            let legacy = card(&root, "card1", "i915");
+            write(legacy.join("power").join("rc6_residency_ms"), "1000\n");
+            // A multi-GT i915 exposes both; the legacy alias repeats one GT.
+            let multi = card(&root, "card2", "i915");
+            write(
+                multi.join("gt").join("gt0").join("rc6_residency_ms"),
+                "1000\n",
+            );
+            write(
+                multi.join("gt").join("gt1").join("rc6_residency_ms"),
+                "1000\n",
+            );
+            write(multi.join("power").join("rc6_residency_ms"), "1000\n");
+            // An Intel card without a counter is unmeasurable, not idle.
+            card(&root, "card3", "i915");
+            // Connector nodes carry the same driver but are not cards.
+            write(
+                root.join("card2-eDP-1").join("device").join("uevent"),
+                "DRIVER=i915\n",
+            );
+
+            let mut devices = discover(&root);
+            let start = Instant::now();
+            for device in &mut devices {
+                assert!(device.sample(start).is_none());
+            }
+            // Legacy card: no residency accrued -> busy throughout.
+            // Multi-GT card: gt0 half idle, gt1 fully idle, legacy alias frozen
+            // at 100% busy — reading it too would report 100 instead of 50.
+            write(legacy.join("power").join("rc6_residency_ms"), "1000\n");
+            write(
+                multi.join("gt").join("gt0").join("rc6_residency_ms"),
+                "2000\n",
+            );
+            write(
+                multi.join("gt").join("gt1").join("rc6_residency_ms"),
+                "3000\n",
+            );
+            write(multi.join("power").join("rc6_residency_ms"), "1000\n");
+
+            let later = start + Duration::from_secs(2);
+            let readings: Vec<_> = devices
+                .iter_mut()
+                .filter_map(|device| device.sample(later))
+                .map(|reading| (reading.name, reading.usage_percent))
+                .collect();
+            assert_eq!(
+                readings,
+                [
+                    ("Intel GPU (card1)".to_owned(), 100.0),
+                    ("Intel GPU (card2)".to_owned(), 50.0),
+                ]
+            );
+            let _ = fs::remove_dir_all(&root);
         }
     }
 }

@@ -79,8 +79,9 @@ press Enter or Space.
 | NET | Aggregate receive/send speed on non-loopback interfaces with usable IP addresses. Linux also filters interfaces whose operational state is down. VPN/virtual and physical interfaces can count the same traffic more than once; this is not an ISP bandwidth meter. |
 
 GPU measurement is conditional on the device and driver: Windows uses WDDM GPU
-Engine counters; Linux supports AMD's available busy-percent sysfs value and NVIDIA
-through an installed NVML library. Linux can show VRAM usage when the selected
+Engine counters; Linux supports AMD's available busy-percent sysfs value, Intel's
+i915/xe idle-residency counters read as their complement, and NVIDIA through an
+installed NVML library. Linux can show VRAM usage when the selected
 provider supplies it; Windows does not currently report VRAM. Unsupported GPUs are
 hidden. If a previously supported reading fails, the column remains with a gap.
 The first CPU/rate sample, counter resets and unavailable readings show `--` or a
