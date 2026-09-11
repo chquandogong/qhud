@@ -1135,6 +1135,8 @@
     const p = state.payload;
     if (!p) return;
 
+    window.QhudSystemMetrics?.update(p.system);
+
     // summary line
     summaryEl.innerHTML = "";
     summaryEl.append(`${p.summary.panes} panes · `);
@@ -1223,10 +1225,9 @@
     if (!state.payload) return;
     // Stale watchdog (cross-validation CV-2): if the backend stops
     // emitting, say so instead of freezing plausible-looking numbers.
-    metaEl.classList.toggle(
-      "stale",
-      state.receivedAt > 0 && Date.now() - state.receivedAt > 8000,
-    );
+    const stalled = state.receivedAt > 0 && Date.now() - state.receivedAt > 8000;
+    metaEl.classList.toggle("stale", stalled);
+    window.QhudSystemMetrics?.setStale(stalled);
     for (const reset of tilesEl.querySelectorAll(".g-reset[data-reset-unix]")) {
       const b = reset.querySelector("b");
       if (b) b.textContent = fmtReset(Number(reset.dataset.resetUnix));
@@ -1293,6 +1294,55 @@
   document.addEventListener("contextmenu", (e) => e.preventDefault());
 
   const tauri = window.__TAURI__;
+
+  const aboutTrigger = document.getElementById("aboutTrigger");
+  const aboutDialog = document.getElementById("aboutDialog");
+  const aboutVersion = document.getElementById("aboutVersion");
+  const aboutError = document.getElementById("aboutError");
+  let appInfoLoaded = false;
+  aboutTrigger.addEventListener("click", async () => {
+    aboutError.hidden = true;
+    if (!aboutDialog.open) aboutDialog.showModal();
+    if (appInfoLoaded) return;
+    if (!tauri) {
+      aboutVersion.textContent = "v0.7.0 · browser preview";
+      appInfoLoaded = true;
+      return;
+    }
+    aboutVersion.textContent = "Loading version…";
+    try {
+      const info = await tauri.core.invoke("app_info");
+      aboutVersion.textContent = info.version ? `v${info.version}` : "Version unavailable";
+      if (info.author) document.getElementById("aboutAuthor").textContent = info.author;
+      appInfoLoaded = !!info.version;
+    } catch (error) {
+      aboutVersion.textContent = "Version unavailable";
+      reportJsError("app_info", error);
+    }
+  });
+  document.getElementById("aboutClose").addEventListener("click", () => aboutDialog.close());
+  aboutDialog.addEventListener("close", () => aboutTrigger.focus({ preventScroll: true }));
+  aboutDialog.addEventListener("click", (event) => {
+    if (event.target !== aboutDialog) return;
+    const bounds = aboutDialog.getBoundingClientRect();
+    if (event.clientX < bounds.left || event.clientX > bounds.right ||
+        event.clientY < bounds.top || event.clientY > bounds.bottom) aboutDialog.close();
+  });
+  for (const link of aboutDialog.querySelectorAll("[data-about-link]")) {
+    link.addEventListener("click", async (event) => {
+      if (!tauri) return;
+      event.preventDefault();
+      aboutError.hidden = true;
+      try {
+        await tauri.core.invoke("open_about_link", { target: link.dataset.aboutLink });
+      } catch (error) {
+        aboutError.textContent = "Could not open the browser. Please try again.";
+        aboutError.hidden = false;
+        reportJsError("open_about_link", error);
+      }
+    });
+  }
+
   if (tauri) {
     const win = tauri.window.getCurrentWindow();
     const PhysicalPos =
@@ -1382,6 +1432,7 @@
     tauri.event.listen("qhud://report", ({ payload }) => {
       state.payload = payload;
       state.receivedAt = Date.now();
+      window.QhudSystemMetrics?.setStale(false);
       render();
     });
 
@@ -1454,7 +1505,7 @@
 
     for (const bar of document.querySelectorAll(".topbar, .foot")) {
       bar.addEventListener("pointerdown", (e) => {
-        if (e.target.closest(".grip, .refresh-all")) return;
+        if (e.target.closest(".grip, button")) return;
         e.preventDefault();
         beginManual("move", e);
       });
@@ -1468,11 +1519,12 @@
     // ui/index.html can be opened directly during development.
     grip.style.display = "none";
     const now = Math.floor(Date.now() / 1000);
-    state.payload = {
+    state.payload = window.__QHUD_PREVIEW_REPORT__ || {
       schema: 1,
       source: "demo",
       generated_at_ms: Date.now(),
       poll_secs: 2,
+      system: window.QhudSystemMetrics?.demoSnapshot(),
       quotas: [
         {
           provider: "agy",
@@ -1656,6 +1708,16 @@
     };
     state.receivedAt = Date.now();
     render();
+    // Browser-only fixture injection keeps visual/interaction tests isolated
+    // from local accounts and credentials. Never exposed inside Tauri.
+    window.QhudPreview = {
+      setReport(payload) {
+        state.payload = payload;
+        state.receivedAt = Date.now();
+        window.QhudSystemMetrics?.setStale(false);
+        render();
+      },
+    };
     // Keep the preview "fresh" so the stale watchdog doesn't flag a
     // static page (screenshots and browser dev both use this path).
     setInterval(() => {

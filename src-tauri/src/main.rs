@@ -1,5 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod about;
 mod accounts;
 mod agy_usage;
 mod claude_usage;
@@ -10,6 +11,7 @@ mod frame_guard;
 mod paths;
 mod poll;
 mod registry;
+mod system_metrics;
 mod usage_cache;
 mod view;
 
@@ -217,6 +219,21 @@ fn main() {
         std::thread::sleep(std::time::Duration::from_millis(1500));
     }
 
+    // System-only diagnostics never read provider accounts or tokens.
+    if std::env::args().any(|a| a == "--system-dump") {
+        let mut collector = system_metrics::Collector::new();
+        collector.sample();
+        std::thread::sleep(system_metrics::INTERVAL);
+        match serde_json::to_string_pretty(&collector.sample()) {
+            Ok(json) => println!("{json}"),
+            Err(e) => {
+                eprintln!("qhud: system metrics: {e}");
+                std::process::exit(1);
+            }
+        }
+        return;
+    }
+
     // Diagnostic mode (before single-instance, no GTK): print one
     // observe payload — exactly what the widget renders — and exit.
     if std::env::args().any(|a| a == "--dump") {
@@ -338,9 +355,12 @@ fn main() {
             fetch_codex_workspaces,
             fetch_claude_usage,
             fetch_agy_usage,
-            forget_account
+            forget_account,
+            about::app_info,
+            about::open_about_link
         ])
         .plugin(tauri_plugin_window_state::Builder::default().build())
+        .plugin(tauri_plugin_opener::init())
         .setup(|app| {
             let win = app
                 .get_webview_window("main")

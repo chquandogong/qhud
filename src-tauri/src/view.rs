@@ -57,6 +57,9 @@ pub struct Payload {
     pub codex_workspaces: Vec<crate::codex_usage::WorkspaceUsage>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub codex_fetched_at_ms: Option<u64>,
+    /// Local system telemetry, held in memory for the last minute.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub system: Option<crate::system_metrics::SystemSnapshot>,
 }
 
 #[derive(Serialize, Clone)]
@@ -189,6 +192,7 @@ pub fn payload(reports: &[PaneReport]) -> Payload {
         workspace_plans: std::collections::HashMap::new(),
         codex_workspaces: Vec::new(),
         codex_fetched_at_ms: None,
+        system: None,
     }
 }
 
@@ -705,6 +709,7 @@ mod tests {
             workspace_plans: std::collections::HashMap::new(),
             codex_workspaces: Vec::new(),
             codex_fetched_at_ms: None,
+            system: None,
         }
     }
 

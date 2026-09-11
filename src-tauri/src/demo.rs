@@ -171,5 +171,6 @@ pub fn payload() -> Payload {
         workspace_plans: std::collections::HashMap::new(),
         codex_workspaces: Vec::new(),
         codex_fetched_at_ms: None,
+        system: Some(crate::system_metrics::demo_snapshot()),
     }
 }

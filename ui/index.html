@@ -10,7 +10,7 @@
     <div id="root" class="root">
       <header class="topbar">
         <span class="live-dot" aria-hidden="true"></span>
-        <span class="brand">qhud</span>
+        <button class="brand about-trigger" id="aboutTrigger" type="button" title="About qhud" aria-haspopup="dialog">qhud</button>
         <span class="summary" id="summary"></span>
         <span class="badge" id="srcBadge" hidden>DEMO</span>
         <button
@@ -26,11 +26,30 @@
 
       <main id="tiles" class="tiles" aria-live="polite"></main>
 
+      <section id="systemMetrics" class="system-metrics" aria-label="System usage, last 60 seconds" hidden>
+        <div class="system-grid" id="systemGrid"></div>
+        <div class="system-detail" id="systemDetail" hidden></div>
+      </section>
+
       <footer class="foot">
         <span class="meta" id="meta"></span>
         <span class="grip" id="grip" title="drag to resize">◢</span>
       </footer>
     </div>
+    <dialog class="about-dialog" id="aboutDialog" aria-labelledby="aboutTitle">
+      <div class="about-head">
+        <h1 id="aboutTitle">qhud</h1>
+        <button class="about-close" id="aboutClose" type="button" aria-label="Close About">×</button>
+      </div>
+      <p class="about-version" id="aboutVersion">Loading version…</p>
+      <p class="about-author">Made by <span id="aboutAuthor">Chenghao Quan (chquandogong)</span></p>
+      <div class="about-links">
+        <a href="https://chquandogong.github.io/CHENGHAO-QUAN/" target="_blank" rel="noopener noreferrer" data-about-link="author">Homepage ↗</a>
+        <a href="https://github.com/chquandogong/qhud" target="_blank" rel="noopener noreferrer" data-about-link="repository">GitHub ↗</a>
+      </div>
+      <p class="about-error" id="aboutError" hidden></p>
+    </dialog>
+    <script src="system-metrics.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

@@ -25,6 +25,13 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Frontend metrics tests
+        run: node --test tests/system-metrics.test.cjs
+
       - name: Format
         run: cargo fmt --all --check
 

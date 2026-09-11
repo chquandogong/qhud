@@ -1,6 +1,6 @@
 use std::time::{Duration, Instant};
 
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Manager};
 
 use qmonster::app::bootstrap::Context;
 use qmonster::app::config::{MuxBackend, QmonsterConfig};
@@ -11,7 +11,7 @@ use qmonster::notify::desktop::NotifyBackend;
 use qmonster::store::sink::NoopSink;
 use qmonster::tmux::TmuxSource;
 
-use crate::{accounts, demo, fetched_store, registry, usage_cache, view};
+use crate::{accounts, demo, fetched_store, registry, system_metrics, usage_cache, view};
 
 const POLL: Duration = Duration::from_secs(2);
 const LIVE_RETRY: Duration = Duration::from_secs(10);
@@ -39,6 +39,8 @@ pub fn run(app: AppHandle) {
     let mut last_attempt: Option<Instant> = None;
     let mut tick: u64 = 0;
     let demo_mode = std::env::args().any(|arg| arg == "--demo");
+    let mut collector: Option<system_metrics::Collector> = None;
+    let mut metrics_paused = false;
 
     loop {
         // The window-state plugin only persists on graceful exit, and a
@@ -74,11 +76,24 @@ pub fn run(app: AppHandle) {
             None => None,
         };
 
-        let payload = if demo_mode {
+        let mut payload = if demo_mode {
             demo::payload()
         } else {
             enrich_payload(payload.unwrap_or_else(local_payload))
         };
+        if !demo_mode {
+            let visible = app.get_webview_window("main").is_some_and(|win| {
+                win.is_visible().unwrap_or(false) && !win.is_minimized().unwrap_or(false)
+            });
+            if visible {
+                let collector = collector.get_or_insert_with(system_metrics::Collector::new);
+                if metrics_paused {
+                    collector.reset();
+                }
+                payload.system = Some(collector.sample());
+            }
+            metrics_paused = !visible;
+        }
         let _ = app.emit("qhud://report", &payload);
         // Pixel-level freeze watchdog (~every 28 s; see frame_guard.rs).
         crate::frame_guard::tick(&app, tick);
@@ -99,7 +114,8 @@ pub fn dump_once() -> Option<String> {
         payload.backend = Some(backend.to_string());
         Some(payload)
     });
-    let payload = enrich_payload(payload.unwrap_or_else(local_payload));
+    let mut payload = enrich_payload(payload.unwrap_or_else(local_payload));
+    payload.system = Some(system_metrics::Collector::new().sample());
     serde_json::to_string_pretty(&payload).ok()
 }
 
