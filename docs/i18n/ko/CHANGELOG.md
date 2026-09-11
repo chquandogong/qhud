@@ -16,6 +16,25 @@ qhud의 모든 주요 변경 사항을 기록합니다. 형식: [Keep a Changelo
 
 ## [미출시]
 
+## [0.7.1] — 2026-09-11
+
+<!-- qhud:anchor -->
+<a id="intel-gpus-on-linux"></a>
+
+### Linux Intel GPU 측정
+
+- Linux에서 Intel GPU를 측정합니다. i915·xe 드라이버는 busy 백분율을 제공하지 않으므로,
+  GT별 유휴 잔류 카운터를 읽어 표본 구간에 대한 여집합을 사용률로 보고하며, Windows 엔진
+  카운터와 같은 규칙으로 가장 바쁜 GT를 취합니다. 카드의 첫 측정은 빈 구간이고, 카운터가
+  초기화되면 100%를 지어내지 않고 빈 구간을 유지합니다. VRAM은 표시하지 않습니다. 이
+  GPU들은 MEM이 이미 보고하는 공유 시스템 메모리를 사용합니다.
+
+v0.7.0이 추가한 GPU 칸을 Linux의 어떤 측정원도 Intel 그래픽에서 채우지 못했습니다.
+이미 busy 백분율을 제공하는 장치는 그대로입니다. amdgpu는 sysfs 값을, NVIDIA는
+NVML을 계속 사용합니다. Ubuntu 24.04에서 Intel Arc(Meteor Lake, i915)로 검증했으며,
+같은 구간을 독립적으로 계산한 rc6 잔류 값과 정확히 일치했습니다.
+[0.7.1 릴리스 노트](docs/05-ops/releases/v0.7.1.md)를 참조하세요.
+
 ## [0.7.0] — 2026-09-11
 
 <!-- qhud:anchor -->

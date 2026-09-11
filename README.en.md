@@ -71,13 +71,13 @@ Example data is available only with `--demo`.
 
 ## Install
 
-**Current release: [v0.7.0](https://github.com/chquandogong/qhud/releases/tag/v0.7.0).**
+**Current release: [v0.7.1](https://github.com/chquandogong/qhud/releases/tag/v0.7.1).**
 Both platform build/test jobs gate publication. Each archive has a SHA-256 file.
 
 | Download | Verify |
 | --- | --- |
-| [Windows x64 ZIP](https://github.com/chquandogong/qhud/releases/download/v0.7.0/qhud-v0.7.0-windows-x86_64.zip) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.7.0/qhud-v0.7.0-windows-x86_64.zip.sha256) |
-| [Linux x86_64 tarball](https://github.com/chquandogong/qhud/releases/download/v0.7.0/qhud-v0.7.0-linux-x86_64.tar.gz) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.7.0/qhud-v0.7.0-linux-x86_64.tar.gz.sha256) |
+| [Windows x64 ZIP](https://github.com/chquandogong/qhud/releases/download/v0.7.1/qhud-v0.7.1-windows-x86_64.zip) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.7.1/qhud-v0.7.1-windows-x86_64.zip.sha256) |
+| [Linux x86_64 tarball](https://github.com/chquandogong/qhud/releases/download/v0.7.1/qhud-v0.7.1-linux-x86_64.tar.gz) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.7.1/qhud-v0.7.1-linux-x86_64.tar.gz.sha256) |
 
 ### Windows
 
@@ -91,9 +91,9 @@ for prerequisites, source builds, and configuration.
 After downloading the archive and its SHA-256 file into the same directory:
 
 ```sh
-sha256sum -c qhud-v0.7.0-linux-x86_64.tar.gz.sha256
-tar -xzf qhud-v0.7.0-linux-x86_64.tar.gz
-install -Dm755 qhud-v0.7.0-linux-x86_64/qhud "$HOME/.local/bin/qhud"
+sha256sum -c qhud-v0.7.1-linux-x86_64.tar.gz.sha256
+tar -xzf qhud-v0.7.1-linux-x86_64.tar.gz
+install -Dm755 qhud-v0.7.1-linux-x86_64/qhud "$HOME/.local/bin/qhud"
 "$HOME/.local/bin/qhud"
 ```
 

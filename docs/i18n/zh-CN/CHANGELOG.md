@@ -17,6 +17,24 @@
 
 ## [未发布]
 
+## [0.7.1] — 2026-09-11
+
+<!-- qhud:anchor -->
+<a id="intel-gpus-on-linux"></a>
+
+### Linux 上的 Intel GPU
+
+- 在 Linux 上测量 Intel GPU。i915 与 xe 驱动不提供 busy 百分比，因此状态条读取每个 GT
+  的空闲驻留计数器，并以采样窗口内的补集作为利用率，按 Windows 引擎计数器相同的规则取
+  最繁忙的 GT。显卡的首次读取为缺口，计数器重置同样保持缺口，而不是虚构的 100%。不显示
+  显存：这些 GPU 使用 MEM 已经报告的共享系统内存。
+
+v0.7.0 加入的 GPU 列在 Intel 显卡上没有任何 Linux 数据源可以填充。已经提供 busy
+百分比的设备保持不变：amdgpu 继续使用 sysfs 值，NVIDIA 继续使用 NVML。已在
+Ubuntu 24.04 上使用 Intel Arc（Meteor Lake，i915）验证，读数与同一窗口内独立计算的
+rc6 驻留值完全一致。
+参见 [0.7.1 发布说明](docs/05-ops/releases/v0.7.1.md)。
+
 ## [0.7.0] — 2026-09-11
 
 <!-- qhud:anchor -->

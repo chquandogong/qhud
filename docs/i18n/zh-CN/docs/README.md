@@ -61,6 +61,7 @@ qhud 全部文档均提供三种语言，涵盖首次安装、架构、决策和
 | [v0.6.1 发布说明](05-ops/releases/v0.6.1.md) | 文档重写与 Ubuntu 验证。 |
 | [v0.6.2 发布说明](05-ops/releases/v0.6.2.md) | 从本地登录信息自动显示 Codex 邮箱。 |
 | [v0.7.0 发布说明](05-ops/releases/v0.7.0.md) | 低调的系统用量历史、条件 GPU 测量与 About 信息。 |
+| [v0.7.1 发布说明](05-ops/releases/v0.7.1.md) | 通过空闲驻留计数器在 Linux 上测量 Intel GPU。 |
 
 <!-- qhud:anchor -->
 <a id="languages-and-source-fidelity"></a>

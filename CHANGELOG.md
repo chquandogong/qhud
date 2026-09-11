@@ -10,6 +10,24 @@ All notable changes to qhud. Format: [Keep a Changelog](https://keepachangelog.c
 
 ## [Unreleased]
 
+## [0.7.1] — 2026-09-11
+
+### Intel GPUs on Linux
+
+- Measure Intel GPUs on Linux. The i915 and xe drivers publish no busy
+  percentage, so the strip reads each GT's idle-residency counter and reports
+  its complement over the sampling window, keeping the busiest GT — the rule the
+  Windows engine counters already follow. A card's first read is a gap, and a
+  counter reset stays a gap instead of a fabricated 100%. VRAM stays
+  unavailable: these GPUs render from the shared system memory MEM reports.
+
+The v0.7.0 strip added a GPU column that no Linux source filled on Intel
+graphics. Cards that already publish a busy percentage are untouched: amdgpu
+keeps its sysfs reading, NVIDIA keeps NVML. Verified on Ubuntu 24.04 against
+Intel Arc (Meteor Lake, i915): the reading matched an independent rc6-residency
+computation over the same window exactly.
+See the [0.7.1 release notes](docs/05-ops/releases/v0.7.1.md).
+
 ## [0.7.0] — 2026-09-11
 
 ### System strip and About
