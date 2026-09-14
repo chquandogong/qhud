@@ -1305,7 +1305,7 @@
     if (!aboutDialog.open) aboutDialog.showModal();
     if (appInfoLoaded) return;
     if (!tauri) {
-      aboutVersion.textContent = "v0.7.0 · browser preview";
+      aboutVersion.textContent = "Browser preview · version unavailable";
       appInfoLoaded = true;
       return;
     }

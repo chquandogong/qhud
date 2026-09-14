@@ -6,7 +6,8 @@
 
 # TEST_PLAN
 
-> Status: v0.6.0 automated gates passed; desktop gaps recorded · Date: 2026-09-07 · Owner: chquandogong
+> Status: v0.7.1 automated and Linux system-metrics evidence recorded; desktop
+> gaps remain · Date: 2026-09-14 · Owner: chquandogong
 
 ## Automated gates
 
@@ -17,6 +18,7 @@ CI runs on pushes to `main` and `codex/**`, and on pull requests. Ubuntu
 cargo fmt --all --check
 cargo clippy --locked --all-targets -- -D warnings
 cargo test --locked --all-targets
+node --test tests/system-metrics.test.cjs
 cargo build --locked --release
 ```
 
@@ -27,7 +29,9 @@ Windows MSVC uses the scoped dependency patch through the build script:
 git diff --exit-code -- Cargo.toml Cargo.lock
 ```
 
-`-Test` runs QHUD tests and then builds in the same dependency context.
+`-Test` runs qhud Rust tests and then builds in the same dependency context.
+Run `node --test tests/system-metrics.test.cjs` with Node 22 for the frontend
+system-metrics helpers.
 The script restores the canonical lockfile after Windows commands; Linux
 builds do not require a sibling checkout or the Windows patch. Release
 publication waits for both Ubuntu and Windows tests and builds to succeed.
@@ -36,6 +40,10 @@ publication waits for both Ubuntu and Windows tests and builds to succeed.
 passed on `1514e09`: Ubuntu fmt/clippy, **98/98 tests** and release build;
 Windows **98/98 tests**, release build and canonical dependency-file check.
 The local Windows script also passed 98/98 tests and the release build.
+
+2026-09-11, v0.7.1 local Ubuntu gate: format and clippy clean, **127/127 Rust
+tests**, **6/6 Node tests**, and release build passed in 2 m 08 s. This is local
+tree evidence; the release workflow remains the publication record.
 
 2026-09-07, Ubuntu re-verification of the published v0.6.0 Linux asset —
 the pass v0.6.0 recorded as missing. The release tarball was downloaded,
@@ -58,6 +66,28 @@ sibling checkout.
 - Codex model pools preserve the model name, 5H/7D duration, usage and
   reset through both provider parsers and the account-row merge. Fixtures
   do not establish that a live account currently has those pools.
+- System metric tests cover warm-up, counter resets, bounded/timestamped
+  history, long-gap rate rejection and history-reset helpers, aggregate
+  disk/network filtering, adapter selection and platform GPU parsers.
+  `tests/system-metrics.test.cjs` covers
+  null-versus-zero formatting, fixed history slots and adaptive rate scales.
+- About tests reject every link target except the named author and repository
+  destinations; the version itself comes from Cargo build metadata.
+
+## Manual verification checklist — system metrics and About
+
+| Check | Action | Pass criteria — evidence date |
+| --- | --- | --- |
+| System diagnostic | Run `qhud --system-dump` | waits for two samples; prints system-only JSON; unavailable counters are null, not zero |
+| History and details | Observe for 60 s; select each visible metric with pointer and keyboard | at most 30 ordered points; correct units/details; second selection closes |
+| Hide/resume | Hide or minimize for more than 10 s, then show | old history and rate baselines are cleared; no resume spike |
+| Optional GPU | Compare a supported adapter with an independent OS/driver counter | same adapter and comparable interval; unsupported GPU stays hidden |
+| About | Open qhud name; test close paths and both links | embedded version is correct; focus returns; only homepage/repository open |
+
+2026-09-11 on Ubuntu, the installed v0.7.1 build rendered CPU, memory, Intel
+GPU, disk and network history. `--system-dump` measured the Intel Arc GPU at
+24.8%; an independent i915 rc6-residency calculation over the same interval
+also returned 24.8%. This verifies one Intel/i915 host, not every adapter or OS.
 
 ## Manual verification checklist — Ubuntu desktop layer
 

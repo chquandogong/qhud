@@ -9,7 +9,7 @@
 
 # 테스트 계획
 
-> 상태: v0.6.0 자동 검증 통과; 데스크톱 미검증 사항 기록 · 날짜: 2026-09-07 · 담당: chquandogong
+> 상태: v0.7.1 자동 검증 및 Linux 시스템 지표 근거 기록; 데스크톱 미검증 사항 유지 · 날짜: 2026-09-14 · 담당: chquandogong
 
 <!-- qhud:anchor -->
 <a id="automated-gates"></a>
@@ -22,6 +22,7 @@ CI는 `main`과 `codex/**` push 및 pull request에서 실행합니다. Ubuntu 2
 cargo fmt --all --check
 cargo clippy --locked --all-targets -- -D warnings
 cargo test --locked --all-targets
+node --test tests/system-metrics.test.cjs
 cargo build --locked --release
 ```
 
@@ -32,9 +33,11 @@ Windows MSVC는 빌드 스크립트를 통해 범위가 한정된 의존성 패�
 git diff --exit-code -- Cargo.toml Cargo.lock
 ```
 
-`-Test`는 같은 의존성 환경에서 QHUD 테스트 후 빌드합니다. 스크립트는 Windows 명령 후 기준 lockfile을 복원합니다. Linux 빌드에는 형제 checkout이나 Windows 패치가 필요하지 않습니다. Ubuntu와 Windows 테스트 및 빌드가 모두 성공해야 릴리스를 공개합니다.
+`-Test`는 같은 의존성 환경에서 qhud Rust 테스트 후 빌드합니다. Node 22에서 `node --test tests/system-metrics.test.cjs`를 실행해 프런트엔드 시스템 지표 도우미도 검사합니다. 스크립트는 Windows 명령 후 기준 lockfile을 복원합니다. Linux 빌드에는 형제 checkout이나 Windows 패치가 필요하지 않습니다. Ubuntu와 Windows 테스트 및 빌드가 모두 성공해야 릴리스를 공개합니다.
 
 2026-09-07: `1514e09`의 [CI 34117359064](https://github.com/chquandogong/qhud/actions/runs/34117359064)가 통과했습니다. Ubuntu fmt/clippy, **98/98 테스트**, 릴리스 빌드; Windows **98/98 테스트**, 릴리스 빌드, 기준 의존성 파일 검사가 통과했습니다. 로컬 Windows 스크립트도 98/98 테스트와 릴리스 빌드를 통과했습니다.
+
+2026-09-11, v0.7.1 Ubuntu 로컬 검증에서 형식과 clippy 이상 없음, **Rust 테스트 127/127**, **Node 테스트 6/6**, 릴리스 빌드 2분 08초를 통과했습니다. 이는 로컬 트리 근거이며 릴리스 workflow 실행이 공개 기록입니다.
 
 2026-09-07, 공개 v0.6.0 Linux 배포 파일의 Ubuntu 재검증입니다. v0.6.0에서 누락으로 기록한 검증을 수행했습니다. 릴리스 tarball을 내려받아 SHA-256이 제공 파일과 일치함을 확인하고 그 정확한 바이너리를 `~/.local/bin/qhud`에 설치해 배포 파일과 해시를 비교한 뒤 기준 장비에서 재실행했습니다. 환경: Ubuntu 24.04.3, GNOME Shell 46.0 Wayland, kernel 7.0.0-28, eDP-1 2560×1600 + HDMI-1 3840×2160 모두 scale 1, webkit2gtk 2.52.6, herdr 0.7.5, rustc 1.94.1. 같은 트리의 로컬 검증도 fmt 이상 없음, clippy `-D warnings` 이상 없음, 98/98 테스트를 통과했고 형제 checkout 없이 고정 Git 의존성으로 릴리스 빌드를 6분 21초에 완료했습니다.
 
@@ -46,6 +49,23 @@ git diff --exit-code -- Cargo.toml Cargo.lock
 - `view.rs`: 백분율 범위 제한/반올림, 사람이 읽기 쉬운 바이트 표시, `~` 축약, 레이블 자르기. 전체 `PaneReport` 생성은 업스트림 비공개이므로 매핑은 아래 실사용 체크리스트로 검증합니다.
 - 계정 전환 후 저장 한도의 소유 계정, mux가 실행되지 않을 때의 로컬 계정 행, 재시작 후 범위별 수치만 또는 추가 사용량만 있는 스냅샷.
 - Codex 모델 한도는 두 공급자 파서와 계정 행 병합을 거쳐 모델명, 5H/7D 기간, 사용량, 초기화 시각을 보존합니다. 검증 데이터는 현재 실제 계정에 그 한도가 있음을 증명하지 않습니다.
+- 시스템 지표 테스트는 준비 단계, 카운터 초기화, 제한되고 시각이 있는 기록, 긴 공백의 속도 거부 및 기록 초기화 도우미, 디스크·네트워크 집계 필터, 어댑터 선택, 플랫폼 GPU 파서를 다룹니다. `tests/system-metrics.test.cjs`는 null과 0의 구별, 고정 기록 슬롯, 적응형 속도 축을 검사합니다.
+- About 테스트는 제작자와 저장소라는 이름 외의 모든 링크 대상을 거부합니다. 버전은 Cargo 빌드 메타데이터에서 가져옵니다.
+
+<!-- qhud:anchor -->
+<a id="manual-verification-checklist--system-metrics-and-about"></a>
+
+## 수동 검증 체크리스트 — 시스템 지표와 About
+
+| 확인 항목 | 동작 | 통과 기준 — 근거 날짜 |
+| --- | --- | --- |
+| 시스템 진단 | `qhud --system-dump` 실행 | 두 샘플을 기다린 뒤 시스템 전용 JSON 출력; 사용할 수 없는 카운터는 0이 아니라 null |
+| 기록과 세부 정보 | 60초간 관찰하고 표시된 지표를 포인터와 키보드로 각각 선택 | 최대 30개 순서 있는 지점; 올바른 단위/세부 정보; 두 번째 선택으로 닫힘 |
+| 숨김/재개 | 10초 넘게 숨기거나 최소화한 뒤 표시 | 이전 기록과 속도 기준이 지워지고 재개 급증이 없음 |
+| 선택 GPU | 지원 어댑터와 독립 OS/드라이버 카운터 비교 | 같은 어댑터와 비슷한 구간; 미지원 GPU는 숨김 |
+| About | qhud 이름을 열고 닫기 경로와 두 링크 확인 | 내장 버전이 정확하고 포커스가 돌아오며 홈페이지/저장소만 열림 |
+
+2026-09-11 Ubuntu에서 설치한 v0.7.1 빌드가 CPU, 메모리, Intel GPU, 디스크, 네트워크 기록을 표시했습니다. `--system-dump`의 Intel Arc GPU 24.8%와 같은 구간의 독립 i915 rc6 유휴 잔류 계산 24.8%가 일치했습니다. 이는 Intel/i915 호스트 한 대의 근거이며 모든 어댑터나 OS를 검증하지는 않습니다.
 
 <!-- qhud:anchor -->
 <a id="manual-verification-checklist--ubuntu-desktop-layer"></a>

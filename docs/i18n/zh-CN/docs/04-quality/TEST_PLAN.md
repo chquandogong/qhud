@@ -9,7 +9,7 @@
 
 # 测试计划
 
-> 状态：v0.6.0 自动化门槛通过，桌面验证缺口已记录 · 日期：2026-09-07 · 负责人：chquandogong
+> 状态：已记录 v0.7.1 自动化及 Linux 系统指标证据；桌面验证缺口仍保留 · 日期：2026-09-14 · 负责人：chquandogong
 
 <!-- qhud:anchor -->
 <a id="automated-gates"></a>
@@ -22,6 +22,7 @@ CI 在推送到 `main`、`codex/**` 及 pull request 时运行。Ubuntu 24.04 �
 cargo fmt --all --check
 cargo clippy --locked --all-targets -- -D warnings
 cargo test --locked --all-targets
+node --test tests/system-metrics.test.cjs
 cargo build --locked --release
 ```
 
@@ -32,9 +33,11 @@ Windows MSVC 通过构建脚本使用限定范围的依赖补丁：
 git diff --exit-code -- Cargo.toml Cargo.lock
 ```
 
-`-Test` 在同一依赖上下文先运行 QHUD 测试，再构建。Windows 命令结束后脚本恢复规范 lockfile；Linux 构建无需同级检出或 Windows 补丁。发布等待 Ubuntu 和 Windows 测试、构建全部成功。
+`-Test` 在同一依赖上下文先运行 qhud Rust 测试，再构建。使用 Node 22 运行 `node --test tests/system-metrics.test.cjs`，检查前端系统指标辅助函数。Windows 命令结束后脚本恢复规范 lockfile；Linux 构建无需同级检出或 Windows 补丁。发布等待 Ubuntu 和 Windows 测试、构建全部成功。
 
 2026-09-07：[CI 34117359064](https://github.com/chquandogong/qhud/actions/runs/34117359064) 在 `1514e09` 上通过：Ubuntu fmt/clippy、**98/98 项测试**和 release 构建；Windows **98/98 项测试**、release 构建及规范依赖文件检查。本地 Windows 脚本也通过 98/98 项测试和 release 构建。
+
+2026-09-11，v0.7.1 Ubuntu 本地门槛通过：格式和 clippy 无误、**127/127 项 Rust 测试**、**6/6 项 Node 测试**及 2 m 08 s release 构建。这是本地代码树证据；release workflow 运行仍是公开发布记录。
 
 2026-09-07，重新验证公开 v0.6.0 Linux 产物，补上 v0.6.0 所记录的缺口。下载发布 tarball，SHA-256 与配套文件一致，将同一二进制安装至 `~/.local/bin/qhud` 并与产物比较哈希，在参考机器重新运行。环境：Ubuntu 24.04.3、GNOME Shell 46.0 Wayland、内核 7.0.0-28、eDP-1 2560×1600 + HDMI-1 3840×2160，均 scale 1、webkit2gtk 2.52.6、herdr 0.7.5、rustc 1.94.1。同一代码树本地也通过 fmt、clippy `-D warnings`、98/98 测试，并在 6 m 21 s 内从固定 Git 依赖完成 release 构建，无同级检出目录。
 
@@ -46,6 +49,23 @@ git diff --exit-code -- Cargo.toml Cargo.lock
 - `view.rs`：百分比限制和取整、字节可读化、`~` 折叠、标签截断。完整 `PaneReport` 构造为上游私有；映射由下方实机清单覆盖。
 - 账户切换后的保存配额归属、无 mux 时本地账户行、重启后仅 scope 和仅额外支出快照。
 - Codex 模型池经两个供应商解析器及账户行合并，保留模型名、5H/7D 时长、用量和重置。夹具不证明某个真实账户当前拥有这些池。
+- 系统指标测试覆盖预热、计数器重置、有限且带时间的历史、长间隔速率拒绝与历史重置辅助函数、磁盘/网络汇总过滤、适配器选择及平台 GPU 解析器。`tests/system-metrics.test.cjs` 检查 null 与零的区别、固定历史槽和自适应速率刻度。
+- About 测试拒绝除命名作者和仓库外的所有链接目标；版本来自 Cargo 构建元数据。
+
+<!-- qhud:anchor -->
+<a id="manual-verification-checklist--system-metrics-and-about"></a>
+
+## 手工验证清单 — 系统指标与 About
+
+| 检查 | 操作 | 通过标准及证据日期 |
+| --- | --- | --- |
+| 系统诊断 | 运行 `qhud --system-dump` | 等待两次采样；输出仅系统 JSON；不可用计数器为 null 而非零 |
+| 历史和详情 | 观察 60 s，用指针和键盘选择每个可见指标 | 最多 30 个有序点；单位/详情正确；再次选择关闭 |
+| 隐藏/恢复 | 隐藏或最小化超过 10 s 后重新显示 | 清空旧历史及速率基线，无恢复尖峰 |
+| 可选 GPU | 将支持的适配器与独立 OS/驱动计数器比较 | 同一适配器和相近区间；不支持 GPU 保持隐藏 |
+| About | 打开 qhud 名称，测试关闭方式及两个链接 | 内嵌版本正确；焦点返回；只打开主页/仓库 |
+
+2026-09-11，在 Ubuntu 上安装的 v0.7.1 构建显示了 CPU、内存、Intel GPU、磁盘及网络历史。`--system-dump` 测得 Intel Arc GPU 为 24.8%，同一区间独立 i915 rc6 空闲驻留计算也为 24.8%。这只验证一台 Intel/i915 主机，并不代表所有适配器或操作系统。
 
 <!-- qhud:anchor -->
 <a id="manual-verification-checklist--ubuntu-desktop-layer"></a>

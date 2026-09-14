@@ -1,7 +1,15 @@
 name: Feature request · 기능 제안 · 功能建议
 description: Explain a use case in English, Korean, or Chinese.
 title: "[Feature] "
+labels:
+  - enhancement
 body:
+  - type: markdown
+    attributes:
+      value: |
+        English, 한국어, 简体中文 are welcome. Describe the need without including credentials, private account data, or confidential session content.
+        세 언어 모두 환영합니다. 인증 정보, 비공개 계정 데이터, 기밀 세션 내용은 포함하지 마세요.
+        三种语言均可。请勿包含凭据、私密账户数据或机密会话内容。
   - type: textarea
     id: problem
     attributes:

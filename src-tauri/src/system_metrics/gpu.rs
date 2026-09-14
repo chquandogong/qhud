@@ -1,8 +1,9 @@
 //! Optional native GPU telemetry. No subprocess is launched by the sampler.
 //!
-//! Windows uses the WDDM GPU Engine performance counters. Linux uses the
-//! amdgpu sysfs API and, when installed, NVIDIA's NVML driver library. A
-//! missing/failed measurement is `None`; only a valid idle reading is zero.
+//! Windows uses the WDDM GPU Engine performance counters. Linux uses AMD sysfs,
+//! Intel i915/xe idle-residency counters, and, when installed, NVIDIA's NVML
+//! driver library. A missing/failed measurement is `None`; only a valid idle
+//! reading is zero.
 
 #[derive(Clone, Debug)]
 pub struct GpuReading {

@@ -35,7 +35,13 @@
 
 ## 构建与检查
 
-仓库声明 Rust 1.88 或更新版本；CI 使用 stable Rust。前端为普通 HTML/CSS/JavaScript，无需 npm。qmonster 固定在 `src-tauri/Cargo.toml` 所列 revision。
+仓库声明 Rust 1.88 或更新版本；CI 使用 stable Rust。应用构建采用普通 HTML/CSS/JavaScript，无需 Node.js 或 npm。Node.js 22 仅用于独立的前端系统指标回归测试。qmonster 固定在 `src-tauri/Cargo.toml` 所列 revision。
+
+在任一开发平台运行：
+
+```sh
+node --test tests/system-metrics.test.cjs
+```
 
 ### Linux
 

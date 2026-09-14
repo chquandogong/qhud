@@ -6,11 +6,11 @@
 
 # ARCHITECTURE — qhud
 
-> Status: living (rewritten from scratch against v0.6.0 source) · Date:
-> 2026-09-07 · Owner: chquandogong
+> Status: living (updated through v0.7.1) · Date: 2026-09-14 · Owner:
+> chquandogong
 > Companion to SPEC (what it must do) and DECISION_LOG (why it is built this
-> way). The baseline is the `v0.6.1` tree, with v0.6.2 identity handling
-> updated below. Historical module line/test counts remain from v0.6.1.
+> way). The module map is updated through v0.7.1; dated verification stays in
+> TEST_PLAN.
 
 ## 1. What qhud is, structurally
 
@@ -48,8 +48,8 @@ and the frame guard are platform-gated.
    window. `--respawned` sleeps 1.5 s first so a re-exec is not swallowed by
    the single-instance guard.
 3. **Tauri builder**, in registration order: the single-instance plugin (which
-   doubles as the argv-relay channel), the five commands, the window-state
-   plugin, then `setup`.
+   doubles as the argv-relay channel), seven commands, the window-state and
+   opener plugins, then `setup`.
 4. **`setup`**: fetch the `main` window (a hard panic if absent — the label is
    a build-time contract), re-assert the layer states that `tauri.conf.json`
    already requested (X11 only honors them once the window is realized), build
@@ -120,6 +120,23 @@ through to the next; all failing falls back to the local payload and retries
 every 10 s; a live source lost mid-run falls back to the local payload while
 keeping real accounts and saved usage; emit and geometry-save failures are
 ignored by design.
+
+### System sampling in the poll loop (v0.7)
+
+One `system_metrics::Collector` lives with the poll thread because CPU, disk,
+network and GPU rates require consecutive observations. Each 2 s tick refreshes
+only aggregate counters, keeps at most 30 in-memory samples, and adds a `system`
+snapshot to the same `qhud://report` payload. It does not enumerate processes,
+launch monitoring commands, read account credentials or send telemetry.
+
+Hidden or minimized windows stop collection. On return, or after a gap longer
+than 10 s, the collector clears rate baselines and history so sleep time cannot
+be averaged into a false spike. Storage capacity refreshes separately every
+30 s. GPU support is optional: Windows uses WDDM counters; Linux uses AMD sysfs,
+Intel i915/xe idle-residency counters, or an installed NVIDIA NVML library. The
+first valid sample chooses one adapter for that sampling session; missing and
+invalid readings stay null. `--system-dump` creates its own collector, waits for
+the second sample, prints only the system snapshot, and exits before Tauri.
 
 ## 5. Paths
 
@@ -241,6 +258,7 @@ panes[]    pane_id, label, session, provider, status, status_label,
 summary    panes, conflicts, max_5h_pct
 account_placeholders[]?, workspace_names{}?, workspace_plans{}?,
 codex_workspaces[]?, codex_fetched_at_ms?
+system?      sampled_at_ms, interval_ms, cpu_count?, gpu?, current, history[]
 ```
 
 `source` is `live`, `local` or `demo`. `backend` is `herdr` or `tmux` when a
@@ -319,8 +337,8 @@ rather than vanishing.
 ## 12. The frontend
 
 No framework and no bundler: the DOM is patched in place so a 2 s refresh
-never restarts a CSS transition, and the whole app is one file served through
-Tauri's asset protocol with `withGlobalTauri`.
+never restarts a CSS transition. Static HTML, CSS and JavaScript modules are
+served through Tauri's asset protocol with `withGlobalTauri`.
 
 **Render order** is summary, demo badge, refresh-all state, then the quota
 strip (sections, rows, Codex sub-rows, collapsed placeholder rows) inside a
@@ -376,6 +394,19 @@ guard exists.
 A one-second ticker re-renders countdowns and marks the footer stale if no
 payload has arrived for eight seconds, so a stopped backend says so instead of
 freezing plausible numbers (CV-2).
+
+**System metrics are a bounded frontend subsystem.** `ui/system-metrics.js`
+owns pure formatting, history-slot and adaptive-scale helpers that run under
+Node tests. `ui/app.js` renders fixed 0–100% charts for CPU, memory and GPU,
+adaptive byte-rate charts for disk and network, and gaps for null samples. The
+same-metric toggle closes details; another metric switches them; buttons support
+pointer, Enter and Space. History remains in memory and is never persisted.
+
+**About exposes build identity, not runtime state.** The `app_info` command
+returns the Cargo build version plus fixed author/homepage/repository values.
+`open_about_link` accepts only the symbolic `author` and `repository` targets,
+so the webview cannot ask the native opener to launch an arbitrary URL. The
+dialog restores focus on close and closes via its button, Escape or backdrop.
 
 **What is persisted where.** Selected pane, placeholder-expansion state and
 zoom live in browser storage behind a wrapper that tolerates being denied
@@ -587,27 +618,30 @@ enforced in code and asserted by tests.
 
 ## 20. Module map
 
-Line and test counts are from the `v0.6.1` tree; the test column sums to the
-98 the suite reports.
+This map records stable responsibilities instead of volatile line and
+per-module test counts. Dated whole-suite evidence lives in TEST_PLAN.
 
-| File | Role | Lines | Tests |
-| --- | --- | --- | ---: |
-| `src-tauri/src/main.rs` | Entry point, platform env forcing, argv surface, the five commands, tray, layer state machine, respawn | 421 | 0 |
-| `src-tauri/src/poll.rs` | The 2 s loop: backend selection, observe tick, local fallback, snapshot and identity attachment, dump | 501 | 6 |
-| `src-tauri/src/paths.rs` | Every path and environment override, Linux and Windows | 84 | 2 |
-| `src-tauri/src/view.rs` | qmonster reports to payload; the rollup and every merge rule | 1154 | 19 |
-| `src-tauri/src/accounts.rs` | Local identity discovery, (account, organization) dedupe, label overlay | 561 | 14 |
-| `src-tauri/src/registry.rs` | The operator's registry, placeholder rules, dismissal writes | 342 | 10 |
-| `src-tauri/src/usage_cache.rs` | The snapshot shape, Claude's on-disk cache, lenient wire numbers, freshness | 661 | 14 |
-| `src-tauri/src/claude_usage.rs` | Claude explicit refresh, per config directory | 207 | 1 |
-| `src-tauri/src/codex_usage.rs` | Codex workspaces, scope guard, duration labels, app-server fallback | 1146 | 20 |
-| `src-tauri/src/agy_usage.rs` | agy loopback RPC and port discovery on both platforms | 401 | 5 |
-| `src-tauri/src/fetched_store.rs` | Refresh persistence, atomic writes, concurrent-write lock | 268 | 4 |
-| `src-tauri/src/frame_guard.rs` | Pixel sampling and the heal ladder (Linux) | 171 | 3 |
-| `src-tauri/src/demo.rs` | The parity fixture | 173 | 0 |
-| `ui/app.js` | The whole frontend: render pipeline, strip, tiles, fetch states, breadcrumbs, geometry, zoom | 1667 | — |
-| `ui/style.css` | Widget styling, gauge severity, scrolling, staleness marks | 921 | — |
-| `ui/index.html` | Skeleton | 36 | — |
+| File | Role |
+| --- | --- |
+| `src-tauri/src/main.rs` | Entry point, platform env forcing, argv surface, native commands, tray, layer state machine, respawn |
+| `src-tauri/src/poll.rs` | The 2 s loop: backend selection, observe tick, local fallback, snapshot and identity attachment, dump |
+| `src-tauri/src/paths.rs` | Every path and environment override, Linux and Windows |
+| `src-tauri/src/view.rs` | qmonster reports to payload; the rollup and every merge rule |
+| `src-tauri/src/accounts.rs` | Local identity discovery, (account, organization) dedupe, label overlay |
+| `src-tauri/src/registry.rs` | The operator's registry, placeholder rules, dismissal writes |
+| `src-tauri/src/usage_cache.rs` | The snapshot shape, Claude's on-disk cache, lenient wire numbers, freshness |
+| `src-tauri/src/claude_usage.rs` | Claude explicit refresh, per config directory |
+| `src-tauri/src/codex_usage.rs` | Codex workspaces, scope guard, duration labels, app-server fallback |
+| `src-tauri/src/agy_usage.rs` | agy loopback RPC and port discovery on both platforms |
+| `src-tauri/src/fetched_store.rs` | Refresh persistence, atomic writes, concurrent-write lock |
+| `src-tauri/src/frame_guard.rs` | Pixel sampling and the heal ladder (Linux) |
+| `src-tauri/src/demo.rs` | The parity fixture |
+| `src-tauri/src/system_metrics.rs` + `system_metrics/` | Passive CPU, memory, disk, network and optional GPU sampling; bounded history and platform adapters |
+| `src-tauri/src/about.rs` | Build identity and allowlisted external links for About |
+| `ui/system-metrics.js` | Pure metric formatting, history slots and adaptive scale |
+| `ui/app.js` | The whole frontend: render pipeline, strip, tiles, fetch states, breadcrumbs, geometry, zoom |
+| `ui/style.css` | Widget styling, gauge severity, scrolling, staleness marks |
+| `ui/index.html` | Skeleton |
 
 Where to look first when something is wrong:
 

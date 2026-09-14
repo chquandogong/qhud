@@ -79,6 +79,14 @@ Both platform build/test jobs gate publication. Each archive has a SHA-256 file.
 | [Windows x64 ZIP](https://github.com/chquandogong/qhud/releases/download/v0.7.1/qhud-v0.7.1-windows-x86_64.zip) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.7.1/qhud-v0.7.1-windows-x86_64.zip.sha256) |
 | [Linux x86_64 tarball](https://github.com/chquandogong/qhud/releases/download/v0.7.1/qhud-v0.7.1-linux-x86_64.tar.gz) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.7.1/qhud-v0.7.1-linux-x86_64.tar.gz.sha256) |
 
+Archives published by the current release workflow also carry GitHub build
+provenance. With GitHub CLI, substitute the path of the archive you downloaded;
+verify the archive itself, not its `.sha256` sidecar.
+
+```sh
+gh attestation verify ./qhud-vX.Y.Z-linux-x86_64.tar.gz --repo chquandogong/qhud
+```
+
 ### Windows
 
 Extract the ZIP and run `qhud.exe` inside its versioned directory. Microsoft

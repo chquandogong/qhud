@@ -7,128 +7,299 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  linux-x86_64:
+  preflight:
+    name: Release preflight
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out the complete repository history
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Validate the tag, versions, release notes, and main ancestry
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tag="$GITHUB_REF_NAME"
+          if [[ ! "$tag" =~ ^v([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+            echo "Expected a stable semantic-version tag such as v1.2.3; got: $tag" >&2
+            exit 1
+          fi
+          version="${BASH_REMATCH[1]}"
+
+          cargo_version="$(sed -n '/^\[package\]/,/^\[/{s/^version = "\([^"]*\)"$/\1/p;}' src-tauri/Cargo.toml | head -n 1)"
+          tauri_version="$(jq -r '.version' src-tauri/tauri.conf.json)"
+          notes="docs/05-ops/releases/$tag.md"
+
+          test "$cargo_version" = "$version" || {
+            echo "Tag $tag does not match Cargo package version $cargo_version." >&2
+            exit 1
+          }
+          test "$tauri_version" = "$version" || {
+            echo "Tag $tag does not match Tauri version $tauri_version." >&2
+            exit 1
+          }
+          test -s "$notes" || {
+            echo "Release notes are missing or empty: $notes" >&2
+            exit 1
+          }
+          grep -Fq "$tag" "$notes" || {
+            echo "Release notes do not identify $tag: $notes" >&2
+            exit 1
+          }
+          grep -Fq "## [$version]" CHANGELOG.md || {
+            echo "CHANGELOG.md has no entry for $version." >&2
+            exit 1
+          }
+          git show-ref --verify --quiet refs/remotes/origin/main || {
+            echo "The origin/main ref was not fetched." >&2
+            exit 1
+          }
+          git merge-base --is-ancestor "$GITHUB_SHA" refs/remotes/origin/main || {
+            echo "Tagged commit $GITHUB_SHA is not contained in origin/main." >&2
+            exit 1
+          }
+
+  quality:
+    name: Quality gate
+    needs: preflight
+    uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read
+
+  linux-x86_64:
+    name: Package Linux x86_64
+    needs: quality
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
     permissions:
       contents: read
       id-token: write
       attestations: write
     steps:
-      - uses: actions/checkout@v4
+      - name: Check out the tagged source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
-      - name: Install Tauri system dependencies
+      - name: Download the quality-gated Linux binary
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: qhud-linux-smoke
+          path: staged-binary
+
+      - name: Package the archive and checksum
+        id: package
+        shell: bash
         run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev \
-            librsvg2-dev pkg-config
+          set -euo pipefail
+          package_dir="qhud-${GITHUB_REF_NAME}-linux-x86_64"
+          archive="$package_dir.tar.gz"
 
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
+          mkdir -p "$package_dir"
+          install -m 0755 staged-binary/qhud "$package_dir/qhud"
+          cp README.md README.en.md README.ko.md README.zh-CN.md \
+            LICENSE CHANGELOG.md CONTRIBUTING.md SECURITY.md SUPPORT.md \
+            CODE_OF_CONDUCT.md "$package_dir/"
+          cp -R docs "$package_dir/"
 
-      - name: Test and build
-        run: |
-          cargo test --locked --release --all-targets
-          cargo build --locked --release
-
-      - name: Package tarball
-        id: pkg
-        run: |
-          DIR="qhud-${GITHUB_REF_NAME}-linux-x86_64"
-          mkdir "$DIR"
-          cp target/release/qhud README.md LICENSE CHANGELOG.md "$DIR/"
-          tar -czf "$DIR.tar.gz" "$DIR"
-          sha256sum "$DIR.tar.gz" > "$DIR.tar.gz.sha256"
-          echo "tarball=$DIR.tar.gz" >> "$GITHUB_OUTPUT"
+          tar -czf "$archive" "$package_dir"
+          sha256sum "$archive" > "$archive.sha256"
+          echo "archive=$archive" >> "$GITHUB_OUTPUT"
 
       - name: Attest build provenance
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
-          subject-path: ${{ steps.pkg.outputs.tarball }}
+          subject-path: ${{ steps.package.outputs.archive }}
 
-      - uses: actions/upload-artifact@v4
+      - name: Upload the Linux release assets
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: qhud-linux-x86_64
-          path: qhud-*-linux-x86_64.tar.gz*
+          name: release-linux-x86_64
+          path: |
+            qhud-*-linux-x86_64.tar.gz
+            qhud-*-linux-x86_64.tar.gz.sha256
           if-no-files-found: error
+          retention-days: 7
 
   windows-x86_64:
+    name: Package Windows x86_64
+    needs: quality
     runs-on: windows-2022
+    timeout-minutes: 15
     permissions:
       contents: read
       id-token: write
       attestations: write
     steps:
-      - uses: actions/checkout@v4
+      - name: Check out the tagged source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
+      - name: Download the quality-gated Windows binary
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: qhud-windows-smoke
+          path: staged-binary
 
-      - name: Test and build with the Windows dependency patch
-        shell: pwsh
-        run: |
-          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
-          $vsPath = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
-          if (-not $vsPath) { throw 'Visual Studio C++ build tools were not found.' }
-          & ./scripts/Build-Windows.ps1 -Test -VisualStudioPath $vsPath
-
-      - name: Verify the canonical dependency files are unchanged
-        run: git diff --exit-code -- Cargo.toml Cargo.lock
-
-      - name: Package zip
-        id: pkg
+      - name: Package the archive and checksum
+        id: package
         shell: pwsh
         run: |
           $packageDir = "qhud-${env:GITHUB_REF_NAME}-windows-x86_64"
-          New-Item -ItemType Directory -Path $packageDir | Out-Null
-          Copy-Item -LiteralPath 'target/x86_64-pc-windows-msvc/release/qhud.exe', 'README.md', 'LICENSE', 'CHANGELOG.md', 'docs/05-ops/WINDOWS.md' -Destination $packageDir
+          New-Item -ItemType Directory -Force -Path $packageDir | Out-Null
+
+          Copy-Item -LiteralPath 'staged-binary/qhud.exe' -Destination (Join-Path $packageDir 'qhud.exe')
+          Copy-Item -LiteralPath 'README.md', 'README.en.md', 'README.ko.md', 'README.zh-CN.md', 'LICENSE', 'CHANGELOG.md', 'CONTRIBUTING.md', 'SECURITY.md', 'SUPPORT.md', 'CODE_OF_CONDUCT.md' -Destination $packageDir
+          Copy-Item -LiteralPath 'docs' -Destination (Join-Path $packageDir 'docs') -Recurse
+
           $zip = "$packageDir.zip"
           Compress-Archive -LiteralPath $packageDir -DestinationPath $zip
           $sha256 = (Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash.ToLowerInvariant()
           "$sha256  $zip" | Set-Content -LiteralPath "$zip.sha256" -Encoding utf8NoBOM
-          "zip=$zip" >> $env:GITHUB_OUTPUT
+          "archive=$zip" >> $env:GITHUB_OUTPUT
 
       - name: Attest build provenance
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
-          subject-path: ${{ steps.pkg.outputs.zip }}
+          subject-path: ${{ steps.package.outputs.archive }}
 
-      - uses: actions/upload-artifact@v4
+      - name: Upload the Windows release assets
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: qhud-windows-x86_64
-          path: qhud-*-windows-x86_64.zip*
+          name: release-windows-x86_64
+          path: |
+            qhud-*-windows-x86_64.zip
+            qhud-*-windows-x86_64.zip.sha256
           if-no-files-found: error
+          retention-days: 7
 
   publish:
-    name: Publish both platforms
+    name: Publish release
     needs: [linux-x86_64, windows-x86_64]
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: release
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/download-artifact@v4
+      - name: Check out the tagged source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          pattern: qhud-*
+          persist-credentials: false
+
+      - name: Download the release assets
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: release-*
           merge-multiple: true
           path: dist
 
-      - name: Create or update GitHub release
+      - name: Verify the release assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="$GITHUB_REF_NAME"
+          expected=(
+            "dist/qhud-$tag-linux-x86_64.tar.gz"
+            "dist/qhud-$tag-linux-x86_64.tar.gz.sha256"
+            "dist/qhud-$tag-windows-x86_64.zip"
+            "dist/qhud-$tag-windows-x86_64.zip.sha256"
+          )
+          for asset in "${expected[@]}"; do
+            test -s "$asset" || {
+              echo "Missing or empty release asset: $asset" >&2
+              exit 1
+            }
+          done
+          test "$(find dist -maxdepth 1 -type f | wc -l)" -eq "${#expected[@]}" || {
+            echo "The release asset set contains unexpected files." >&2
+            find dist -maxdepth 1 -type f -print >&2
+            exit 1
+          }
+          (cd dist && sha256sum -c -- *.sha256)
+
+      - name: Create a draft, upload assets, and publish it
+        shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          TAG="$GITHUB_REF_NAME"
-          NOTES="docs/05-ops/releases/$TAG.md"
-          test -f "$NOTES"
-          if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" dist/* --clobber
-            gh release edit "$TAG" --title "qhud $TAG" --notes-file "$NOTES"
+          set -euo pipefail
+          tag="$GITHUB_REF_NAME"
+          notes="docs/05-ops/releases/$tag.md"
+          assets=(
+            "dist/qhud-$tag-linux-x86_64.tar.gz"
+            "dist/qhud-$tag-linux-x86_64.tar.gz.sha256"
+            "dist/qhud-$tag-windows-x86_64.zip"
+            "dist/qhud-$tag-windows-x86_64.zip.sha256"
+          )
+
+          if gh release view "$tag" >/dev/null 2>&1; then
+            release_json="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$tag")"
+            test "$(jq -r '.draft' <<<"$release_json")" = "true" || {
+              echo "A published GitHub release already exists for $tag; refusing to replace it." >&2
+              exit 1
+            }
           else
-            gh release create "$TAG" dist/* --verify-tag \
-              --title "qhud $TAG" --notes-file "$NOTES"
+            gh release create "$tag" --verify-tag --draft \
+              --title "qhud $tag" --notes-file "$notes"
+            release_json="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$tag")"
           fi
+          gh release edit "$tag" --title "qhud $tag" --notes-file "$notes"
+
+          remote_names="$(jq -r '.assets[].name' <<<"$release_json")"
+          while IFS= read -r remote_name; do
+            test -z "$remote_name" && continue
+            known=false
+            for asset in "${assets[@]}"; do
+              if test "${asset##*/}" = "$remote_name"; then
+                known=true
+                break
+              fi
+            done
+            test "$known" = "true" || {
+              echo "Draft $tag contains an unexpected asset: $remote_name" >&2
+              exit 1
+            }
+          done <<<"$remote_names"
+
+          pending=()
+          mkdir -p remote-assets
+          for asset in "${assets[@]}"; do
+            name="${asset##*/}"
+            asset_id="$(jq -r --arg name "$name" \
+              '.assets[] | select(.name == $name) | .id' <<<"$release_json")"
+            if test -n "$asset_id"; then
+              gh api -H "Accept: application/octet-stream" \
+                "repos/$GITHUB_REPOSITORY/releases/assets/$asset_id" \
+                > "remote-assets/$name"
+              cmp -- "$asset" "remote-assets/$name" || {
+                echo "Draft asset $name differs from the quality-gated asset; refusing to overwrite it." >&2
+                exit 1
+              }
+            else
+              pending+=("$asset")
+            fi
+          done
+          if test "${#pending[@]}" -gt 0; then
+            gh release upload "$tag" "${pending[@]}"
+          fi
+
+          uploaded="$(gh release view "$tag" --json assets --jq '.assets | length')"
+          test "$uploaded" -eq "${#assets[@]}" || {
+            echo "Draft $tag has $uploaded assets; expected ${#assets[@]}." >&2
+            exit 1
+          }
+          gh release edit "$tag" --draft=false

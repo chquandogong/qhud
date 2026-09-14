@@ -6,11 +6,10 @@
 
 # SPEC — qhud
 
-> Status: living (rewritten from scratch against v0.6.0 source) · Date:
-> 2026-09-07 · Owner: chquandogong
+> Status: living (updated through v0.7.1) · Date: 2026-09-14 · Owner:
+> chquandogong
 > What qhud must do. ARCHITECTURE says how it is built, DECISION_LOG says why.
-> FR-1 … FR-24 keep the numbers other documents already cite; FR-25 … FR-34
-> are the requirements that shipped in v0.5.1 → v0.6.0 without a spec row.
+> Existing requirement numbers remain stable; later releases append new rows.
 
 ## Product statement
 
@@ -66,6 +65,10 @@ is the mapping every other document should follow.
 | FR-31 | The usage strip scrolls when rows exceed the window; long model labels wrap rather than truncate; the exact reset date and time are available on a gauge and in the expanded row | done (v0.6.0)                                   |
 | FR-9  | With no multiplexer, render real local account rows and dated quota with zero panes; example data requires `--demo` and shows a DEMO badge; re-probe live every 10 s             | done (v0.6.0 replaced the demo fallback, D-005) |
 | FR-30 | A mux-less start never invents usage: missing readings stay missing, and an account with no saved reading still renders so its refresh control is reachable                      | done (v0.6.0)                                   |
+| FR-36 | A compact system strip shows CPU, memory, supported GPU, disk and network history; selecting a metric exposes current detail and keyboard activation works                      | done (v0.7.0)                                   |
+| FR-37 | Sample local system counters every 2 s and retain at most 30 points (~60 s); pause while hidden/minimized and reset rate baselines after resume or a long gap                    | done (v0.7.0)                                   |
+| FR-38 | Unsupported, warming-up or failed counters remain absent/gapped rather than becoming zero; a valid idle reading remains zero                                                     | done (v0.7.0; Intel Linux GPU added v0.7.1)     |
+| FR-39 | Selecting the qhud name opens an accessible About dialog whose version comes from the build and whose external links are restricted to the declared homepage and repository      | done (v0.7.0)                                   |
 
 ### Whose numbers these are
 
@@ -197,15 +200,53 @@ additive.
                          "windows": [{ "label": "weekly", "used_percent": 41,
                                        "reset_unix": 1789147159,
                                        "scope": null }] }],
-  "codex_fetched_at_ms": 1788790245717
+  "codex_fetched_at_ms": 1788790245717,
+
+  "system": {
+    "sampled_at_ms": 1788790282397, "interval_ms": 2000,
+    "cpu_count": 16,
+    "gpu": { "name": "Intel GPU", "memory_used_bytes": null,
+             "memory_total_bytes": null },
+    "current": { "at_ms": 1788790282397, "cpu_pct": 18.2,
+                 "memory_pct": 50.0,
+                 "memory_used_bytes": 8589934592,
+                 "memory_total_bytes": 17179869184,
+                 "gpu_pct": 5.0,
+                 "disk_read_bps": 1024.0, "disk_write_bps": 0.0,
+                 "disk_used_bytes": 214748364800,
+                 "disk_total_bytes": 536870912000,
+                 "network_rx_bps": 4096.0, "network_tx_bps": 512.0 },
+    "history": [
+      { "at_ms": 1788790280397, "cpu_pct": null,
+        "memory_pct": 50.0,
+        "memory_used_bytes": 8589934592,
+        "memory_total_bytes": 17179869184,
+        "gpu_pct": null,
+        "disk_read_bps": null, "disk_write_bps": null,
+        "disk_used_bytes": 214748364800,
+        "disk_total_bytes": 536870912000,
+        "network_rx_bps": null, "network_tx_bps": null },
+      { "at_ms": 1788790282397, "cpu_pct": 18.2,
+        "memory_pct": 50.0,
+        "memory_used_bytes": 8589934592,
+        "memory_total_bytes": 17179869184,
+        "gpu_pct": 5.0,
+        "disk_read_bps": 1024.0, "disk_write_bps": 0.0,
+        "disk_used_bytes": 214748364800,
+        "disk_total_bytes": 536870912000,
+        "network_rx_bps": 4096.0, "network_tx_bps": 512.0 }
+    ]
+  }
 }
 ```
 
 Fields that are usually empty are omitted rather than sent as null:
 `account`, `origin`, `cache_fetched_at_ms`, `scoped`, `extra`,
 `account_placeholders`, `workspace_names`, `workspace_plans`,
-`codex_workspaces`, `codex_fetched_at_ms`. `qhud --dump` prints this exact
-payload.
+`codex_workspaces`, `codex_fetched_at_ms`. System sample fields use null for an
+unavailable reading; `qhud --system-dump` prints a standalone two-sample system
+snapshot without loading accounts or opening a window. `qhud --dump` prints the
+combined payload.
 
 **Contract rules.**
 
@@ -233,9 +274,9 @@ payload.
 
 ## Verification
 
-Automated gates on both platforms, and publication of a release waits for
-both: format, lint with warnings as errors, the full test suite, and a release
-build. The suite is 98 tests at v0.6.0.
+Automated gates cover format, lint with warnings as errors, Rust tests, the
+Node system-metrics tests and release builds. The v0.7.1 tree passed 127 Rust
+tests and 6 Node tests locally on Ubuntu; dated evidence stays in TEST_PLAN.
 
 Interaction claims have a protocol (D-010): synthetic X11 input alone is
 inadmissible because it bypasses the compositor's surface picking, which is
