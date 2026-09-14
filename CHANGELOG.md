@@ -10,6 +10,16 @@ All notable changes to qhud. Format: [Keep a Changelog](https://keepachangelog.c
 
 ## [Unreleased]
 
+### Security
+
+- Redact normal diagnostics across Codex, Claude, terminal-multiplexer, storage,
+  and frontend paths. UI breadcrumbs now use a typed allowlist that preserves
+  bounded counts, interaction state, and target kinds without accepting account
+  labels, IDs, paths, usage values, or exception text. Provider JSON failures
+  report only an error category and position, and `QHUD_EXTRA_DIAG` reports field
+  presence without values. Explicit JSON dump commands remain operator-requested
+  diagnostics and must be redacted before sharing.
+
 ## [0.7.1] — 2026-09-11
 
 ### Intel GPUs on Linux

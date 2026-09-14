@@ -158,8 +158,8 @@ to `APPDATA`.
 
 Other environment variables the core reads: `QHUD_CODEX_BIN` and
 `LOCALAPPDATA` plus `PATH` for Codex CLI discovery, `SystemRoot` for the
-Windows helper process, `QHUD_EXTRA_DIAG` for identity-free Claude response
-diagnostics.
+Windows helper process, and `QHUD_EXTRA_DIAG` for a field-presence-only
+Claude response diagnostic.
 
 ## 6. Frame guard (Linux only, D-017)
 
@@ -383,13 +383,13 @@ toolkit mis-reports both by a phantom frame height for an undecorated X11
 window. Ctrl+wheel zooms 70–160% and persists; the widget never takes keyboard
 focus.
 
-**Observability is deliberate.** Breadcrumbs go to stderr through one command
-and are the only proof available that anything rendered: what the strip built,
-the rendered text of every identity line and gauge label, every real
-pointerdown with where it landed, selection changes, zoom, and any JavaScript
-error. Counts alone are not enough — a wrong window _name_ is exactly the bug
-a count cannot catch — and none of it proves paint, which is why the frame
-guard exists.
+**Observability is deliberate and redacted.** Breadcrumbs go to stderr through
+one command and prove that rendering or interaction stages ran: strip and label
+completion, pointer and selection delivery, zoom changes, and frontend-error
+presence. The Rust boundary accepts only typed enums, bounded integers, and
+booleans, so account labels, workspace and pane IDs, paths, usage values, and
+exception text cannot enter logs. These events still do not prove paint, which
+is why the frame guard exists.
 
 A one-second ticker re-renders countdowns and marks the footer stale if no
 payload has arrived for eight seconds, so a stopped backend says so instead of
@@ -453,14 +453,15 @@ Three rules hold across all of them (D-014, D-016):
 never the refresh token beside it. The user agent is load-bearing: without a
 real `claude-code/<version>` this endpoint answers 429 with no retry hint.
 Identity comes from the config directory's own file, never from the response,
-because the response carries an account uuid and an email and is never logged
-— the single exception is an environment-gated diagnostic that prints two
-identity-free sub-objects for shape drift. One refresh walks the default
+because the response carries an account uuid and an email and is never logged.
+The environment-gated shape diagnostic reports only whether `extra_usage` and
+`spend` fields exist; it never prints their values. One refresh walks the default
 account and every registered extra config directory, records each under its
 own store key, and stays partial on partial failure: an expired extra account
-must not hide the default's numbers. A rejected body reports serde's own
-field-and-type message, which is identity-free by construction, because "did
-not parse" with no field name is a two-day diagnosis (D-019).
+must not hide the default's numbers. A rejected body reports only a redacted
+error category and JSON position. Raw serde errors are never surfaced because
+they can quote an unexpected provider value (D-021, superseding D-019's
+diagnostic assumption).
 
 **Codex.** Every `auth.json` and parked sibling in every registered home is
 read, deduped by account id with the live file sorted first so it wins. Each
@@ -648,7 +649,7 @@ Where to look first when something is wrong:
 | Symptom | File |
 | --- | --- |
 | A number is wrong or too old | `view.rs` merge rules, then `poll.rs` attachment order |
-| A refresh fails | the provider's own module; the error names the field or the credential |
+| A refresh fails | the provider's own module; the error distinguishes credential, transport, and redacted response-shape failures |
 | A row is missing or duplicated | `accounts.rs` dedupe, then the frontend's row key |
 | Nothing renders, or renders stale | `frame_guard.rs` and the `xwd` check in the runbook |
 | A path is wrong on one platform | `paths.rs` |

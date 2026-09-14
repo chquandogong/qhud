@@ -213,8 +213,7 @@ pub fn parse_usage(account_id: &str, body: &str) -> Option<WorkspaceUsage> {
         && got != account_id
     {
         eprintln!(
-            "qhud: SCOPE MISMATCH — asked for workspace {account_id} but the body \
-             describes {got}; chatgpt-account-id was not honoured, so this \
+            "qhud: scope mismatch; chatgpt-account-id was not honoured, so this \
              reading is dropped rather than mislabelled"
         );
         return None;
@@ -470,7 +469,10 @@ pub async fn fetch_via_app_server() -> Result<WorkspaceUsage, String> {
             }
             // An explicit RPC error for our request id is a real answer too.
             if line.contains("\"id\":2") && line.contains("\"error\"") {
-                return Err(format!("app-server error: {line}"));
+                // RPC error payloads can include account-scoped data. Keep the
+                // diagnostic useful without copying the server response into
+                // stderr or the UI error surface.
+                return Err("app-server returned an RPC error".to_string());
             }
         }
         Err("app-server closed without answering".to_string())
@@ -654,18 +656,15 @@ pub async fn fetch_all_workspaces() -> Result<Vec<WorkspaceUsage>, String> {
         .build()
         .map_err(|e| format!("client build failed: {e}"))?;
 
-    eprintln!(
-        "qhud: codex credentials found: {}",
-        creds
-            .iter()
-            .map(|(_, a, f)| format!("{f}={}", a.as_deref().unwrap_or("?")))
-            .collect::<Vec<_>>()
-            .join(", ")
-    );
+    eprintln!("qhud: codex credentials found: {}", creds.len());
     let mut out = Vec::new();
     let mut last_err = None;
     for (token, account_id, file) in creds {
         let Some(id) = account_id else { continue };
+        // File labels can contain a private Codex home name. They remain an
+        // internal routing detail; diagnostics identify only active vs saved.
+        let active = file == "auth.json";
+        let credential_kind = if active { "active" } else { "saved" };
         // Names and plans come from this token's own accounts/check entry.
         let (name, plan) = match get(&client, ACCOUNTS_URL, &token, Some(&id)).await {
             Ok(body) => parse_accounts(&body)
@@ -685,27 +684,26 @@ pub async fn fetch_all_workspaces() -> Result<Vec<WorkspaceUsage>, String> {
                     // The default auth.json is the ACTIVE login: its
                     // workspace merges into the provider row (D-011)
                     // instead of rendering as a second ↳ row.
-                    usage.active = file == "auth.json";
+                    usage.active = active;
                     out.push(usage);
                 }
                 None => {
                     eprintln!(
-                        "qhud: codex {file} ({id}) dropped: body describes another workspace"
+                        "qhud: codex {credential_kind} credential dropped: body describes another workspace"
                     );
-                    let preview: String = body.chars().take(200).collect();
                     last_err = Some(format!(
-                        "{file} ({id}): HTTP 200 but body did not describe this workspace; {preview}"
+                        "{credential_kind} credential returned usage for another workspace"
                     ));
                 }
             },
             Err(e) => {
-                eprintln!("qhud: codex {file} ({id}) skipped: {e}");
-                last_err = Some(format!("{file}: {e}"));
+                eprintln!("qhud: codex {credential_kind} credential skipped: {e}");
+                last_err = Some(format!("{credential_kind} credential: {e}"));
                 // The ACTIVE login can still answer through its own CLI:
                 // codex rotates its token inside app-server, so the usual
                 // failure here (expired access token → 401) is recoverable
                 // without qhud touching any credential.
-                if file == "auth.json" {
+                if active {
                     match fetch_via_app_server().await {
                         Ok(mut w) => {
                             eprintln!("qhud: codex active login recovered via app-server");

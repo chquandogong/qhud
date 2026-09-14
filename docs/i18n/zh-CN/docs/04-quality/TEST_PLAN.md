@@ -85,8 +85,8 @@ git diff --exit-code -- Cargo.toml Cargo.lock
 | 默认真实数据 | `qhud --dump` 和 `qhud --demo --dump` | 无标志时 `source` 为 `live`/`local`，显示真实窗格；有标志时 `source` 为 `demo`，显示三个设计稿窗格；**2026-09-07 通过** |
 | 显式演示 | 关闭现有实例后启动 `qhud --demo` | `DEMO` 标签；卡片对应设计稿 |
 | 实时恢复 | 启动 tmux 和 AI CLI | ≤12 s 内获得实时数据，10 s 重探测 + 2 s 轮询；2026-08-05 |
-| 实时观测 | 读取组件 stderr 启动行 | `live via herdr` 及窗格列表；**2026-09-07 通过**，8 窗格，配额区 3 分组 / 7 行 |
-| 各供应商刷新 | `qhud --refresh-all`，再读组件 stderr | 三供应商均无错误回答；**2026-09-07 通过**，claude 5h 3% / 7d 67% / 3 scoped，agy 2 池，codex 1 工作区 |
+| 实时观测 | 读取组件 stderr 启动行 | `live via herdr` 只含窗格数量、不含窗格标签；**2026-09-07 通过**，8 窗格 |
+| 各供应商刷新 | `qhud --refresh-all`，再读组件 stderr | 三供应商均无错误回答；日志只含汇总数量，不含账户 ID 或用量值 |
 | 像素持续绘制 | 间隔数秒两次 `xwd -id <window> \| md5sum` | 哈希**不同**，页脚时钟每秒重绘；**2026-09-07 通过**。相同哈希表示帧冻结（D-017） |
 | 帧守卫已启动 | 在组件 stderr 搜索 `frame guard armed` | 每次进程启动恰好一行；**2026-09-07 通过**。缺失意味着采样失败，冻结将无法检测 |
 | 视觉一致性 | 与 `docs/assets/widget-*.png` 对照 | 配色、卡片、仪表、标签与设计稿一致 |

@@ -308,16 +308,26 @@ fn parse_utilization(json: &str, fetched_at_ms: u64) -> Option<CachedUsage> {
 /// Parses a bare `utilization` object — the shape `/api/oauth/usage` returns
 /// directly, which is also exactly what Claude Code caches. `fetched_at_ms` is
 /// supplied by the caller because a live response carries no timestamp.
-/// A rejection says WHY (serde's field/type message and
-/// position). The body carries account uuid and email, and this message
-/// never does: unknown fields are skipped untyped, and the typed fields
-/// are numbers, booleans and window/plan strings — so the value serde
-/// quotes back on a mismatch is never identity. HTTP 200 + "no data" was
-/// exactly the report that hid two Codex bugs (a937a3b); the ⟳ error must
-/// name the field that drifted.
+/// A rejection reports only a coarse category and position. Serde type errors
+/// can quote the unexpected JSON value, and provider bodies carry account UUIDs
+/// and emails, so the raw error text must never reach stderr or the UI.
 pub fn parse_utilization_detailed(json: &str, fetched_at_ms: u64) -> Result<CachedUsage, String> {
-    let util: Utilization = serde_json::from_str(json).map_err(|e| e.to_string())?;
+    let util: Utilization = serde_json::from_str(json).map_err(redacted_json_error)?;
     Ok(build(util, fetched_at_ms, None))
+}
+
+fn redacted_json_error(error: serde_json::Error) -> String {
+    let category = match error.classify() {
+        serde_json::error::Category::Io => "I/O error",
+        serde_json::error::Category::Syntax => "JSON syntax error",
+        serde_json::error::Category::Data => "schema mismatch",
+        serde_json::error::Category::Eof => "incomplete JSON",
+    };
+    format!(
+        "{category} at line {}, column {}",
+        error.line(),
+        error.column()
+    )
 }
 
 fn build(util: Utilization, fetched_at_ms: u64, account_id: Option<String>) -> CachedUsage {
@@ -645,18 +655,16 @@ mod tests {
     }
 
     #[test]
-    fn a_rejected_body_says_which_shape_broke() {
-        // The ⟳ path surfaces this string in stderr — it must name the
-        // mismatch, and it must not be the body itself.
-        let err = parse_utilization_detailed(r#"{"five_hour": 5, "limits": []}"#, 1)
-            .expect_err("a number where a window object belongs is a real rejection");
-        assert!(
-            err.contains("expected"),
-            "serde's type message survives: {err}"
-        );
-        assert!(
-            !err.contains("\"limits\""),
-            "the body is not echoed back: {err}"
-        );
+    fn a_rejected_body_reports_shape_without_echoing_values() {
+        // Serde normally quotes the unexpected string in its error. The ⟳ path
+        // surfaces this message, so a canary must never survive formatting.
+        let canary = "person@example.com/token-workspace-123";
+        let body = format!(r#"{{"five_hour":"{canary}","limits":[]}}"#);
+        let err = parse_utilization_detailed(&body, 1)
+            .expect_err("a string where a window object belongs is a real rejection");
+        assert!(err.starts_with("schema mismatch at line "), "got {err}");
+        assert!(!err.contains(canary), "provider value leaked: {err}");
+        assert!(!err.contains('@'), "email marker leaked: {err}");
+        assert!(!err.contains("token-workspace"), "identifier leaked: {err}");
     }
 }

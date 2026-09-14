@@ -24,7 +24,7 @@ const USAGE_URL: &str = "https://api.anthropic.com/api/oauth/usage";
 /// is never read, so it cannot be spent or leaked.
 fn read_token_at(cred: &std::path::Path) -> Result<String, String> {
     let body = std::fs::read_to_string(cred)
-        .map_err(|_| format!("no {} — run `claude` and sign in", cred.display()))?;
+        .map_err(|_| "Claude credentials unavailable — run `claude` and sign in".to_string())?;
     let v: serde_json::Value =
         serde_json::from_str(&body).map_err(|e| format!("credentials are not valid JSON: {e}"))?;
     v.get("claudeAiOauth")
@@ -115,7 +115,7 @@ pub async fn fetch_all(now_ms: u64) -> Result<Vec<AccountFetch>, String> {
                         usage,
                     });
                 }
-                Err(e) => errs.push(format!("{dir}: {e}")),
+                Err(e) => errs.push(format!("configured account: {e}")),
             }
         }
     }
@@ -159,33 +159,23 @@ pub async fn fetch_from(cred: &std::path::Path, now_ms: u64) -> Result<CachedUsa
         return Err("Claude token rejected (401) — sign in again with `claude`".into());
     }
     if status == reqwest::StatusCode::TOO_MANY_REQUESTS {
-        let retry = resp
-            .headers()
-            .get("retry-after")
-            .and_then(|v| v.to_str().ok())
-            .unwrap_or("unknown")
-            .to_string();
-        return Err(format!("rate limited (429), retry-after {retry}"));
+        // Response headers are provider-controlled too. Do not copy even a
+        // syntactically valid Retry-After value into ambient diagnostics.
+        return Err("rate limited (429)".into());
     }
     if !status.is_success() {
         return Err(format!("usage endpoint returned HTTP {}", status.as_u16()));
     }
     let body = resp.text().await.map_err(|e| format!("read failed: {e}"))?;
-    // The body carries account uuid and email — never log it. The one
-    // exception is env-gated (FR-18 style) and prints exactly two
-    // identity-free sub-objects, for diagnosing extra-usage shape drift:
+    // The body carries account uuid and email — never log it. The env-gated
+    // diagnostic reports only field presence, for diagnosing shape drift:
     // QHUD_EXTRA_DIAG=1 qhud --claude-usage
     if std::env::var_os("QHUD_EXTRA_DIAG").is_some()
         && let Ok(v) = serde_json::from_str::<serde_json::Value>(&body)
     {
-        eprintln!(
-            "qhud diag extra_usage: {}",
-            v.get("extra_usage").unwrap_or(&serde_json::Value::Null)
-        );
-        eprintln!(
-            "qhud diag spend: {}",
-            v.get("spend").unwrap_or(&serde_json::Value::Null)
-        );
+        let extra_usage = v.get("extra_usage").is_some_and(|value| !value.is_null());
+        let spend = v.get("spend").is_some_and(|value| !value.is_null());
+        eprintln!("qhud diag fields: extra_usage={extra_usage}, spend={spend}");
     }
     crate::usage_cache::parse_utilization_detailed(&body, now_ms)
         .map_err(|e| format!("usage response did not parse: {e}"))
