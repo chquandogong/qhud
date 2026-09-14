@@ -34,8 +34,8 @@ verification protocol · D-011 scope-correct display · D-012 zoom + peek +
 signal prohibition · D-013 local account identity · D-014 passive by default,
 network on request · D-015 multi-account via per-account CLI config dirs ·
 D-016 delegated fetch paths · D-017 frame guard · D-018 row identity is
-(account, organization) · D-019 lenient wire numbers with field-level errors ·
-D-020 scoped Windows adaptation.
+(account, organization) · D-019 lenient wire numbers · D-020 scoped Windows
+adaptation · D-021 typed and redacted ambient diagnostics.
 
 Full entries and evidence are in [DECISION_LOG](../02-decisions/DECISION_LOG.md).
 

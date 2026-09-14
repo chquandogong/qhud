@@ -140,9 +140,10 @@
       render();
       store.set("qhud.selected", state.selected);
       if (window.__qhudBeacon)
-        window.__qhudBeacon(
-          `sel:${state.selected || "none"}:${tile.classList.contains("selected") ? "R" : "-"}`,
-        );
+        window.__qhudBeacon({
+          kind: "tile_selection",
+          state: tile.classList.contains("selected") ? "selected" : "cleared",
+        });
     });
     return tile;
   }
@@ -419,9 +420,12 @@
         0,
       );
       window.__TAURI__?.core?.invoke("ui_event", {
-        event: `claude-refresh: ${rows.length} accounts, ${scopedTotal} scoped fetched, ${
-          quotasEl.querySelectorAll('[data-win^="m:"]').length
-        } rendered`,
+        event: {
+          kind: "claude_refresh",
+          sources: rows.length,
+          scoped: scopedTotal,
+          rendered: quotasEl.querySelectorAll('[data-win^="m:"]').length,
+        },
       });
       logLabels("after-claude-refresh");
     }
@@ -620,11 +624,13 @@
     // not prove the workspace rows rendered (the pixels are unverifiable from
     // outside the webview, D-010).
     window.__TAURI__?.core?.invoke("ui_event", {
-      event: `codex-ws-rows: ${rows.length} ${stored ? "stored" : "fetched"} (${
-        rows.length - visible.length
-      } merged into the row), ${
-        quotasEl.querySelectorAll("[data-wsid]").length
-      } rendered`,
+      event: {
+        kind: "codex_workspace_rows",
+        rows: rows.length,
+        source: stored ? "stored" : "fetched",
+        merged: rows.length - visible.length,
+        rendered: quotasEl.querySelectorAll("[data-wsid]").length,
+      },
     });
     logLabels(stored ? "stored-codex-rows" : "after-codex-fetch");
   }
@@ -669,13 +675,16 @@
     const row = e.target.closest?.(".q-row");
     if (!row) return;
     row.classList.toggle("q-open");
-    window.__qhudBeacon?.(
-      `qsel:${
-        row.dataset.provider
-          ? `${row.dataset.provider}/${row.dataset.acct || "?"}`
-          : row.dataset.pkey || row.dataset.wsid || "?"
-      }:${row.classList.contains("q-open") ? "open" : "closed"}`,
-    );
+    const rowKind = row.dataset.provider
+      ? "provider_row"
+      : row.dataset.wsid
+        ? "codex_workspace"
+        : "saved_account";
+    window.__qhudBeacon?.({
+      kind: "usage_selection",
+      target: rowKind,
+      state: row.classList.contains("q-open") ? "open" : "closed",
+    });
   });
 
   // One gesture, every provider. Each fetch keeps its own state and
@@ -1164,11 +1173,14 @@
       if (!window.__qhudStripLogged) {
         window.__qhudStripLogged = true;
         window.__TAURI__?.core?.invoke("ui_event", {
-          event: `strip: ${quotasEl.querySelectorAll(".q-sect").length} sections, ${
-            quotasEl.querySelectorAll(".q-row").length
-          } rows, ${quotasEl.querySelectorAll(".q-chip").length} gauges (${
-            quotasEl.querySelectorAll('[data-win^="m:"]').length
-          } per-model), more=${quotasEl.querySelector(".q-more") ? 1 : 0}`,
+          event: {
+            kind: "strip_rendered",
+            sections: quotasEl.querySelectorAll(".q-sect").length,
+            rows: quotasEl.querySelectorAll(".q-row").length,
+            gauges: quotasEl.querySelectorAll(".q-chip").length,
+            per_model: quotasEl.querySelectorAll('[data-win^="m:"]').length,
+            more: Boolean(quotasEl.querySelector(".q-more")),
+          },
         });
         logLabels("initial");
       }
@@ -1249,39 +1261,52 @@
   // a broken quota strip shipped once. Route them to stderr via ui_event.
   // Function declaration, not a const: it is referenced from render(),
   // which is defined earlier in the file.
-  // The actual rendered text of every row. Counts cannot catch a duplicated
-  // tier or a wire enum leaking into a label; this can. Fired again after the
-  // Codex fetch, because workspace rows are appended later than initial render.
+  // Report the rendered shape without copying account names, emails, plans, or
+  // workspace identifiers into stderr. Fired again after the Codex fetch,
+  // because workspace rows are appended later than initial render.
   function logLabels(tag) {
     try {
-      const lines = [...quotasEl.querySelectorAll(".q-row")]
-        .map((r) => {
-          const ident = [".q-prov", ".q-acct", ".q-plan"]
-            .map((sel) => r.querySelector(sel)?.textContent || "")
-            .filter(Boolean)
-            .join("|");
-          // Gauge labels too: a wrong window NAME (weekly vs 7D) is
-          // exactly the kind of bug counts cannot catch.
-          const chips = [...r.querySelectorAll(".q-label")]
-            .map((l) => l.textContent)
-            .join(",");
-          return ident + (chips ? ` [${chips}]` : "");
-        })
-        .filter(Boolean)
-        .join("  /  ");
+      const rows = [...quotasEl.querySelectorAll(".q-row")];
+      const phases = {
+        initial: "initial",
+        "after-claude-refresh": "claude_refresh",
+        "stored-codex-rows": "codex_stored",
+        "after-codex-fetch": "codex_fetch",
+      };
       window.__TAURI__?.core?.invoke("ui_event", {
-        event: `labels(${tag}): ${lines}`,
+        event: {
+          kind: "labels_rendered",
+          phase: phases[tag] || "initial",
+          rows: rows.length,
+          secondary_labels: rows.filter((r) => r.querySelector(".q-acct"))
+            .length,
+          plans: rows.filter((r) => r.querySelector(".q-plan")).length,
+          gauges: rows.reduce(
+            (count, row) => count + row.querySelectorAll(".q-label").length,
+            0,
+          ),
+        },
       });
     } catch {}
   }
 
-  function reportJsError(what, err) {
-    const msg = `js-error ${what}: ${err && (err.stack || err.message || err)}`;
+  function reportJsError(what) {
+    const contexts = {
+      renderQuotas: "render_quotas",
+      onerror: "window",
+      rejection: "rejection",
+      app_info: "app_info",
+      open_about_link: "open_about_link",
+      manual_drag: "manual_drag",
+    };
+    const context = contexts[what] || "window";
     try {
-      window.__TAURI__?.core?.invoke("ui_event", { event: msg });
+      window.__TAURI__?.core?.invoke("ui_event", {
+        event: { kind: "frontend_error", context },
+      });
     } catch {}
     try {
-      console.error(msg);
+      console.error(`qhud frontend error (${context})`);
     } catch {}
   }
   window.addEventListener("error", (e) =>
@@ -1353,9 +1378,9 @@
 
     // Stderr breadcrumbs (permanent, invisible): interaction events go
     // to the Rust side so real-input behavior is verifiable from logs.
-    const crumb = (s) => {
+    const crumb = (event) => {
       try {
-        tauri.core.invoke("ui_event", { event: s }).catch(() => {});
+        tauri.core.invoke("ui_event", { event }).catch(() => {});
       } catch {}
     };
     window.__qhudBeacon = crumb;
@@ -1366,7 +1391,7 @@
     // compositor-path input test by the time it was investigated
     // (2026-08-12): the one measurement missing was where the operator's
     // actual click landed while it was broken. With this line, the next
-    // report is diagnosable from stderr alone — a `ptr:` with a target
+    // report is diagnosable from stderr alone — a pointer line with a target
     // proves delivery and names what was hit; its absence proves the
     // event never reached the webview at all.
     document.addEventListener(
@@ -1376,18 +1401,24 @@
         const tile = t.closest?.(".tile");
         const row = t.closest?.(".q-row");
         const btn = t.closest?.("button");
-        const what = btn
-          ? `${btn.className.split(" ")[0] || "button"}${
-              row ? `@${row.dataset.provider || "?"}` : ""
-            }`
+        const target = btn
+          ? "button"
           : tile
-            ? `tile:${tile.dataset.paneId || "?"}`
+            ? "tile"
             : row
-              ? `row:${row.dataset.provider || row.dataset.pkey || row.dataset.wsid || "?"}`
-              : String(t.id || t.className || t.tagName || "?").slice(0, 40);
-        crumb(
-          `ptr:${Math.round(e.clientX)},${Math.round(e.clientY)}:b${e.button}:${what}`,
-        );
+              ? row.dataset.provider
+                ? "provider_row"
+                : row.dataset.wsid
+                  ? "codex_workspace"
+                  : "saved_account"
+              : "other";
+        crumb({
+          kind: "pointer",
+          x: Math.round(e.clientX),
+          y: Math.round(e.clientY),
+          button: e.button,
+          target,
+        });
       },
       true,
     );
@@ -1410,7 +1441,7 @@
       zoom = Math.min(1.6, Math.max(0.7, Math.round(z * 10) / 10));
       if (webview) webview.setZoom(zoom).catch(() => {});
       store.set("qhud.zoom", String(zoom));
-      crumb("zoom:" + zoom.toFixed(1));
+      crumb({ kind: "zoom", percent: Math.round(zoom * 100) });
     };
     if (webview && zoom !== 1) applyZoom(zoom);
     window.addEventListener(
@@ -1490,7 +1521,8 @@
           );
         }
       } catch (err) {
-        console.error("qhud manual drag:", err);
+        manual.mode = null;
+        reportJsError("manual_drag", err);
       }
       if (manual.mode) requestAnimationFrame(step);
     }

@@ -197,7 +197,8 @@ pub fn load() -> Registry {
 pub fn forget_and_save(provider: &str, key: &str) -> Result<(), String> {
     let p = path().ok_or("qhud configuration directory is unavailable")?;
     if let Some(dir) = p.parent() {
-        std::fs::create_dir_all(dir).map_err(|e| format!("cannot create {dir:?}: {e}"))?;
+        std::fs::create_dir_all(dir)
+            .map_err(|e| format!("cannot create qhud configuration directory: {e}"))?;
     }
     let existing = std::fs::read_to_string(&p).unwrap_or_default();
     let next = forget(&existing, provider, key)?;

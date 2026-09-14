@@ -97,9 +97,9 @@ Shell extension layer · tile→pane focus jump. See DASHBOARD.
   fact two rows (account row vs its own active workspace). Corrective
   action, already partly enforced: every new window/pool/row must carry
   its scope NAME end to end, display vocabulary is fixed
-  (5H/1D/7D/30D), and `labels(...)` breadcrumbs now print the rendered
-  gauge labels so the next violation is visible from stderr instead of
-  waiting for the operator's eye.
+  (5H/1D/7D/30D). Privacy-hardened `labels` breadcrumbs now report only
+  typed row/gauge counts; exact vocabulary must be checked in the browser
+  fixture or a redacted screenshot rather than copied into stderr.
 - **A NUL byte written into app.js** made grep treat the file as binary
   (silently empty matches) while node still parsed it. Corrective
   action: separators in generated keys are plain spaces, and "grep
@@ -171,11 +171,11 @@ Shell extension layer · tile→pane focus jump. See DASHBOARD.
 - **"Did not parse" without the field name cost two days.** Cycle 3
   already learned this on Codex (`a937a3b`: HTTP 200 plus a "no data"
   report hid two bugs, and a body preview diagnosed both), and the
-  Claude path shipped the same shape of blind error anyway. Corrective
-  action: every parse failure that faces the operator carries the
-  parser's own message (D-019); the lesson generalizes as **a rejection
-  must name what it rejected**, and it is now worth grepping the other
-  fetch paths for bare `ok_or_else` rejections.
+  Claude path shipped the same shape of blind error anyway. D-019 first
+  exposed the parser message. D-021 later superseded that surface after
+  proving serde can quote an unexpected provider value: ambient errors now
+  retain only category and position, while exact field tracing uses a
+  redacted local fixture.
 - **One optional field must never fail a whole response.** The 5h/7d
   windows had nothing to do with `used_credits` and were lost with it.
   Corrective action: integer-meaning wire numbers go through the

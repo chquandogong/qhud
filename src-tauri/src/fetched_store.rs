@@ -68,7 +68,7 @@ pub fn load_from(path: &std::path::Path) -> FetchedStore {
 
 pub fn save_to(path: &std::path::Path, store: &FetchedStore) -> Result<(), String> {
     if let Some(dir) = path.parent() {
-        std::fs::create_dir_all(dir).map_err(|e| format!("mkdir {}: {e}", dir.display()))?;
+        std::fs::create_dir_all(dir).map_err(|e| format!("create store directory: {e}"))?;
     }
     let json = serde_json::to_string_pretty(store).map_err(|e| format!("serialize: {e}"))?;
     // Same-directory temp + rename, so the 2 s poll loop can never read
@@ -78,7 +78,7 @@ pub fn save_to(path: &std::path::Path, store: &FetchedStore) -> Result<(), Strin
         .and_then(|n| n.to_str())
         .unwrap_or("fetched-usage.json");
     let tmp = path.with_file_name(format!("{name}.tmp.{}", std::process::id()));
-    std::fs::write(&tmp, json).map_err(|e| format!("write {}: {e}", tmp.display()))?;
+    std::fs::write(&tmp, json).map_err(|e| format!("write store: {e}"))?;
     std::fs::rename(&tmp, path).map_err(|e| format!("rename into place: {e}"))
 }
 

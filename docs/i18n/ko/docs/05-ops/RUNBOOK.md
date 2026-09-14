@@ -48,12 +48,12 @@ cargo build --release --locked # binary at target/release/qhud
 - **글꼴 크기**: Ctrl을 누른 채 위젯 위에서 마우스 휠을 스크롤합니다(70–160%, 저장됨).
 - **Peek(잠시 맨 앞으로 표시)**: 트레이 → _Pin above windows_를 선택하고 다시 선택하면 뒤로 보냅니다. 또는 `~/.local/bin/qhud --peek`를 실행합니다. 키보드 단축키는 GNOME Settings → Keyboard → Custom Shortcuts에 `/home/USER/.local/bin/qhud --peek` 명령을 등록합니다(예: Super+Q). WebKitGTK가 예약하므로 qhud에 Unix 시그널을 보내면 안 됩니다(D-012).
 - 이미 실행 중일 때 `qhud`를 시작하면 기존 인스턴스가 흡수합니다(단일 인스턴스 가드).
-- **수치가 의심스러운가요?** `~/.local/bin/qhud --dump`가 위젯이 표시하는 정확한 페이로드를 출력합니다(관찰 한 주기, 보기 좋은 JSON).
+- **수치가 의심스러운가요?** `~/.local/bin/qhud --dump`가 위젯이 표시하는 정확한 페이로드를 출력합니다(관찰 한 주기, 보기 좋은 JSON). 계정, 작업공간, 세션, 명령, 경로 식별자가 포함될 수 있으므로 공유 전에 가려야 합니다.
 - **사용 한도 행에서 비용이나 초기화 카운트다운이 사라졌나요?** 보조 파일 귀속은 설계상 세 지점에서 조용히 거부됩니다. `QMONSTER_SIDEFILE_DIAG=1 qhud --dump 2>&1 >/dev/null`로 어느 지점인지 확인합니다. cwd 불일치, 60초 동일 cwd 모호성 검사, 자손 CLI 불일치 중 하나를 보고합니다.
-- **위젯이 실제로 렌더링하나요?** 생성한 내용을 stderr로 보고합니다. `strip: N sections, M rows, K gauges`, 모든 행의 표시 텍스트(`labels(...)`), 실제 클릭마다 `ptr:`/`sel:`/`qsel:`, 프런트엔드 예외의 `js-error …`입니다. 하지만 추적 로그는 픽셀이 아닌 로직을 증명합니다. 오류가 없다는 사실은 무언가 그려졌다는 증거가 **아닙니다**. 실제 프레임 정지 중 클릭과 조회가 며칠간 보이지 않게 실행되며 배운 교훈입니다. 픽셀은 검증할 수 있습니다. `xwd -id <qhud window> | md5sum`을 몇 초 간격으로 두 번 실행하면 달라야 하며(푸터 시계가 매초 갱신됨), xwd는 볼 수 있는 이미지로 디코딩됩니다. `framestall:` 로그는 내장 감시기가 멈춘 프레임 시계를 감지해 복구 중이라는 뜻입니다(흔들기 → 재실행).
+- **위젯이 실제로 렌더링하나요?** stderr에는 비식별화한 렌더링·상호작용 단계만 남습니다. 사용량 영역/레이블 완료, 포인터·선택 전달, 프런트엔드 오류 발생 여부를 기록하며 계정 레이블, 작업공간·창 ID, 경로, 사용량 값, 예외 원문은 기록하지 않습니다. 이 추적 로그는 픽셀이 아닌 로직을 증명합니다. 오류가 없다는 사실은 무언가 그려졌다는 증거가 **아닙니다**. 실제 프레임 정지 중 클릭과 조회가 며칠간 보이지 않게 실행되며 배운 교훈입니다. 픽셀은 검증할 수 있습니다. `xwd -id <qhud window> | md5sum`을 몇 초 간격으로 두 번 실행하면 달라야 하며(푸터 시계가 매초 갱신됨), xwd는 볼 수 있는 이미지로 디코딩됩니다. `framestall:` 로그는 내장 감시기가 멈춘 프레임 시계를 감지해 복구 중이라는 뜻입니다(흔들기 → 재실행).
 - **클릭 없는 조회 경로**(keep-below 위젯은 합성 포인터 입력을 받지 않음, D-010): `qhud --refresh-all`, `qhud --refresh-claude`, `qhud --fetch-codex`는 단일 인스턴스 채널로 실행 중인 위젯에 전달되며 단축키에 연결할 수 있습니다. `qhud --claude-usage`, `qhud --codex-usage`, `qhud --agy-usage`는 같은 조회를 독립 실행하고 JSON을 출력하며 클릭과 마찬가지로 조회 저장소에 기록합니다. `qhud
---codex-appserver`는 만료 토큰 대체 경로를 요청 시 실행합니다. `QHUD_EXTRA_DIAG=1 qhud --claude-usage`는 형식 변경 확인을 위해 실제 응답에서 식별 정보 없는 `extra_usage`/`spend` 하위 객체를 출력합니다.
-- **⟳가 “usage response did not parse: …”를 표시하나요?** Endpoint의 형식이 바뀐 것입니다. v0.5.3부터 이후 부분은 serde 자체의 필드/타입 메시지이므로 읽으면 필드를 알 수 있습니다. 선례(2026-09-01, v0.5.3): `extra_usage.used_credits`가 `4997` 대신 `4997.0`으로 오기 시작해 선택적 필드 하나가 이틀간 응답 전체를 실패시켰습니다. 이제 정수 의미의 금액 필드는 정수값인 실수를 허용합니다. 새 정수형 필드도 같은 유연한 읽기 함수(`usage_cache.rs`의 `lenient_i64`/`lenient_u8`, D-019)를 거쳐야 다음 이틀짜리 장애를 막을 수 있습니다. 메시지가 기간이나 백분율을 가리키면 qhud가 표시하는 필드의 변경이므로 유연한 처리보다 코드 수정이 필요합니다.
+ --codex-appserver`는 만료 토큰 대체 경로를 요청 시 실행합니다. `QHUD_EXTRA_DIAG=1 qhud --claude-usage`는 형식 변경 확인을 위해 실제 응답에 `extra_usage`와 `spend`가 존재하는지만 보고합니다.
+- **⟳가 “usage response did not parse: …”를 표시하나요?** Endpoint의 형식이 바뀐 것입니다. 이후 부분은 예상하지 못한 공급자 값을 생략한 비식별 오류 범주와 JSON 위치입니다. 선례(2026-09-01, v0.5.3): `extra_usage.used_credits`가 `4997` 대신 `4997.0`으로 오기 시작해 선택적 필드 하나가 이틀간 응답 전체를 실패시켰습니다. 이제 정수 의미의 금액 필드는 정수값인 실수를 허용합니다. 새 정수형 필드도 같은 유연한 읽기 함수(`usage_cache.rs`의 `lenient_i64`/`lenient_u8`, D-019)를 거쳐야 다음 이틀짜리 장애를 막을 수 있습니다.
 - **계정과 플랜**은 이 공개 저장소 밖의 `~/.config/qhud/accounts.json`에 있습니다. `labels` / `plans` / `workspace_names` / `workspace_plans`는 표시 텍스트, `known[]`은 과거 연결 계정 목록, `forgotten`은 자리 표시자 숨김에 사용합니다(활성 계정은 숨기지 않음). 표시 이름은 운영자가 제공하며 응답의 `plan_type`으로 “수정”하면 안 됩니다. `prolite`는 ChatGPT Pro 5x, `team`은 ChatGPT Business로 표시합니다.
 - **공급자당 여러 계정**(D-015): 추가 계정을 각각 자체 디렉터리에서 로그인 상태로 유지한 뒤 디렉터리를 등록합니다.
 
@@ -117,7 +117,7 @@ cp ~/.config/autostart/qhud.desktop ~/.local/share/applications/qhud.desktop
 | 증상 | 해결 |
 | --- | --- |
 | 위젯이 비어 있음 / 투명하지 않음 / **픽셀 정지**(클릭과 추적 로그는 작동하지만 화면이 바뀌지 않음; 밤새 DPMS 후 흔함) | v0.5.1부터 qhud가 불안정한 두 WebKitGTK 경로를 자체 비활성화합니다(`WEBKIT_DISABLE_DMABUF_RENDERER=1` + `WEBKIT_DISABLE_COMPOSITING_MODE=1`; 디스플레이 절전 때 스레드 컴포지터 프레임 시계가 멈추며 시작 시 libEGL DRI3 오류가 징후). 자체 복구도 수행합니다. Rust 픽셀 가드가 약 28초마다 푸터 띠를 해시하고 두 정지 샘플에서 `frame freeze detected`를 기록한 뒤 창을 unmap/remap해 복구하고 여전히 정적이면 재실행합니다. `QHUD_KEEP_DMABUF=1` / `QHUD_KEEP_COMPOSITING=1`을 설정했다면 해제합니다. 정지 확인: `xwd -id $(xdotool search --class qhud \| tail -1) \| md5sum`을 몇 초 간격으로 두 번 실행하여 해시가 같으면 정지입니다(푸터 시계는 매초 갱신). |
-| Claude 사용 한도 행이 오래된 ⟳에 머무름(경과 시간이 계속 증가) 및 상단 ⟳ 오류 툴팁 | stderr를 읽습니다. `usage response did not parse: <serde message>`는 endpoint 형식 변경(진단 절, D-019), `Claude token rejected (401)`는 해당 디렉터리에서 `claude`를 다시 실행해야 한다는 뜻입니다. 만료된 추가 계정은 기본 계정 수치를 숨기지 않으므로 행 하나만 오래됐다면 해당 디렉터리만 문제입니다. |
+| Claude 사용 한도 행이 오래된 ⟳에 머무름(경과 시간이 계속 증가) 및 상단 ⟳ 오류 툴팁 | `usage response did not parse: <비식별 범주와 위치>`는 endpoint 형식 변경(진단 절, D-019), `Claude token rejected (401)`는 해당 디렉터리에서 `claude`를 다시 실행해야 한다는 뜻입니다. 만료된 추가 계정은 기본 계정 수치를 숨기지 않으므로 행 하나만 오래됐다면 해당 디렉터리만 문제입니다. |
 | 위젯이 창 위로 올라옴 | XWayland를 확인합니다. 창의 `xprop WM_CLASS`가 응답해야 합니다. `QHUD_NO_X11_FORCE=1`을 설정했다면 계층 처리는 컴포지터가 담당합니다. |
 | 모니터 분리 후 잘못된 모니터에 표시 | 기하 복원이 사라진 모니터를 가리킵니다. `~/.config/xyz.dogu.qhud/`의 window-state 파일을 삭제하고 재시작합니다. |
 | 트레이 아이콘 없음 | AppIndicator 확장이 없습니다. 위젯은 계속 실행되며 `pkill qhud`로 종료합니다. |

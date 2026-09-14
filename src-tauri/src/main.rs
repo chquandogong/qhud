@@ -22,9 +22,224 @@ use tauri::{Emitter, Manager};
 /// Stderr breadcrumb for UI interactions. Invisible in the UI, but
 /// greppable in logs/journal — real-input verification depends on it
 /// (window-title beacons pollute WM_NAME; see D-010).
+/// The webview may report only typed, bounded diagnostic facts. This preserves
+/// the counts and target kinds needed for field debugging without allowing a
+/// free-form account label, pane ID, path, or exception into stderr.
+#[derive(serde::Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
+enum UiDiagnostic {
+    Pointer {
+        x: i32,
+        y: i32,
+        button: i16,
+        target: UiTarget,
+    },
+    TileSelection {
+        state: SelectionState,
+    },
+    UsageSelection {
+        target: UiTarget,
+        state: SelectionState,
+    },
+    StripRendered {
+        sections: u32,
+        rows: u32,
+        gauges: u32,
+        per_model: u32,
+        more: bool,
+    },
+    LabelsRendered {
+        phase: LabelPhase,
+        rows: u32,
+        secondary_labels: u32,
+        plans: u32,
+        gauges: u32,
+    },
+    ClaudeRefresh {
+        sources: u32,
+        scoped: u32,
+        rendered: u32,
+    },
+    CodexWorkspaceRows {
+        rows: u32,
+        source: WorkspaceSource,
+        merged: u32,
+        rendered: u32,
+    },
+    FrontendError {
+        context: ErrorContext,
+    },
+    Zoom {
+        percent: u16,
+    },
+}
+
+#[derive(Clone, Copy, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum UiTarget {
+    Button,
+    Tile,
+    ProviderRow,
+    CodexWorkspace,
+    SavedAccount,
+    Other,
+}
+
+impl UiTarget {
+    fn label(self) -> &'static str {
+        match self {
+            Self::Button => "button",
+            Self::Tile => "tile",
+            Self::ProviderRow => "provider-row",
+            Self::CodexWorkspace => "codex-workspace",
+            Self::SavedAccount => "saved-account",
+            Self::Other => "other",
+        }
+    }
+}
+
+#[derive(Clone, Copy, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum SelectionState {
+    Selected,
+    Cleared,
+    Open,
+    Closed,
+}
+
+impl SelectionState {
+    fn label(self) -> &'static str {
+        match self {
+            Self::Selected => "selected",
+            Self::Cleared => "cleared",
+            Self::Open => "open",
+            Self::Closed => "closed",
+        }
+    }
+}
+
+#[derive(Clone, Copy, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum WorkspaceSource {
+    Stored,
+    Fetched,
+}
+
+#[derive(Clone, Copy, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum LabelPhase {
+    Initial,
+    ClaudeRefresh,
+    CodexStored,
+    CodexFetch,
+}
+
+impl LabelPhase {
+    fn label(self) -> &'static str {
+        match self {
+            Self::Initial => "initial",
+            Self::ClaudeRefresh => "claude-refresh",
+            Self::CodexStored => "codex-stored",
+            Self::CodexFetch => "codex-fetch",
+        }
+    }
+}
+
+impl WorkspaceSource {
+    fn label(self) -> &'static str {
+        match self {
+            Self::Stored => "stored",
+            Self::Fetched => "fetched",
+        }
+    }
+}
+
+#[derive(Clone, Copy, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum ErrorContext {
+    RenderQuotas,
+    Window,
+    Rejection,
+    AppInfo,
+    OpenAboutLink,
+    ManualDrag,
+}
+
+impl ErrorContext {
+    fn label(self) -> &'static str {
+        match self {
+            Self::RenderQuotas => "render-quotas",
+            Self::Window => "window",
+            Self::Rejection => "rejection",
+            Self::AppInfo => "app-info",
+            Self::OpenAboutLink => "open-about-link",
+            Self::ManualDrag => "manual-drag",
+        }
+    }
+}
+
+fn ui_event_line(event: UiDiagnostic) -> String {
+    match event {
+        UiDiagnostic::Pointer {
+            x,
+            y,
+            button,
+            target,
+        } => format!(
+            "pointer x={x} y={y} button={button} target={}",
+            target.label()
+        ),
+        UiDiagnostic::TileSelection { state } => {
+            format!("tile selection {}", state.label())
+        }
+        UiDiagnostic::UsageSelection { target, state } => format!(
+            "usage selection target={} state={}",
+            target.label(),
+            state.label()
+        ),
+        UiDiagnostic::StripRendered {
+            sections,
+            rows,
+            gauges,
+            per_model,
+            more,
+        } => format!(
+            "strip sections={sections} rows={rows} gauges={gauges} per-model={per_model} more={more}"
+        ),
+        UiDiagnostic::LabelsRendered {
+            phase,
+            rows,
+            secondary_labels,
+            plans,
+            gauges,
+        } => format!(
+            "labels phase={} rows={rows} account-cells={secondary_labels} plan-cells={plans} gauges={gauges}",
+            phase.label()
+        ),
+        UiDiagnostic::ClaudeRefresh {
+            sources,
+            scoped,
+            rendered,
+        } => format!("Claude refresh accounts={sources} scoped={scoped} rendered={rendered}"),
+        UiDiagnostic::CodexWorkspaceRows {
+            rows,
+            source,
+            merged,
+            rendered,
+        } => format!(
+            "Codex workspaces rows={rows} source={} merged={merged} rendered={rendered}",
+            source.label()
+        ),
+        UiDiagnostic::FrontendError { context } => {
+            format!("frontend error context={}", context.label())
+        }
+        UiDiagnostic::Zoom { percent } => format!("zoom percent={percent}"),
+    }
+}
+
 #[tauri::command]
-fn ui_event(event: String) {
-    eprintln!("qhud ui: {event}");
+fn ui_event(event: UiDiagnostic) {
+    eprintln!("qhud ui: {}", ui_event_line(event));
 }
 
 /// Fetches every Codex workspace's quota, on explicit operator request.
@@ -61,17 +276,7 @@ async fn fetch_claude_usage() -> Result<Vec<claude_usage::AccountFetch>, String>
     // fetch_all records each success to the fetched store itself.
     let out = claude_usage::fetch_all(view::now_ms()).await;
     match &out {
-        Ok(accounts) => {
-            for a in accounts {
-                eprintln!(
-                    "qhud: claude usage ok [{}] (5h {:?}, 7d {:?}, {} scoped)",
-                    a.key,
-                    a.usage.five_hour.as_ref().map(|w| w.pct),
-                    a.usage.seven_day.as_ref().map(|w| w.pct),
-                    a.usage.scoped.len()
-                );
-            }
-        }
+        Ok(accounts) => eprintln!("qhud: claude usage ok ({} accounts)", accounts.len()),
         Err(e) => eprintln!("qhud: claude usage failed: {e}"),
     }
     out
@@ -87,12 +292,7 @@ async fn fetch_agy_usage() -> Result<crate::usage_cache::CachedUsage, String> {
     let out = agy_usage::fetch(view::now_ms()).await;
     match &out {
         Ok(u) => {
-            eprintln!(
-                "qhud: agy usage ok (5h {:?}, 7d {:?}, {} pools)",
-                u.five_hour.as_ref().map(|w| w.pct),
-                u.seven_day.as_ref().map(|w| w.pct),
-                u.scoped.len()
-            );
+            eprintln!("qhud: agy usage ok ({} scoped pools)", u.scoped.len());
             fetched_store::record_agy(u);
         }
         Err(e) => eprintln!("qhud: agy usage failed: {e}"),
@@ -128,7 +328,7 @@ pub fn reassert_layer(app: &tauri::AppHandle) {
 /// showing one the operator tried to dismiss (see registry rule 1).
 #[tauri::command]
 fn forget_account(provider: String, key: String) -> Result<(), String> {
-    eprintln!("qhud ui: forget-account {provider}:{key}");
+    eprintln!("qhud ui: forget-account requested");
     registry::forget_and_save(&provider, &key)
 }
 
@@ -439,4 +639,27 @@ fn tray(app: &tauri::App) -> tauri::Result<()> {
         })
         .build(app)?;
     Ok(())
+}
+
+#[cfg(test)]
+mod privacy_tests {
+    #[test]
+    fn ui_event_schema_rejects_free_form_private_values() {
+        let canary = "person@example.com/workspace-123/C:\\Users\\person";
+        let event = serde_json::json!({
+            "kind": "pointer",
+            "x": 10,
+            "y": 20,
+            "button": 0,
+            "target": canary,
+        });
+        assert!(serde_json::from_value::<super::UiDiagnostic>(event).is_err());
+
+        let safe = super::ui_event_line(super::UiDiagnostic::FrontendError {
+            context: super::ErrorContext::RenderQuotas,
+        });
+        assert!(!safe.contains(canary));
+        assert!(!safe.contains('@'));
+        assert!(!safe.contains("workspace-123"));
+    }
 }

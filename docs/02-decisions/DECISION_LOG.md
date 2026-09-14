@@ -488,3 +488,25 @@ Format: context → options → decision → rationale → residual risk.
   respected, and snapshots without a matching account identity require refresh.
 - **Boundary**: native Windows terminal-pane attribution is not implemented.
   Windows support does not replace the Linux desktop integration.
+
+## D-021 · Ambient diagnostics are typed and redacted
+
+- **Context**: a CodeQL alert showed that the Codex scope-mismatch path wrote
+  stable account IDs to stderr. The adjacent audit found credential filenames,
+  provider body previews, account and pane labels, expanded configuration paths,
+  usage values, and JavaScript exception text in normal diagnostics. A second
+  finding invalidated D-019's assumption that serde type errors are always
+  identity-free: an unexpected string value is quoted in the raw error.
+- **Decision**: normal diagnostics accept only typed, bounded facts. UI events
+  cross the Rust boundary through enums and integer counters; source labels,
+  account/workspace IDs, paths, percentages, exception text, and provider values
+  never enter ambient logs. Provider JSON failures report a coarse category and
+  position. Explicit operator-requested JSON commands retain full diagnostic
+  output and are documented as sensitive before sharing.
+- **Rejected**: hashing identifiers, because a stable hash remains a linkable
+  pseudonym; deleting interaction diagnostics, because D-010 still requires
+  proof of pointer delivery and rendered shape; logging raw serde or RPC errors,
+  because upstream strings are untrusted data.
+- **Evidence**: email, token, path, account, and workspace canaries are rejected
+  or absent in formatter tests. Repository checks, Linux/Windows CI, CodeQL, and
+  an independent log-flow review are required gates for the complete change.

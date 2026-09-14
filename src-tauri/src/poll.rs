@@ -63,11 +63,11 @@ pub fn run(app: AppHandle) {
                         payload.backend = Some((*backend).to_string());
                         Some(payload)
                     }
-                    Err(e) => {
+                    Err(_) => {
                         // Mux server went away (stopped, socket gone):
                         // Retain real accounts and saved usage while
                         // waiting for the mux to become available again.
-                        eprintln!("qhud: {backend} source lost ({e}); local accounts fallback");
+                        eprintln!("qhud: {backend} source lost; local accounts fallback");
                         live = None;
                         None
                     }
@@ -283,13 +283,13 @@ fn build_live() -> Option<(LiveCtx, &'static str)> {
         let attempt = config_label(&config);
         let source = match build_tmux_source(&config) {
             Ok(build) => {
-                if let Some(notice) = build.startup_notice {
-                    eprintln!("qhud: {}: {}", notice.title, notice.body);
+                if build.startup_notice.is_some() {
+                    eprintln!("qhud: multiplexed source reported a startup notice");
                 }
                 build.source
             }
-            Err(e) => {
-                eprintln!("qhud: {attempt} source unavailable: {e}");
+            Err(_) => {
+                eprintln!("qhud: {attempt} source unavailable");
                 continue;
             }
         };
@@ -303,16 +303,7 @@ fn build_live() -> Option<(LiveCtx, &'static str)> {
         let mut ctx = Context::new(config, source, SilentNotify, Box::new(NoopSink));
         match event_loop::run_once(&mut ctx, Instant::now()) {
             Ok(reports) => {
-                let labels: Vec<String> = view::payload(&reports)
-                    .panes
-                    .iter()
-                    .map(|p| p.label.clone())
-                    .collect();
-                eprintln!(
-                    "qhud: live via {backend} ({} panes: {})",
-                    reports.len(),
-                    labels.join(", ")
-                );
+                eprintln!("qhud: live via {backend} ({} panes)", reports.len());
                 return Some((ctx, backend));
             }
             Err(_) => continue,
@@ -342,8 +333,8 @@ fn load_config() -> Option<QmonsterConfig> {
         if path.exists() {
             match qmonster::app::config::load_with_local_override(&path) {
                 Ok(config) => return Some(config),
-                Err(e) => {
-                    eprintln!("qhud: failed to read qmonster config ({e}); using defaults");
+                Err(_) => {
+                    eprintln!("qhud: failed to read qmonster config; using defaults");
                 }
             }
         }
