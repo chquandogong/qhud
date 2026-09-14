@@ -9,8 +9,8 @@
 
 # 아키텍처 — qhud
 
-> 상태: 지속 갱신(v0.6.0 소스를 기준으로 전면 개정) · 날짜: 2026-09-07 · 담당: chquandogong
-> SPEC(해야 하는 일) 및 DECISION_LOG(이렇게 구현한 이유)의 동반 문서입니다. 기준은 `v0.6.1` 트리이며 아래 계정 식별 동작은 v0.6.2에 맞춰 갱신했습니다. 과거 모듈 행 수와 테스트 수는 v0.6.1 값을 유지합니다.
+> 상태: 지속 갱신(v0.7.1까지 반영) · 날짜: 2026-09-14 · 담당: chquandogong
+> SPEC(해야 하는 일) 및 DECISION_LOG(이렇게 구현한 이유)의 동반 문서입니다. 모듈 지도는 v0.7.1까지 반영하며 날짜별 검증은 TEST_PLAN에 보존합니다.
 
 <!-- qhud:anchor -->
 <a id="1-what-qhud-is-structurally"></a>
@@ -40,7 +40,7 @@ Windows 이식은 데이터 처리용 두 번째 코드 경로를 추가하지 �
 
 1. 스레드가 생기기 전에 **Linux 전용 환경을 강제합니다**. 설정되지 않았을 때 설정하는 세 쌍과 각각의 우회 옵션이 있습니다. `GDK_BACKEND=x11`(`QHUD_NO_X11_FORCE`), `WEBKIT_DISABLE_DMABUF_RENDERER=1`(`QHUD_KEEP_DMABUF`), `WEBKIT_DISABLE_COMPOSITING_MODE=1`(`QHUD_KEEP_COMPOSITING`)입니다. 빈 값을 포함해 값이 존재하면 설정된 것으로 봅니다. Windows에는 이 블록 전체가 없습니다.
 2. **Argv 사전 처리.** 진단 및 전달용 플래그를 Tauri나 GTK 초기화 전에 처리하므로 진단 실행은 창을 만들지 않습니다. `--respawned`는 단일 인스턴스 가드가 재실행을 흡수하지 않도록 먼저 1.5초 기다립니다.
-3. **Tauri builder** 등록 순서: argv 전달 채널을 겸하는 단일 인스턴스 플러그인, 다섯 명령, window-state 플러그인, `setup`입니다.
+3. **Tauri builder** 등록 순서: argv 전달 채널을 겸하는 단일 인스턴스 플러그인, 명령 7개, window-state 및 opener 플러그인, `setup`입니다.
 4. **`setup`**: `main` 창을 가져옵니다(레이블은 빌드 시점 계약이므로 없으면 panic). `tauri.conf.json`이 이미 요청한 계층 상태를 다시 설정하고(X11은 창이 실제 생성된 뒤에만 따름), 트레이를 만들며(실패는 치명적이지 않고 기록함), 관찰 스레드를 시작합니다.
 5. `run()` — 주 스레드가 GTK 또는 WebView2 이벤트 루프가 됩니다.
 
@@ -71,6 +71,15 @@ Windows 이식은 데이터 처리용 두 번째 코드 경로를 추가하지 �
 **소유 계정 검사.** 저장 스냅샷은 계정 ID 또는 이메일이 현재 로그인과 일치할 때만 사용합니다. 이는 이전 로그인의 더 최신 수치가 현재 로그인의 더 오래된 수치를 가리는 문제를 방지하며 v0.6.0에서 해결했습니다. 저장된 Codex 작업 공간의 `active`도 디스크 값을 믿지 않고 현재 계정으로 다시 계산합니다.
 
 **성능 저하 시 동작.** 설정이 없으면 기본값을 사용합니다. 백엔드 하나가 실패하면 다음으로 넘어가고 모두 실패하면 로컬 페이로드로 전환한 뒤 10초마다 재시도합니다. 실행 중 실시간 소스를 잃으면 실제 계정과 저장 사용량을 유지하며 로컬 페이로드로 전환합니다. 이벤트 전송과 기하 저장 실패는 설계상 무시합니다.
+
+<!-- qhud:anchor -->
+<a id="system-sampling-in-the-poll-loop-v07"></a>
+
+### 관찰 루프의 시스템 샘플링(v0.7)
+
+CPU, 디스크, 네트워크, GPU 속도는 연속 관찰이 필요하므로 `system_metrics::Collector` 하나가 관찰 스레드와 같은 수명으로 유지됩니다. 각 2초 주기는 집계 카운터만 갱신하고 최대 30개의 메모리 내 샘플을 보존하며 같은 `qhud://report` 페이로드에 `system` 스냅샷을 추가합니다. 프로세스를 열거하거나 모니터링 명령을 실행하거나 계정 자격 증명을 읽거나 원격 측정을 보내지 않습니다.
+
+창이 숨겨지거나 최소화되면 수집을 멈춥니다. 다시 표시하거나 공백이 10초를 넘으면 속도 기준과 기록을 지워 절전 시간을 거짓 급증으로 계산하지 않습니다. 저장 장치 용량은 별도로 30초마다 갱신합니다. GPU는 선택 기능입니다. Windows는 WDDM 카운터, Linux는 AMD sysfs, Intel i915/xe 유휴 잔류 카운터 또는 설치된 NVIDIA NVML을 사용합니다. 첫 유효 샘플이 해당 수집 세션의 어댑터 하나를 선택하며 누락/오류 수치는 null로 유지합니다. `--system-dump`는 자체 수집기를 만들고 두 번째 샘플을 기다린 뒤 Tauri 시작 전에 시스템 스냅샷만 출력합니다.
 
 <!-- qhud:anchor -->
 <a id="5-paths"></a>
@@ -150,6 +159,7 @@ panes[]    pane_id, label, session, provider, status, status_label,
 summary    panes, conflicts, max_5h_pct
 account_placeholders[]?, workspace_names{}?, workspace_plans{}?,
 codex_workspaces[]?, codex_fetched_at_ms?
+system?      sampled_at_ms, interval_ms, cpu_count?, gpu?, current, history[]
 ```
 
 `source`는 `live`, `local`, `demo`입니다. `backend`는 멀티플렉서가 페이로드를 제공하면 `herdr` 또는 `tmux`, 아니면 null입니다. 계기는 `{pct, source, reset_unix, of_tokens}`입니다. `origin`은 `pane`, `cache`, `fetched`이며 프런트엔드가 행을 실시간처럼 표시해도 되는지 판단하는 필드입니다.
@@ -191,7 +201,7 @@ Codex 기간 레이블은 primary/secondary 위치가 아니라 **길이**에서
 
 ## 12. 프런트엔드
 
-프레임워크와 번들러가 없습니다. DOM을 제자리에서 수정하므로 2초 새로고침이 CSS 전환을 다시 시작하지 않습니다. 앱 전체는 `withGlobalTauri`를 사용해 Tauri asset 프로토콜로 제공하는 파일 하나입니다.
+프레임워크와 번들러가 없습니다. DOM을 제자리에서 수정하므로 2초 새로고침이 CSS 전환을 다시 시작하지 않습니다. 정적 HTML, CSS, JavaScript 모듈은 `withGlobalTauri`를 사용해 Tauri asset 프로토콜로 제공합니다.
 
 **렌더링 순서**는 요약, 데모 배지, 전체 새로고침 상태, 사용 한도 영역(구역, 행, Codex 하위 행, 접힌 자리 표시자 행), 페이로드 순서에 따른 키 기반 타일 수정, 푸터입니다. 사용 한도 영역은 예외를 stderr로 전달하는 try/catch 안에서 처리합니다. 과거에는 프런트엔드 예외를 webview 밖에서 볼 수 없어 고장 난 영역을 배포한 적이 있습니다.
 
@@ -208,6 +218,10 @@ Codex 기간 레이블은 primary/secondary 위치가 아니라 **길이**에서
 **관찰 가능성은 의도적인 설계입니다.** 하나의 명령을 통해 추적 로그를 stderr로 보내며 렌더링 로직이 무언가 만들었다는 유일한 근거입니다. 영역 구조, 모든 식별 정보 행과 계기 레이블의 실제 텍스트, 실제 pointerdown이 도착한 위치, 선택 변경, 확대/축소, JavaScript 오류를 기록합니다. 개수만으로는 충분하지 않습니다. 잘못된 기간 _이름_은 개수로 찾을 수 없는 오류입니다. 이 모든 것 역시 실제 화면 그리기를 증명하지 못하므로 프레임 가드가 필요합니다.
 
 1초 타이머가 카운트다운을 다시 렌더링하고 8초 동안 페이로드가 오지 않으면 푸터에 오래됨을 표시합니다. 백엔드가 멈추면 그럴듯한 수치를 고정 표시하지 않고 멈췄음을 알립니다(CV-2).
+
+**시스템 지표는 범위가 제한된 프런트엔드 하위 시스템입니다.** `ui/system-metrics.js`의 순수 함수는 형식, 기록 슬롯, 적응형 축을 담당하며 Node 테스트로 실행합니다. `ui/app.js`는 CPU·메모리·GPU에 고정 0–100% 축을, 디스크·네트워크에 적응형 바이트 속도 축을 사용하고 null 샘플은 공백으로 그립니다. 같은 항목을 다시 선택하면 상세 화면을 닫고 다른 항목을 선택하면 전환합니다. 버튼은 포인터, Enter, Space를 지원합니다. 기록은 메모리에만 있고 저장하지 않습니다.
+
+**About은 실행 상태가 아니라 빌드 식별 정보를 제공합니다.** `app_info` 명령은 Cargo 빌드 버전과 고정된 제작자·홈페이지·저장소 값을 반환합니다. `open_about_link`는 `author`와 `repository`라는 기호 대상만 허용하므로 webview가 네이티브 열기 기능에 임의 URL을 전달할 수 없습니다. 대화상자를 닫으면 포커스를 복원하며 닫기 버튼, Escape, 바깥 영역 클릭을 지원합니다.
 
 **저장하는 내용과 위치.** 선택 창, 자리 표시자 확장 상태, 확대/축소는 저장 접근이 완전히 거부돼도 처리하는 래퍼 뒤의 브라우저 저장소에 있습니다. 창 기하는 window-state 플러그인에 있으며 관찰 루프가 30초마다 저장합니다.
 
@@ -323,26 +337,29 @@ qhud는 qmonster 자체 디렉터리에 아무것도 쓰지 않습니다. TUI가
 
 ## 20. 모듈 지도
 
-행 수와 테스트 수는 `v0.6.1` 트리 기준입니다. 테스트 열의 합계는 전체 테스트 결과인 98과 같습니다.
+이 지도는 자주 바뀌는 행 수와 모듈별 테스트 수 대신 안정적인 책임을 기록합니다. 날짜별 전체 검증 근거는 TEST_PLAN에 있습니다.
 
-| 파일 | 역할 | 행 수 | 테스트 |
-| --- | --- | --- | ---: |
-| `src-tauri/src/main.rs` | 진입점, 플랫폼 환경 강제, argv 인터페이스, 다섯 명령, 트레이, 계층 상태 머신, 재실행 | 421 | 0 |
-| `src-tauri/src/poll.rs` | 2초 루프: 백엔드 선택, 관찰 주기, 로컬 대체, 스냅샷과 계정 정보 연결, dump | 501 | 6 |
-| `src-tauri/src/paths.rs` | Linux와 Windows의 모든 경로 및 환경 변수 재정의 | 84 | 2 |
-| `src-tauri/src/view.rs` | qmonster 보고서를 페이로드로 변환; 집계와 모든 병합 규칙 | 1154 | 19 |
-| `src-tauri/src/accounts.rs` | 로컬 계정 탐색, (계정, 조직) 중복 제거, 레이블 덧붙이기 | 561 | 14 |
-| `src-tauri/src/registry.rs` | 운영자 registry, 자리 표시자 규칙, 제거 항목 저장 | 342 | 10 |
-| `src-tauri/src/usage_cache.rs` | 스냅샷 구조, Claude 디스크 캐시, 유연한 응답 숫자 처리, 최신 여부 | 661 | 14 |
-| `src-tauri/src/claude_usage.rs` | 설정 디렉터리별 Claude 명시적 새로고침 | 207 | 1 |
-| `src-tauri/src/codex_usage.rs` | Codex 작업 공간, 범위 검사, 기간 레이블, app-server 대체 경로 | 1146 | 20 |
-| `src-tauri/src/agy_usage.rs` | 두 플랫폼의 agy loopback RPC와 포트 탐색 | 401 | 5 |
-| `src-tauri/src/fetched_store.rs` | 새로고침 저장, 원자적 쓰기, 동시 쓰기 잠금 | 268 | 4 |
-| `src-tauri/src/frame_guard.rs` | 픽셀 샘플링과 단계별 복구(Linux) | 171 | 3 |
-| `src-tauri/src/demo.rs` | 시각 일치 검증 데이터 | 173 | 0 |
-| `ui/app.js` | 전체 프런트엔드: 렌더링 파이프라인, 사용량 영역, 타일, 조회 상태, 추적 로그, 기하, 확대/축소 | 1667 | — |
-| `ui/style.css` | 위젯 스타일, 계기 심각도, 스크롤, 오래됨 표식 | 921 | — |
-| `ui/index.html` | 기본 구조 | 36 | — |
+| 파일 | 역할 |
+| --- | --- |
+| `src-tauri/src/main.rs` | 진입점, 플랫폼 환경 강제, argv 인터페이스, 네이티브 명령, 트레이, 계층 상태 머신, 재실행 |
+| `src-tauri/src/poll.rs` | 2초 루프: 백엔드 선택, 관찰 주기, 로컬 대체, 스냅샷과 계정 정보 연결, dump |
+| `src-tauri/src/paths.rs` | Linux와 Windows의 모든 경로 및 환경 변수 재정의 |
+| `src-tauri/src/view.rs` | qmonster 보고서를 페이로드로 변환; 집계와 모든 병합 규칙 |
+| `src-tauri/src/accounts.rs` | 로컬 계정 탐색, (계정, 조직) 중복 제거, 레이블 덧붙이기 |
+| `src-tauri/src/registry.rs` | 운영자 registry, 자리 표시자 규칙, 제거 항목 저장 |
+| `src-tauri/src/usage_cache.rs` | 스냅샷 구조, Claude 디스크 캐시, 유연한 응답 숫자 처리, 최신 여부 |
+| `src-tauri/src/claude_usage.rs` | 설정 디렉터리별 Claude 명시적 새로고침 |
+| `src-tauri/src/codex_usage.rs` | Codex 작업 공간, 범위 검사, 기간 레이블, app-server 대체 경로 |
+| `src-tauri/src/agy_usage.rs` | 두 플랫폼의 agy loopback RPC와 포트 탐색 |
+| `src-tauri/src/fetched_store.rs` | 새로고침 저장, 원자적 쓰기, 동시 쓰기 잠금 |
+| `src-tauri/src/frame_guard.rs` | 픽셀 샘플링과 단계별 복구(Linux) |
+| `src-tauri/src/demo.rs` | 시각 일치 검증 데이터 |
+| `src-tauri/src/system_metrics.rs` + `system_metrics/` | 수동 CPU·메모리·디스크·네트워크·선택 GPU 샘플링, 제한된 기록, 플랫폼 어댑터 |
+| `src-tauri/src/about.rs` | About의 빌드 식별 정보와 허용 목록 외부 링크 |
+| `ui/system-metrics.js` | 순수 지표 형식, 기록 슬롯, 적응형 축 |
+| `ui/app.js` | 전체 프런트엔드: 렌더링 파이프라인, 사용량 영역, 타일, 조회 상태, 추적 로그, 기하, 확대/축소 |
+| `ui/style.css` | 위젯 스타일, 계기 심각도, 스크롤, 오래됨 표식 |
+| `ui/index.html` | 기본 구조 |
 
 문제가 생겼을 때 먼저 볼 위치:
 

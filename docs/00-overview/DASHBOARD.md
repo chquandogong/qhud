@@ -6,108 +6,74 @@
 
 # DASHBOARD — qhud
 
-> Status: v0.6.1 released · Date: 2026-09-07 · Owner: chquandogong
-> Single source of truth = this git repo. This board is the handoff
-> surface: read it first when resuming work on another session/agent.
+> Status: v0.7.1 released · Updated: 2026-09-14 · Owner: chquandogong
+> Public project snapshot. Git history, tagged releases, and workflow runs are
+> the authoritative records; dated observations below keep their original scope.
 
 ## State
 
-| Item               | Value                                                                                                   |
-| ------------------ | ------------------------------------------------------------------------------------------------------- |
-| Version            | [v0.7.1](https://github.com/chquandogong/qhud/releases/tag/v0.7.1) — Intel GPU measurement on Linux, filling the GPU column [v0.7.0](https://github.com/chquandogong/qhud/releases/tag/v0.7.0) left empty on Intel graphics (Linux x86_64 tarball + Windows x86_64 ZIP) |
-| Pipeline dep       | qmonster @ `6a21c44`; canonical Git dependency on Linux, command-scoped Windows patch with lockfile restoration |
-| Platforms          | Ubuntu 24.04 / GNOME and native Windows x64 / WebView2; Windows terminal-tab observation remains unsupported |
-| Runtime evidence   | **Ubuntu 2026-09-11, v0.7.1 installed to `~/.local/bin` and restarted in the live GNOME/Wayland session**: Intel Arc (Meteor Lake, `i915`, gt0+gt1) measured — `--system-dump` reported 24.8% and an independent rc6-residency computation over the same window returned 24.8%; the running widget showed CPU 4% · MEM 52% · GPU 5% · DISK R/W · NET ↓↑ with sparkline history and a ticking footer timestamp. Windows is untouched by v0.7.1 (the change lives inside the Linux platform module) and has not been re-exercised on hardware; its CI test/build remains the gate. Earlier: **Ubuntu 2026-09-07 on the published v0.6.0 Linux asset** (checksum-verified, installed): Ubuntu 24.04.3 · GNOME Shell 46.0 Wayland · kernel 7.0.0-28 · eDP-1 2560×1600 + HDMI-1 3840×2160 (scale 1) · webkit2gtk 2.52.6 · herdr 0.7.5 live with 8 panes. `_NET_WM_STATE` = BELOW+STICKY+SKIP_PAGER+SKIP_TASKBAR, `_NET_WM_DESKTOP` = 0xFFFFFFFF, `WM_CLASS` = qhud/Qhud; two `xwd` hashes 3 s apart differed (painting); frame guard armed; all three providers answered ⟳. Windows v0.6.0: native display, email, reset, Codex refresh and app-server fallback verified |
-| Quality gates      | Ubuntu 2026-09-11 on the v0.7.1 tree, local: fmt clean, clippy `-D warnings` clean, **127/127** Rust tests + **6/6** node tests, release build 2 m 08 s. Earlier (v0.6.0): Ubuntu fmt/clippy/tests **98/98**/release build passed; Windows tests **98/98**/release build passed — [CI 34117359064](https://github.com/chquandogong/qhud/actions/runs/34117359064). Re-run locally on Ubuntu 2026-09-07 against the v0.6.0 tree: fmt clean, clippy `-D warnings` clean, 98/98, release build 6 m 21 s from the pinned Git dependency with no sibling checkout |
-| Input verification | Ubuntu: **compositor-path only** (Mutter RemoteDesktop injection or human hand — XTEST inadmissible, D-010) |
-| Cross-validation   | Codex/GPT — AGREE-WITH-CHANGES, CV-1..4 adopted (CROSS_VALIDATION_LOG)                                  |
-| Frame guard field  | 08-26 → 09-07 (journal-captured window): **28 freezes, 28 remap heals, 0 re-execs, 0 visible incidents** (D-017). The v0.5.1/v0.5.2 counts came from a terminal-attached instance whose stderr never reached the journal, so they cannot be re-derived |
-| Known live gap     | Still open on 2026-09-07: the `~/claude-personal` credential expired 2026-08-17, so that row answers 401 on every ⟳. Only an operator login clears it; no release renews credentials. The default account is unaffected — partial failure stays partial |
+| Item | Value |
+| --- | --- |
+| Current release | [v0.7.1](https://github.com/chquandogong/qhud/releases/tag/v0.7.1) — Intel GPU measurement on Linux, completing the conditional GPU support introduced by [v0.7.0](https://github.com/chquandogong/qhud/releases/tag/v0.7.0). Linux x86_64 tarball and Windows x86_64 ZIP. |
+| Pipeline dependency | qmonster @ `6a21c44`; canonical Git dependency on Linux, command-scoped Windows patch with lockfile restoration. |
+| Supported platforms | Ubuntu 24.04 / GNOME and native Windows x64 / WebView2. Native Windows terminal-tab observation remains outside the supported scope. |
+| Current runtime evidence | **Ubuntu 2026-09-11, v0.7.1:** Intel Arc (Meteor Lake, `i915`, gt0+gt1) measured. `--system-dump` reported 24.8%; an independent rc6-residency calculation over the same interval returned 24.8%. The live widget rendered CPU, memory, GPU, disk and network history. v0.7.1 changes only the Linux GPU sampler, so the Windows runtime was not re-exercised for that patch. |
+| Earlier cross-platform evidence | **Published v0.6.0 Linux asset, Ubuntu 2026-09-07:** checksum matched; GNOME/Wayland layer states, pixel liveness, eight herdr panes and all three provider refreshes passed. **Windows v0.6.0:** native display, account email, reset times, Codex refresh and app-server fallback passed. See TEST_PLAN for exact environment and hashes. |
+| Quality evidence | **v0.7.1 local Ubuntu, 2026-09-11:** format clean, clippy `-D warnings` clean, 127/127 Rust tests, 6/6 Node tests, release build in 2 m 08 s. Earlier v0.6.0 Ubuntu and Windows CI passed 98/98 Rust tests and release builds: [CI 34117359064](https://github.com/chquandogong/qhud/actions/runs/34117359064). |
+| Input verification rule | Linux interaction claims require compositor-path injection or a human hand; XTEST alone is inadmissible (D-010). |
+| Frame-guard field evidence | Journal window 2026-08-26 → 09-07: 28 freezes, 28 remap heals, 0 re-execs, 0 operator-visible incidents (D-017). Earlier terminal-attached counts cannot be re-derived because their stderr never reached the journal. |
+| Open field breadth | System metrics have direct v0.7.1 evidence on one Intel/i915 Linux host. AMD, NVIDIA, WDDM, a plain tmux server, a second live organization row, and several desktop lifecycle checks still need broader field evidence. Automated coverage remains the gate where hardware evidence is absent. |
 
-## Decision index (full entries in DECISION_LOG)
+## Decision index
 
 D-001 second frontend · D-002 Tauri v2 · D-003 XWayland/EWMH layer ·
 D-004 qmonster lib + NoopSink · D-005 demo=parity fixture · D-006
 tarball releases · D-007 mux-backend factory (herdr) · D-008
-self-driven geometry · D-009 pointerdown selection · D-010 DING
-interception + verification protocol · D-011 scope-correct display ·
-D-012 zoom + peek + signal prohibition · D-013 local account identity ·
-D-014 passive by default, network on request · D-015 multi-account via
-per-account CLI config dirs · D-016 delegated fetch paths (codex
-app-server, agy loopback RPC) · D-017 the widget audits its own pixels
-(frame guard) · D-018 row identity is (account, organization) ·
-D-019 lenient wire numbers, and a rejected body names its field ·
-D-020 Windows adaptation stays scoped; usage keeps its account and window.
+self-driven geometry · D-009 pointerdown selection · D-010 input
+verification protocol · D-011 scope-correct display · D-012 zoom + peek +
+signal prohibition · D-013 local account identity · D-014 passive by default,
+network on request · D-015 multi-account via per-account CLI config dirs ·
+D-016 delegated fetch paths · D-017 frame guard · D-018 row identity is
+(account, organization) · D-019 lenient wire numbers with field-level errors ·
+D-020 scoped Windows adaptation.
 
-## Work board
+Full entries and evidence are in [DECISION_LOG](../02-decisions/DECISION_LOG.md).
 
-| Task                                                                                                                             | Status                           | Owner               |
-| -------------------------------------------------------------------------------------------------------------------------------- | -------------------------------- | ------------------- |
-| v0.1.0 wedge (widget + bridge + demo + docs + CI + release)                                                                      | done 2026-08-05                  | claude+chquandogong |
-| herdr backend live (D-007) · input architecture (D-008/9/10)                                                                     | done                             | claude+chquandogong |
-| Scope-correct display (D-011, v0.2.0)                                                                                            | done 2026-08-06                  | claude+chquandogong |
-| Zoom · peek · single-instance (D-012, v0.3.0) + light tray glyph                                                                 | done 2026-08-06                  | claude+chquandogong |
-| Quota you can trust: attribution fixes, identity, ⟳, workspaces (v0.4.0)                                                         | done 2026-08-07                  | claude+chquandogong |
-| Every account at a glance: multi-account, persistence, extra usage, agy RPC, codex app-server, refresh-all (v0.5.0, D-015/D-016) | done 2026-08-10                  | claude+chquandogong |
-| Tag + release v0.5.0 (CI green again — first since e6e31ed)                                                                      | done 2026-08-10                  | claude+chquandogong |
-| "Selection doesn't work" saga: ptr/qsel input forensics → strip rows select, ⟳-only network → pixel frame guard (v0.5.1, D-017) | done 2026-08-14                  | claude+chquandogong |
-| Row identity = (account, org) — one login, two orgs, separate pools (v0.5.2)                                                     | done 2026-08-17                  | claude+chquandogong |
-| Claude ⟳ dead two days on a float `used_credits`: lenient wire numbers + a parse error that names the field (v0.5.3, D-019)      | done 2026-09-04                  | claude+chquandogong |
-| Native Windows account widget; local fallback without a mux; model/reset visibility and ownership safeguards (v0.6.0)       | implemented; local tests 98/98  | codex+chquandogong |
-| Portable Linux dependency manifest; Windows script-scoped patch; Ubuntu + Windows CI/release gates                          | both platform CI jobs passed    | codex+chquandogong |
-| v0.6.0 release publication and verified downloads                                                                         | [Release 34127575141 passed](https://github.com/chquandogong/qhud/actions/runs/34127575141); both archive checksums match | codex+chquandogong |
-| Ubuntu re-verification of the published v0.6.0 build, closing the "not re-exercised on this Windows host" gap                    | done 2026-09-07                  | claude+chquandogong |
-| SPEC and ARCHITECTURE rewritten from scratch for v0.6.0/v0.6.1; RISK_REGISTER and ASSUMPTIONS refreshed against field evidence   | done 2026-09-07                  | claude+chquandogong |
-| ⏳ TEST_PLAN pending rows (overview / lock / suspend / hotplug / fullscreen)                                                     | **todo — first on-machine pass** | operator            |
-| Live verification with a plain tmux server (fallback path)                                                                       | todo                             | operator            |
-| Personal-org login into `~/claude-personal` (pick the PERSONAL org at the CLI org step; registry already wired; OAuth keeps auto-selecting the team session) | todo — operator, whenever wanted | operator            |
-| Click tile → focus that pane in the terminal                                                                                     | backlog                          | —                   |
-| GNOME Shell extension: overview-clean pinning + DING coexistence                                                                 | backlog                          | —                   |
-| Upstream `ObserveSnapshot` export in qmonster, then unpin                                                                        | backlog                          | —                   |
-| `.deb` package (CV deferred item)                                                                                                | backlog                          | —                   |
-| agy multi-account (OS-keyring reverse engineering)                                                                               | backlog                          | —                   |
+## Delivery record
 
-## Decision queue (human)
+| Delivery | Status |
+| --- | --- |
+| v0.1.0–v0.3.0: widget wedge, herdr/tmux observation, input architecture, zoom, peek and single instance | released 2026-08-05/06 |
+| v0.4.0–v0.5.3: scope-correct quotas, identity, multiple accounts, persistence, delegated fetch paths, frame guard, organization identity and wire-drift repair | released 2026-08-07 → 09-04 |
+| v0.6.0–v0.6.2: native Windows account widget, mux-less real-account view, ownership safeguards, portable packaging, rewritten core docs and automatic Codex email display | released 2026-09-07/08 |
+| v0.7.0: bounded system history for CPU, memory, conditional GPU, disk and network; accessible About | released 2026-09-10 |
+| v0.7.1: Intel i915/xe idle-residency GPU sampler and same-window field comparison | released and verified 2026-09-11 |
 
-_None open._ DING stays disabled on the reference machine (empty
-`~/Desktop`, operator-approved); re-enable costs widget interaction
-until the companion extension exists.
+## Open verification and backlog
 
-## Resume point
+| Item | State |
+| --- | --- |
+| GNOME overview, lock/unlock, suspend/resume, monitor hotplug and fullscreen rows in TEST_PLAN | pending on-machine pass |
+| Plain tmux live observation fallback | pending field pass |
+| Second organization row from a live multi-organization login | pending field pass; keep credentials and machine paths outside the repository |
+| Windows, AMD and NVIDIA system-metrics breadth | pending additional hardware evidence |
+| Tile → terminal-pane focus jump | backlog |
+| GNOME Shell extension for overview-clean pinning and desktop-icons coexistence | backlog |
+| Upstream `ObserveSnapshot`, `.deb` packaging, agy multi-account | backlog |
 
-v0.6.1 is a documentation and verification release: identical runtime
-behavior to v0.6.0, with `docs/03-spec/SPEC.md` and
-`docs/03-spec/ARCHITECTURE.md` rewritten from scratch against the
-v0.6.0 source, and RISK_REGISTER / ASSUMPTIONS refreshed against dated
-field evidence.
+## Evidence notes
 
-**The Ubuntu gap v0.6.0 left open is now closed.** v0.6.0 shipped from a
-Windows host and recorded that "Ubuntu desktop integration was not
-re-exercised"; on 2026-09-07 the published Linux asset was
-checksum-verified, installed and exercised on the reference Ubuntu
-machine. Desktop-layer states, pixel liveness, herdr observation with 8
-panes and all three provider refreshes were confirmed — see Runtime
-evidence above and the dated rows in TEST_PLAN.
+v0.7.0 added the system strip and About without changing the account and pane
+ownership rules. Sampling stays in the existing 2 s poll thread, retains at most
+30 points in memory, pauses while the widget is hidden or minimized, and uses
+gaps rather than invented zeros. v0.7.1 added Intel measurement on Linux; the
+same-interval 24.8% comparison above validates one i915 host and does not imply
+coverage of every adapter.
 
-Also confirmed this session: the v0.5.3 wire-drift fix has held since
-2026-09-04 (every Claude ⟳ succeeded), and v0.6.0's release profile move
-to the workspace root cut the Linux binary from 25.13 MiB to 15.07 MiB —
-`[profile.release]` had been sitting in a non-root workspace member where
-cargo ignored it, so `strip`/`lto`/`codegen-units = 1` had never applied
-to any earlier release.
-
-Next meaningful units, in order:
-
-1. **Operator verification pass** — the TEST_PLAN ⏳ rows that need a
-   human at the machine (GNOME overview, lock/unlock, suspend/resume,
-   monitor hotplug, fullscreen), a plain-tmux backend check, and the
-   personal-org login into `~/claude-personal` (registry already wired;
-   pick the PERSONAL org at the CLI's organization step, which also
-   clears the standing 401 on that row).
-2. **Windows field breadth** — Windows evidence is one host and one smoke
-   check. Terminal-pane attribution there is unimplemented by design, so
-   the honest Windows claim stays "account quota widget", not "session
-   HUD".
-3. **Backlog** — tile→pane focus jump remains the highest-value small
-   item; then the GNOME Shell extension, upstream `ObserveSnapshot`
-   export and unpin, `.deb` packaging, agy multi-account.
+The 2026-09-07 published-asset pass closed the Ubuntu desktop gap left by the
+Windows-hosted v0.6.0 release. It remains useful evidence for layer state,
+painting, herdr observation and provider refreshes, while the v0.7.1 observation
+is the current system-metrics evidence. Exact procedures and unresolved rows
+live in [TEST_PLAN](../04-quality/TEST_PLAN.md); current requirements and
+implementation boundaries live in [SPEC](../03-spec/SPEC.md) and
+[ARCHITECTURE](../03-spec/ARCHITECTURE.md).

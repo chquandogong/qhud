@@ -23,21 +23,33 @@ qhud 설치, 기존 CLI 계정 연결, 저장된 스냅샷과 현재 응답을 �
 | Windows x64 | ZIP을 풀고 추출된 디렉터리 안의 `qhud.exe`를 실행합니다. | Microsoft Edge WebView2 Runtime. [Windows 설정](05-ops/WINDOWS.md)을 참조하세요. |
 | Linux x86_64 | tarball을 풀고 버전 디렉터리 안의 바이너리를 설치합니다. | GTK/WebKitGTK. 기준 시스템은 Ubuntu 24.04입니다. [Linux 운영](05-ops/RUNBOOK.md)을 참조하세요. |
 
-Linux v0.7.0에서 두 파일을 모두 다운로드한 뒤 실행합니다.
+Linux v0.7.1에서 두 파일을 모두 다운로드한 뒤 실행합니다.
 
 ```sh
-sha256sum -c qhud-v0.7.0-linux-x86_64.tar.gz.sha256
-tar -xzf qhud-v0.7.0-linux-x86_64.tar.gz
-install -Dm755 qhud-v0.7.0-linux-x86_64/qhud "$HOME/.local/bin/qhud"
+sha256sum -c qhud-v0.7.1-linux-x86_64.tar.gz.sha256
+tar -xzf qhud-v0.7.1-linux-x86_64.tar.gz
+install -Dm755 qhud-v0.7.1-linux-x86_64/qhud "$HOME/.local/bin/qhud"
 "$HOME/.local/bin/qhud"
 ```
 
 Windows 다운로드는 표시된 해시를 `.sha256` 파일과 비교합니다.
 
 ```powershell
-Get-FileHash -Algorithm SHA256 .\qhud-v0.7.0-windows-x86_64.zip
-Get-Content .\qhud-v0.7.0-windows-x86_64.zip.sha256
+Get-FileHash -Algorithm SHA256 .\qhud-v0.7.1-windows-x86_64.zip
+Get-Content .\qhud-v0.7.1-windows-x86_64.zip.sha256
 ```
+
+현재 release workflow로 게시한 아카이브에는 GitHub 빌드 출처 증명도 있습니다. GitHub CLI를 설치하고 실제 다운로드한 파일명으로 바꿔 `.sha256` 제공 파일이 아닌 아카이브 자체를 검증합니다.
+
+```sh
+gh attestation verify ./qhud-vX.Y.Z-linux-x86_64.tar.gz --repo chquandogong/qhud
+```
+
+```powershell
+gh attestation verify .\qhud-vX.Y.Z-windows-x86_64.zip --repo chquandogong/qhud
+```
+
+체크섬은 함께 제공된 파일을 기준으로 전송 손상이나 교체를 찾고, 증명은 GitHub Actions가 이 저장소를 위해 아카이브를 빌드했는지 확인합니다. 증명 기능을 켜기 전에 만든 릴리스는 검증되지 않습니다.
 
 각 공급자의 자체 CLI로 로그인합니다. qhud는 기존 계정 정보를 읽으며 공급자의 로그인 절차를 대체하지 않습니다. qhud를 시작한 다음 ⟳를 눌러 사용량을 조회합니다. 포터블 패키지는 바로가기나 자동 시작을 등록하지 않습니다.
 

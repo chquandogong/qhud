@@ -25,7 +25,7 @@ installation to architecture, decisions, and release history.
 
 | Document | What it covers |
 | --- | --- |
-| [Project dashboard](00-overview/DASHBOARD.md) | Current release, verification evidence, work board, and resume point. |
+| [Project dashboard](00-overview/DASHBOARD.md) | Current release, dated evidence, open verification, and backlog. |
 | [Project brief](00-overview/PROJECT_BRIEF.md) | Purpose, supported scope, requirements, and non-goals. |
 | [Specification](03-spec/SPEC.md) | Requirements, CLI flags, environment variables, and payload contract. |
 | [Architecture](03-spec/ARCHITECTURE.md) | Data flow, modules, identity, provider fetch paths, and platform boundaries. |

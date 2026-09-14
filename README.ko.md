@@ -84,6 +84,12 @@ qhud는 여러 명령행 인터페이스에 흩어진 계정 할당량과 세션
 | [Windows x64 ZIP](https://github.com/chquandogong/qhud/releases/download/v0.7.1/qhud-v0.7.1-windows-x86_64.zip) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.7.1/qhud-v0.7.1-windows-x86_64.zip.sha256) |
 | [Linux x86_64 tarball](https://github.com/chquandogong/qhud/releases/download/v0.7.1/qhud-v0.7.1-linux-x86_64.tar.gz) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.7.1/qhud-v0.7.1-linux-x86_64.tar.gz.sha256) |
 
+현재 release workflow로 게시한 아카이브는 GitHub 빌드 출처 증명도 제공합니다. GitHub CLI에서 실제 다운로드한 아카이브 경로를 사용해 확인하세요. `.sha256` 파일이 아닌 아카이브 자체를 검증합니다.
+
+```sh
+gh attestation verify ./qhud-vX.Y.Z-linux-x86_64.tar.gz --repo chquandogong/qhud
+```
+
 ### Windows
 
 ZIP을 풀고 버전 디렉터리 안의 `qhud.exe`를 실행합니다. Microsoft Edge WebView2 Runtime이 필요합니다. 포터블 패키지는 바로가기나 자동 시작을 등록하지 않습니다. 사전 요구사항, 소스 빌드, 설정은 [Windows 가이드](docs/i18n/ko/docs/05-ops/WINDOWS.md)를 참조하세요.

@@ -1,0 +1,7 @@
+# The current maintainer reviews all repository changes.
+* @chquandogong
+
+# Keep ownership explicit for security-sensitive and release-critical paths.
+/.github/ @chquandogong
+/scripts/ @chquandogong
+/src-tauri/ @chquandogong

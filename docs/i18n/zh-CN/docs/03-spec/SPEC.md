@@ -9,9 +9,8 @@
 
 # 规格 — qhud
 
-> 状态：持续维护（根据 v0.6.0 源码从头重写） · 日期：2026-09-07 · 负责人：chquandogong
-> qhud 必须做什么。ARCHITECTURE 说明如何构建，DECISION_LOG 说明原因。
-> FR-1 … FR-24 保留其他文档已引用的编号；FR-25 … FR-34 补上 v0.5.1 → v0.6.0 已发布但此前未列入规格表的需求。
+> 状态：持续维护（已更新至 v0.7.1） · 日期：2026-09-14 · 负责人：chquandogong
+> qhud 必须做什么。ARCHITECTURE 说明如何构建，DECISION_LOG 说明原因。现有需求编号保持稳定，后续版本追加新行。
 
 <!-- qhud:anchor -->
 <a id="product-statement"></a>
@@ -74,6 +73,10 @@
 | FR-31 | 行超过窗口时用量区可滚动；长模型名称换行而非截断；仪表和展开行均可查看准确重置日期及时间 | 已完成，v0.6.0 |
 | FR-9 | 无多路复用器时显示真实本地账户行、带时间的配额和零窗格；示例数据须 `--demo` 且显示 DEMO 标签；每 10 s 重新探测实时来源 | 已完成，v0.6.0 替代演示回退，D-005 |
 | FR-30 | 无 mux 启动不虚构用量：缺失读数保持缺失，无保存读数的账户仍显示，以便访问其刷新控件 | 已完成，v0.6.0 |
+| FR-36 | 紧凑系统栏显示 CPU、内存、支持的 GPU、磁盘和网络历史；选择指标可查看当前详情，并支持键盘操作 | 已完成，v0.7.0 |
+| FR-37 | 每 2 s 采样本地系统计数器，最多保留 30 个点（约 60 s）；隐藏/最小化时暂停，恢复或长间隔后重置速率基线 | 已完成，v0.7.0 |
+| FR-38 | 不支持、预热中或失败的计数器保持缺失/断点，不填成零；有效空闲读数仍为零 | 已完成，v0.7.0；v0.7.1 增加 Linux Intel GPU |
+| FR-39 | 选择 qhud 名称打开无障碍 About 对话框，版本取自构建，外部链接仅限声明的主页和仓库 | 已完成，v0.7.0 |
 
 <!-- qhud:anchor -->
 <a id="whose-numbers-these-are"></a>
@@ -197,11 +200,47 @@
                          "windows": [{ "label": "weekly", "used_percent": 41,
                                        "reset_unix": 1789147159,
                                        "scope": null }] }],
-  "codex_fetched_at_ms": 1788790245717
+  "codex_fetched_at_ms": 1788790245717,
+
+  "system": {
+    "sampled_at_ms": 1788790282397, "interval_ms": 2000,
+    "cpu_count": 16,
+    "gpu": { "name": "Intel GPU", "memory_used_bytes": null,
+             "memory_total_bytes": null },
+    "current": { "at_ms": 1788790282397, "cpu_pct": 18.2,
+                 "memory_pct": 50.0,
+                 "memory_used_bytes": 8589934592,
+                 "memory_total_bytes": 17179869184,
+                 "gpu_pct": 5.0,
+                 "disk_read_bps": 1024.0, "disk_write_bps": 0.0,
+                 "disk_used_bytes": 214748364800,
+                 "disk_total_bytes": 536870912000,
+                 "network_rx_bps": 4096.0, "network_tx_bps": 512.0 },
+    "history": [
+      { "at_ms": 1788790280397, "cpu_pct": null,
+        "memory_pct": 50.0,
+        "memory_used_bytes": 8589934592,
+        "memory_total_bytes": 17179869184,
+        "gpu_pct": null,
+        "disk_read_bps": null, "disk_write_bps": null,
+        "disk_used_bytes": 214748364800,
+        "disk_total_bytes": 536870912000,
+        "network_rx_bps": null, "network_tx_bps": null },
+      { "at_ms": 1788790282397, "cpu_pct": 18.2,
+        "memory_pct": 50.0,
+        "memory_used_bytes": 8589934592,
+        "memory_total_bytes": 17179869184,
+        "gpu_pct": 5.0,
+        "disk_read_bps": 1024.0, "disk_write_bps": 0.0,
+        "disk_used_bytes": 214748364800,
+        "disk_total_bytes": 536870912000,
+        "network_rx_bps": 4096.0, "network_tx_bps": 512.0 }
+    ]
+  }
 }
 ```
 
-通常为空的字段省略而非发送 null：`account`、`origin`、`cache_fetched_at_ms`、`scoped`、`extra`、`account_placeholders`、`workspace_names`、`workspace_plans`、`codex_workspaces`、`codex_fetched_at_ms`。`qhud --dump` 输出完全相同的载荷。
+通常为空的字段省略而非发送 null：`account`、`origin`、`cache_fetched_at_ms`、`scoped`、`extra`、`account_placeholders`、`workspace_names`、`workspace_plans`、`codex_workspaces`、`codex_fetched_at_ms`。系统样本以 null 表示不可用读数。`qhud --system-dump` 不读取账户、不打开窗口，只输出经过两次采样的系统快照；`qhud --dump` 输出组合载荷。
 
 **契约规则。**
 
@@ -217,7 +256,7 @@
 
 ## 验证
 
-两个平台均有自动化门槛，发布等待两者完成：格式检查、警告视为错误的 lint、完整测试套件、release 构建。v0.6.0 套件共 98 项测试。
+自动化门槛覆盖格式检查、警告视为错误的 lint、Rust 测试、Node 系统指标测试和 release 构建。v0.7.1 代码树在 Ubuntu 本地通过 127 项 Rust 测试和 6 项 Node 测试；带日期证据保存在 TEST_PLAN。
 
 交互声明有专门协议（D-010）：仅合成 X11 输入不予采信，因为它绕过合成器的表面选择，而真实输入正是在那里被截走。声明必须通过合成器路径注入或人工操作，并由小组件自身事件记录确认。
 

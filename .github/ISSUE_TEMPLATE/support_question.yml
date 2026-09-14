@@ -1,0 +1,64 @@
+name: Support question · 지원 질문 · 支持问题
+description: Ask about setup, configuration, or documented behavior in any supported language.
+title: "[Support] "
+labels:
+  - question
+body:
+  - type: markdown
+    attributes:
+      value: |
+        English, 한국어, 简体中文 are welcome. Check the documentation and existing issues first.
+        문서와 기존 이슈를 먼저 확인해 주세요. 请先查看文档和已有 issue。
+
+        Never attach auth.json, .credentials.json, credentials, or unredacted account data. Report vulnerabilities through the private security link on the issue chooser.
+        인증 파일이나 가리지 않은 계정 데이터를 첨부하지 마세요. 취약점은 이슈 선택 화면의 비공개 보안 링크로 신고하세요。
+  - type: input
+    id: version
+    attributes:
+      label: qhud version · 버전 · 版本
+      description: Use an exact release or commit SHA. / 정확한 릴리스나 커밋 SHA를 적어 주세요. / 请填写准确版本或 commit SHA。
+      placeholder: vX.Y.Z or commit SHA
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: OS and desktop · 운영체제·데스크톱 · 系统和桌面
+      placeholder: Windows 11 / Ubuntu 24.04 GNOME Wayland
+    validations:
+      required: true
+  - type: input
+    id: provider
+    attributes:
+      label: Provider or component · 제공자·구성요소 · 服务商或组件
+      placeholder: Claude Code / Codex / Antigravity / window / installation
+  - type: textarea
+    id: goal
+    attributes:
+      label: What are you trying to do? · 하려는 작업 · 您希望完成什么？
+      description: Describe the result you need. / 필요한 결과를 설명해 주세요. / 请描述您需要的结果。
+    validations:
+      required: true
+  - type: textarea
+    id: attempted
+    attributes:
+      label: What have you tried? · 시도한 방법 · 已尝试的操作
+      description: Include relevant commands, settings, and documentation, with private data removed. / 비공개 데이터를 지우고 관련 명령·설정·문서를 적어 주세요. / 请在移除私密数据后提供相关命令、设置和文档。
+    validations:
+      required: true
+  - type: textarea
+    id: result
+    attributes:
+      label: Result or error · 결과·오류 · 结果或错误
+      description: Quote the smallest useful redacted excerpt. / 필요한 최소 부분만 가려서 인용하세요. / 请仅引用最小且已脱敏的相关内容。
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting · 제출 전 확인 · 提交前确认
+      options:
+        - label: I searched the documentation and existing issues. / 문서와 기존 이슈를 확인했습니다. / 我已查阅文档和已有 issue。
+          required: true
+        - label: I removed credentials and private data, and this is not a security vulnerability. / 인증 정보와 비공개 데이터를 제거했으며 보안 취약점 신고가 아닙니다. / 我已移除凭据和私密数据，且这不是安全漏洞报告。
+          required: true

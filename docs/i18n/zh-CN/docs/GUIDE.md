@@ -23,21 +23,33 @@
 | Windows x64 | 解压 ZIP，运行解压目录内的 `qhud.exe`。 | Microsoft Edge WebView2 Runtime。见 [Windows 设置](05-ops/WINDOWS.md)。 |
 | Linux x86_64 | 解压 tarball，安装版本目录内的二进制。 | GTK/WebKitGTK；参考系统为 Ubuntu 24.04。见 [Linux 运维](05-ops/RUNBOOK.md)。 |
 
-Linux v0.7.0 下载两个文件后：
+Linux v0.7.1 下载两个文件后：
 
 ```sh
-sha256sum -c qhud-v0.7.0-linux-x86_64.tar.gz.sha256
-tar -xzf qhud-v0.7.0-linux-x86_64.tar.gz
-install -Dm755 qhud-v0.7.0-linux-x86_64/qhud "$HOME/.local/bin/qhud"
+sha256sum -c qhud-v0.7.1-linux-x86_64.tar.gz.sha256
+tar -xzf qhud-v0.7.1-linux-x86_64.tar.gz
+install -Dm755 qhud-v0.7.1-linux-x86_64/qhud "$HOME/.local/bin/qhud"
 "$HOME/.local/bin/qhud"
 ```
 
 Windows 下载后，将显示的摘要与 `.sha256` 文件比较：
 
 ```powershell
-Get-FileHash -Algorithm SHA256 .\qhud-v0.7.0-windows-x86_64.zip
-Get-Content .\qhud-v0.7.0-windows-x86_64.zip.sha256
+Get-FileHash -Algorithm SHA256 .\qhud-v0.7.1-windows-x86_64.zip
+Get-Content .\qhud-v0.7.1-windows-x86_64.zip.sha256
 ```
+
+当前 release workflow 发布的压缩包还带 GitHub 构建来源证明。安装 GitHub CLI，将文件名替换为实际下载文件，验证压缩包本身而非 `.sha256` 配套文件：
+
+```sh
+gh attestation verify ./qhud-vX.Y.Z-linux-x86_64.tar.gz --repo chquandogong/qhud
+```
+
+```powershell
+gh attestation verify .\qhud-vX.Y.Z-windows-x86_64.zip --repo chquandogong/qhud
+```
+
+校验和用于发现相对配套文件的传输损坏或替换；证明用于确认 GitHub Actions 为本仓库构建了该压缩包。启用证明前创建的发布无法通过此验证。
 
 使用各供应商自身 CLI 登录。qhud 读取现有账户信息，不替代供应商登录流程。启动 qhud 后按 ⟳ 获取用量。便携包不注册快捷方式或自动启动。
 

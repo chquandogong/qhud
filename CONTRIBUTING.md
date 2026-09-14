@@ -35,9 +35,16 @@ the credential in a public issue.
 
 ## Build and check
 
-The repository declares Rust 1.88 or later; CI uses stable Rust. The frontend is
-plain HTML/CSS/JavaScript and does not require npm. qmonster is pinned to the
-revision in `src-tauri/Cargo.toml`.
+The repository declares Rust 1.88 or later; CI uses stable Rust. The application
+build uses plain HTML/CSS/JavaScript and needs neither Node.js nor npm. Node.js
+22 is used only for the standalone frontend system-metrics regression test.
+qhud pins qmonster to the revision in `src-tauri/Cargo.toml`.
+
+Run this check on either development platform:
+
+```sh
+node --test tests/system-metrics.test.cjs
+```
 
 ### Linux
 

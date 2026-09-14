@@ -9,8 +9,8 @@
 
 # 사양 — qhud
 
-> 상태: 지속 갱신(v0.6.0 소스를 기준으로 전면 개정) · 날짜: 2026-09-07 · 담당: chquandogong
-> qhud가 해야 하는 일을 정의합니다. ARCHITECTURE는 구현 방식을, DECISION_LOG는 이유를 설명합니다. FR-1 … FR-24는 다른 문서가 인용하는 번호를 유지합니다. FR-25 … FR-34는 v0.5.1 → v0.6.0에서 출시되었지만 사양에 행이 없었던 요구 사항입니다.
+> 상태: 지속 갱신(v0.7.1까지 반영) · 날짜: 2026-09-14 · 담당: chquandogong
+> qhud가 해야 하는 일을 정의합니다. ARCHITECTURE는 구현 방식을, DECISION_LOG는 이유를 설명합니다. 기존 요구 사항 번호는 유지하며 이후 릴리스는 새 행을 추가합니다.
 
 <!-- qhud:anchor -->
 <a id="product-statement"></a>
@@ -73,6 +73,10 @@
 | FR-31 | 행이 창을 넘으면 사용량 영역 스크롤; 긴 모델명은 자르지 않고 줄바꿈; 계기와 확장 행에서 정확한 초기화 날짜와 시각 제공 | 완료(v0.6.0) |
 | FR-9 | 멀티플렉서가 없으면 실제 로컬 계정과 시각이 표시된 한도 및 창 0개 표시; 예시 데이터는 `--demo`와 DEMO 배지가 필요함; 실시간 연결은 10초마다 재시도 | 완료(v0.6.0에서 데모 대체 동작 교체, D-005) |
 | FR-30 | mux 없이 시작해도 사용량을 만들어 내지 않음: 누락 값은 그대로 두고, 저장된 값이 없는 계정도 새로고침 버튼에 접근할 수 있도록 표시 | 완료(v0.6.0) |
+| FR-36 | 작은 시스템 영역에 CPU, 메모리, 지원 GPU, 디스크, 네트워크 기록을 표시하며 항목 선택 시 현재 세부 정보를 제공하고 키보드로 조작 가능 | 완료(v0.7.0) |
+| FR-37 | 로컬 시스템 카운터를 2초마다 샘플링하고 최대 30개 지점(약 60초)을 보존; 숨김/최소화 중 중지하고 재개 또는 긴 공백 뒤 속도 기준 초기화 | 완료(v0.7.0) |
+| FR-38 | 지원하지 않거나 준비 중이거나 실패한 카운터는 0으로 만들지 않고 누락/공백으로 유지; 실제 유휴 수치는 0으로 유지 | 완료(v0.7.0, v0.7.1에서 Linux Intel GPU 추가) |
+| FR-39 | qhud 이름을 선택하면 빌드에서 가져온 버전을 표시하는 접근 가능한 About 대화상자를 열며, 외부 링크는 정해진 홈페이지와 저장소로 제한 | 완료(v0.7.0) |
 
 <!-- qhud:anchor -->
 <a id="whose-numbers-these-are"></a>
@@ -196,11 +200,47 @@ Tauri 이벤트 `qhud://report` 하나를 2초마다 보냅니다. 기준은 `sr
                          "windows": [{ "label": "weekly", "used_percent": 41,
                                        "reset_unix": 1789147159,
                                        "scope": null }] }],
-  "codex_fetched_at_ms": 1788790245717
+  "codex_fetched_at_ms": 1788790245717,
+
+  "system": {
+    "sampled_at_ms": 1788790282397, "interval_ms": 2000,
+    "cpu_count": 16,
+    "gpu": { "name": "Intel GPU", "memory_used_bytes": null,
+             "memory_total_bytes": null },
+    "current": { "at_ms": 1788790282397, "cpu_pct": 18.2,
+                 "memory_pct": 50.0,
+                 "memory_used_bytes": 8589934592,
+                 "memory_total_bytes": 17179869184,
+                 "gpu_pct": 5.0,
+                 "disk_read_bps": 1024.0, "disk_write_bps": 0.0,
+                 "disk_used_bytes": 214748364800,
+                 "disk_total_bytes": 536870912000,
+                 "network_rx_bps": 4096.0, "network_tx_bps": 512.0 },
+    "history": [
+      { "at_ms": 1788790280397, "cpu_pct": null,
+        "memory_pct": 50.0,
+        "memory_used_bytes": 8589934592,
+        "memory_total_bytes": 17179869184,
+        "gpu_pct": null,
+        "disk_read_bps": null, "disk_write_bps": null,
+        "disk_used_bytes": 214748364800,
+        "disk_total_bytes": 536870912000,
+        "network_rx_bps": null, "network_tx_bps": null },
+      { "at_ms": 1788790282397, "cpu_pct": 18.2,
+        "memory_pct": 50.0,
+        "memory_used_bytes": 8589934592,
+        "memory_total_bytes": 17179869184,
+        "gpu_pct": 5.0,
+        "disk_read_bps": 1024.0, "disk_write_bps": 0.0,
+        "disk_used_bytes": 214748364800,
+        "disk_total_bytes": 536870912000,
+        "network_rx_bps": 4096.0, "network_tx_bps": 512.0 }
+    ]
+  }
 }
 ```
 
-보통 비어 있는 필드는 null로 보내지 않고 생략합니다. `account`, `origin`, `cache_fetched_at_ms`, `scoped`, `extra`, `account_placeholders`, `workspace_names`, `workspace_plans`, `codex_workspaces`, `codex_fetched_at_ms`가 이에 해당합니다. `qhud --dump`는 바로 이 페이로드를 출력합니다.
+보통 비어 있는 필드는 null로 보내지 않고 생략합니다. `account`, `origin`, `cache_fetched_at_ms`, `scoped`, `extra`, `account_placeholders`, `workspace_names`, `workspace_plans`, `codex_workspaces`, `codex_fetched_at_ms`가 이에 해당합니다. 시스템 샘플은 사용할 수 없는 수치를 null로 표시합니다. `qhud --system-dump`는 계정을 읽거나 창을 열지 않고 두 번 샘플링한 시스템 스냅샷만 출력하며 `qhud --dump`는 결합된 페이로드를 출력합니다.
 
 **계약 규칙.**
 
@@ -216,7 +256,7 @@ Tauri 이벤트 `qhud://report` 하나를 2초마다 보냅니다. 기준은 `sr
 
 ## 검증
 
-두 플랫폼에서 자동 검증을 수행하고 모두 통과해야 릴리스를 공개합니다. 형식 검사, 경고를 오류로 취급하는 린트, 전체 테스트, 릴리스 빌드가 포함됩니다. v0.6.0 테스트는 98개입니다.
+자동 검증은 형식 검사, 경고를 오류로 취급하는 린트, Rust 테스트, Node 시스템 지표 테스트, 릴리스 빌드를 포함합니다. v0.7.1 트리는 Ubuntu 로컬에서 Rust 테스트 127개와 Node 테스트 6개를 통과했습니다. 날짜별 근거는 TEST_PLAN에 보존합니다.
 
 조작 검증에는 절차가 있습니다(D-010). 합성 X11 입력만으로는 인정하지 않습니다. 실제 입력을 가로채던 지점인 컴포지터의 표면 선택을 우회하기 때문입니다. 컴포지터 경로 주입이나 사람의 직접 조작을 위젯 자체 추적 로그로 확인해야 합니다.
 

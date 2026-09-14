@@ -83,6 +83,12 @@ qhud 将分散在各个命令行界面的账户配额和会话状态集中到小
 | [Windows x64 ZIP](https://github.com/chquandogong/qhud/releases/download/v0.7.1/qhud-v0.7.1-windows-x86_64.zip) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.7.1/qhud-v0.7.1-windows-x86_64.zip.sha256) |
 | [Linux x86_64 tarball](https://github.com/chquandogong/qhud/releases/download/v0.7.1/qhud-v0.7.1-linux-x86_64.tar.gz) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.7.1/qhud-v0.7.1-linux-x86_64.tar.gz.sha256) |
 
+当前 release workflow 发布的压缩包还带 GitHub 构建来源证明。使用 GitHub CLI 时，将文件名替换为实际下载的压缩包路径；验证压缩包本身，而非其 `.sha256` 配套文件。
+
+```sh
+gh attestation verify ./qhud-vX.Y.Z-linux-x86_64.tar.gz --repo chquandogong/qhud
+```
+
 ### Windows
 
 解压 ZIP，运行版本目录内的 `qhud.exe`。需要 Microsoft Edge WebView2 Runtime。便携包不注册快捷方式或自动启动。前提、源码构建与配置见 [Windows 指南](docs/i18n/zh-CN/docs/05-ops/WINDOWS.md)。

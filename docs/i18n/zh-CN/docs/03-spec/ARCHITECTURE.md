@@ -9,8 +9,8 @@
 
 # 架构 — qhud
 
-> 状态：持续维护（根据 v0.6.0 源码从头重写） · 日期：2026-09-07 · 负责人：chquandogong
-> 与 SPEC（必须做什么）及 DECISION_LOG（为何这样构建）配套。本文以 `v0.6.1` 代码树为基线，下面的身份处理已更新至 v0.6.2。历史模块行数和测试数仍保留 v0.6.1 的值。
+> 状态：持续维护（已更新至 v0.7.1） · 日期：2026-09-14 · 负责人：chquandogong
+> 与 SPEC（必须做什么）及 DECISION_LOG（为何这样构建）配套。模块地图已更新至 v0.7.1；带日期验证保存在 TEST_PLAN。
 
 <!-- qhud:anchor -->
 <a id="1-what-qhud-is-structurally"></a>
@@ -40,7 +40,7 @@ Windows 移植没有增加第二条数据代码路径：供应商、解析、合
 
 1. **仅 Linux 的环境变量强制设置**，在线程创建前完成。三组仅在未设置时赋值的配置各有退出开关：`GDK_BACKEND=x11`（`QHUD_NO_X11_FORCE`）、`WEBKIT_DISABLE_DMABUF_RENDERER=1`（`QHUD_KEEP_DMABUF`）、`WEBKIT_DISABLE_COMPOSITING_MODE=1`（`QHUD_KEEP_COMPOSITING`）。任何值，包括空值，都算已设置。Windows 完全不包含这段代码。
 2. **Argv 预处理**。在 Tauri 或 GTK 初始化前处理诊断及转发标志，因此诊断运行不会创建窗口。`--respawned` 先等待 1.5 s，避免重新执行被单实例守卫拦截。
-3. **Tauri builder**，按注册顺序依次加入单实例插件（同时充当 argv 转发通道）、五个命令、窗口状态插件，然后是 `setup`。
+3. **Tauri builder**，按注册顺序依次加入单实例插件（同时充当 argv 转发通道）、七个命令、窗口状态及 opener 插件，然后是 `setup`。
 4. **`setup`**：取得 `main` 窗口（缺失则立即 panic，因为该标签是构建时契约），重新设置 `tauri.conf.json` 已请求的层级状态（X11 只有在原生窗口实际创建后才遵循），创建托盘（失败仅记录，不致命），创建轮询线程。
 5. `run()`：主线程进入 GTK 或 WebView2 事件循环。
 
@@ -71,6 +71,15 @@ Windows 移植没有增加第二条数据代码路径：供应商、解析、合
 **归属检查。** 只有快照的账户 id 或邮箱与当前登录匹配时才使用，避免上一登录较新的读数掩盖当前登录较旧的读数，这正是 v0.6.0 修复的故障。已保存 Codex 工作区的 `active` 标志也会根据当前账户重新计算，而不信任磁盘值。
 
 **降级。** 无配置时使用默认值；一个后端失败则继续尝试下一个；全部失败则回退本地载荷并每 10 s 重试；运行中失去实时来源则回退本地载荷，保留真实账户和保存的用量；按设计忽略事件发出和几何保存失败。
+
+<!-- qhud:anchor -->
+<a id="system-sampling-in-the-poll-loop-v07"></a>
+
+### 轮询循环中的系统采样（v0.7）
+
+CPU、磁盘、网络和 GPU 速率需要连续观测，因此一个 `system_metrics::Collector` 与轮询线程同寿命。每个 2 s 周期只刷新汇总计数器，最多保留 30 个内存样本，并在同一 `qhud://report` 载荷中加入 `system` 快照。它不枚举进程、不启动监控命令、不读取账户凭据，也不发送遥测。
+
+窗口隐藏或最小化时停止收集。再次显示或间隔超过 10 s 后清空速率基线和历史，避免把休眠时间算成虚假尖峰。存储容量每 30 s 单独刷新。GPU 支持可选：Windows 使用 WDDM 计数器；Linux 使用 AMD sysfs、Intel i915/xe 空闲驻留计数器或已安装的 NVIDIA NVML。首个有效样本为该采样会话选择一个适配器，缺失或无效读数保持 null。`--system-dump` 创建独立收集器，等待第二次采样，在 Tauri 启动前只输出系统快照。
 
 <!-- qhud:anchor -->
 <a id="5-paths"></a>
@@ -152,6 +161,7 @@ panes[]    pane_id, label, session, provider, status, status_label,
 summary    panes, conflicts, max_5h_pct
 account_placeholders[]?, workspace_names{}?, workspace_plans{}?,
 codex_workspaces[]?, codex_fetched_at_ms?
+system?      sampled_at_ms, interval_ms, cpu_count?, gpu?, current, history[]
 ```
 
 `source` 为 `live`、`local` 或 `demo`。多路复用器提供载荷时，`backend` 为 `herdr` 或 `tmux`，否则为 null。仪表是 `{pct, source,
@@ -194,7 +204,7 @@ reset_unix, of_tokens}`；`origin` 为 `pane`、`cache` 或 `fetched`，前端�
 
 ## 12. 前端
 
-没有框架和打包器：原地更新 DOM，2 s 刷新不会重新启动 CSS 过渡；整个应用是一个文件，通过 Tauri 资源协议和 `withGlobalTauri` 提供。
+没有框架和打包器：原地更新 DOM，2 s 刷新不会重新启动 CSS 过渡；静态 HTML、CSS 和 JavaScript 模块通过 Tauri 资源协议及 `withGlobalTauri` 提供。
 
 **渲染顺序**：摘要、演示标签、全部刷新状态，然后是配额区（分组、行、Codex 子行、折叠占位行），其外层 try/catch 将任何异常转发到 stderr；接着按载荷顺序以键控方式更新卡片，最后是页脚。以前前端异常在 webview 外不可见，曾因此发布过失效的配额区。
 
@@ -211,6 +221,10 @@ reset_unix, of_tokens}`；`origin` 为 `pane`、`cache` 或 `fetched`，前端�
 **可观测性是有意设计的。** 事件记录通过一个命令送到 stderr，是判断渲染逻辑是否执行的唯一可用证据：配额区生成了什么、每条身份行及仪表标签的实际文本、每次真实 pointerdown 及落点、选择变化、缩放、任何 JavaScript 错误。只有计数不够，窗口**名称**错误恰是计数抓不到的 bug；这些也都不能证明像素已绘制，因此需要帧守卫。
 
 一秒一次的计时器重绘倒计时；八秒没有新载荷时将页脚标记为停滞，让已停止的后端如实说明状态，而不是冻结看似合理的数字（CV-2）。
+
+**系统指标是边界明确的前端子系统。** `ui/system-metrics.js` 的纯函数负责格式化、历史槽和自适应刻度，并由 Node 测试执行。`ui/app.js` 为 CPU、内存和 GPU 使用固定 0–100% 刻度，为磁盘和网络使用自适应字节速率刻度，null 样本渲染为断点。再次选择同一指标会关闭详情，选择另一项则切换；按钮支持指针、Enter 和 Space。历史只在内存中，从不持久化。
+
+**About 提供构建身份，而非运行状态。** `app_info` 命令返回 Cargo 构建版本及固定的作者、主页和仓库值。`open_about_link` 只接受符号目标 `author` 和 `repository`，因此 webview 无法要求原生打开器启动任意 URL。对话框关闭后恢复焦点，可通过关闭按钮、Escape 或点击外部关闭。
 
 **持久化位置。** 选中窗格、占位区展开状态和缩放保存在浏览器存储中，外层封装可容忍存储完全被拒绝；窗口几何由窗口状态插件保存，轮询循环每 30 s 建立检查点。
 
@@ -326,26 +340,29 @@ qhud 不写入 qmonster 自身目录。该状态由 TUI 管理，第二个写入
 
 ## 20. 模块地图
 
-行数和测试数来自 `v0.6.1` 代码树；测试列合计为测试套件报告的 98。
+此地图记录稳定职责，不维护易变的行数与逐模块测试数。带日期的全套验证证据保存在 TEST_PLAN。
 
-| 文件 | 职责 | 行数 | 测试数 |
-| --- | --- | --- | ---: |
-| `src-tauri/src/main.rs` | 入口、平台环境设置、argv 接口、五个命令、托盘、层级状态机、重新启动 | 421 | 0 |
-| `src-tauri/src/poll.rs` | 2 s 循环：后端选择、观测、本地回退、快照和身份附加、dump | 501 | 6 |
-| `src-tauri/src/paths.rs` | Linux 和 Windows 的所有路径与环境覆盖 | 84 | 2 |
-| `src-tauri/src/view.rs` | qmonster 报告转载荷；汇总及全部合并规则 | 1154 | 19 |
-| `src-tauri/src/accounts.rs` | 本地身份发现、（账户、组织）去重、标签覆盖 | 561 | 14 |
-| `src-tauri/src/registry.rs` | 操作者注册表、占位规则、忽略项写入 | 342 | 10 |
-| `src-tauri/src/usage_cache.rs` | 快照结构、Claude 磁盘缓存、宽容数字解析、新旧比较 | 661 | 14 |
-| `src-tauri/src/claude_usage.rs` | 按配置目录显式刷新 Claude | 207 | 1 |
-| `src-tauri/src/codex_usage.rs` | Codex 工作区、scope 检查、时长标签、app-server 回退 | 1146 | 20 |
-| `src-tauri/src/agy_usage.rs` | 两个平台的 agy 环回 RPC 和端口发现 | 401 | 5 |
-| `src-tauri/src/fetched_store.rs` | 刷新持久化、原子写入、并发写锁 | 268 | 4 |
-| `src-tauri/src/frame_guard.rs` | 像素采样和恢复阶梯（Linux） | 171 | 3 |
-| `src-tauri/src/demo.rs` | 一致性夹具 | 173 | 0 |
-| `ui/app.js` | 整个前端：渲染流水线、配额区、卡片、获取状态、事件记录、几何、缩放 | 1667 | — |
-| `ui/style.css` | 小组件样式、仪表严重程度、滚动、陈旧标记 | 921 | — |
-| `ui/index.html` | 骨架 | 36 | — |
+| 文件 | 职责 |
+| --- | --- |
+| `src-tauri/src/main.rs` | 入口、平台环境设置、argv 接口、原生命令、托盘、层级状态机、重新启动 |
+| `src-tauri/src/poll.rs` | 2 s 循环：后端选择、观测、本地回退、快照和身份附加、dump |
+| `src-tauri/src/paths.rs` | Linux 和 Windows 的所有路径与环境覆盖 |
+| `src-tauri/src/view.rs` | qmonster 报告转载荷；汇总及全部合并规则 |
+| `src-tauri/src/accounts.rs` | 本地身份发现、（账户、组织）去重、标签覆盖 |
+| `src-tauri/src/registry.rs` | 操作者注册表、占位规则、忽略项写入 |
+| `src-tauri/src/usage_cache.rs` | 快照结构、Claude 磁盘缓存、宽容数字解析、新旧比较 |
+| `src-tauri/src/claude_usage.rs` | 按配置目录显式刷新 Claude |
+| `src-tauri/src/codex_usage.rs` | Codex 工作区、scope 检查、时长标签、app-server 回退 |
+| `src-tauri/src/agy_usage.rs` | 两个平台的 agy 环回 RPC 和端口发现 |
+| `src-tauri/src/fetched_store.rs` | 刷新持久化、原子写入、并发写锁 |
+| `src-tauri/src/frame_guard.rs` | 像素采样和恢复阶梯（Linux） |
+| `src-tauri/src/demo.rs` | 一致性夹具 |
+| `src-tauri/src/system_metrics.rs` + `system_metrics/` | 被动 CPU、内存、磁盘、网络和可选 GPU 采样，有限历史及平台适配器 |
+| `src-tauri/src/about.rs` | About 的构建身份和外部链接白名单 |
+| `ui/system-metrics.js` | 纯指标格式化、历史槽和自适应刻度 |
+| `ui/app.js` | 整个前端：渲染流水线、配额区、卡片、获取状态、事件记录、几何、缩放 |
+| `ui/style.css` | 小组件样式、仪表严重程度、滚动、陈旧标记 |
+| `ui/index.html` | 骨架 |
 
 出现问题时首先查看的位置：
 
