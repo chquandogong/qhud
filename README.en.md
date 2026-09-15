@@ -36,10 +36,10 @@ backend and a lightweight webview. No Node.js or npm is required to build it.
 | See | What you get |
 | --- | --- |
 | **Usage and resets** | Account windows, model-specific pools when available, reset countdowns, and exact reset timestamps. |
-| **Account context** | Separate account/workspace rows, configurable display names, and dated snapshots after restart. |
+| **Account context** | Separate account/workspace rows and dated snapshots after restart. Codex displays an email from its local login when available; an operator label overrides it, and an unavailable email falls back to the account ID. |
 | **Session activity** | On supported Linux setups: status, context pressure, model, effort, branch, working directory, and conflict indicators. |
 | **Freshness** | Local observation every 2 seconds. Provider usage requests run when you explicitly refresh. |
-| **System usage and About** | A quiet CPU, memory, optional GPU, disk and network history strip; select a metric for detail. About shows the build version, maker and homepage. |
+| **System usage and About** | A quiet CPU, memory, optional GPU, disk and network history strip; select a metric for detail. About shows the build version, maker Chenghao Quan and [homepage](https://chquandogong.github.io/CHENGHAO-QUAN/). |
 
 ## A compact view, with room for detail
 
@@ -50,9 +50,10 @@ backend and a lightweight webview. No Node.js or npm is required to build it.
   </tr>
 </table>
 
-*These screenshots show Linux demo fixtures with illustrative values. The
-current account layout and available model windows depend on the provider,
-login, and platform.*
+*These screenshots show the provider and session area in earlier Linux demo
+fixtures with illustrative values. The v0.7.x system strip and About dialog
+are described in the [user guide](docs/GUIDE.md). The current account layout
+and available model windows depend on the provider, login, and platform.*
 
 ## Platform support
 
@@ -78,6 +79,13 @@ Both platform build/test jobs gate publication. Each archive has a SHA-256 file.
 | --- | --- |
 | [Windows x64 ZIP](https://github.com/chquandogong/qhud/releases/download/v0.7.1/qhud-v0.7.1-windows-x86_64.zip) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.7.1/qhud-v0.7.1-windows-x86_64.zip.sha256) |
 | [Linux x86_64 tarball](https://github.com/chquandogong/qhud/releases/download/v0.7.1/qhud-v0.7.1-linux-x86_64.tar.gz) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.7.1/qhud-v0.7.1-linux-x86_64.tar.gz.sha256) |
+
+The downloads above are the **v0.7.1 binaries**. Since that tag, `main` has
+gained a dependency security patch and safer ambient diagnostics. Protected
+branches and release tags also govern the repository now. The post-tag code
+changes are tracked under [Unreleased](CHANGELOG.md); they are not present in
+the linked archives. A future tagged release will package them after its
+quality gates pass.
 
 Archives published by the current release workflow also carry GitHub build
 provenance. With GitHub CLI, substitute the path of the archive you downloaded;
@@ -154,6 +162,19 @@ in English, Korean, and Simplified Chinese.
 | [Windows setup](docs/05-ops/WINDOWS.md) · [Linux operations](docs/05-ops/RUNBOOK.md) | [Specification](docs/03-spec/SPEC.md) · [Decision log](docs/02-decisions/DECISION_LOG.md) |
 | [Contributing](CONTRIBUTING.md) | [Test plan](docs/04-quality/TEST_PLAN.md) · [Risk register](docs/04-quality/RISK_REGISTER.md) |
 | [Changelog](CHANGELOG.md) | [Complete documentation index](docs/README.md) |
+| [Repository operations](docs/05-ops/REPOSITORY.md) | [Security policy](SECURITY.md) · [Support](SUPPORT.md) |
+
+## Work with this repository
+
+Use the [issue forms](https://github.com/chquandogong/qhud/issues/new/choose)
+for bugs and scoped proposals, and a pull request for changes to `main`.
+Required Linux, Windows, documentation, dependency-review, and CodeQL checks
+must pass before merge. The [contribution guide](CONTRIBUTING.md) explains what
+to include in a report or PR; the [repository operations guide](docs/05-ops/REPOSITORY.md)
+explains the protected branch, release tags, security workflow, and how the
+policy adapts to a solo private, team private, or public repository. Report a
+vulnerability through [private vulnerability reporting](SECURITY.md), not a
+public issue.
 
 ## Contribute
 

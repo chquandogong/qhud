@@ -47,7 +47,7 @@ is the mapping every other document should follow.
 | FR-3  | Resize via the ◢ grip; content reflows                                                                                                  | done (self-driven, D-008)                                   |
 | FR-4  | Position and size persist across restarts                                                                                               | done (window-state plugin, checkpointed every ~30 s)        |
 | FR-10 | Tray: Show/Hide, Pin above windows, Reset position, Quit; the widget survives without a tray                                            | done (best-effort)                                          |
-| FR-11 | Ctrl+wheel zooms 70–160%, persisted, pointer-only                                                                                       | done (D-012)                                                |
+| FR-11 | Ctrl+wheel zooms 70–160%, persisted                                                                                                     | done (D-012)                                                |
 | FR-12 | Layer peek via tray check and `qhud --peek`; duplicate launches are absorbed                                                            | done (D-012)                                                |
 | FR-26 | The widget detects its own frozen presentation and heals it without operator action: sample its own pixels, hide-and-show, then re-exec | done (v0.5.1, D-017) — Linux only                           |
 | FR-29 | A native Windows x64 widget renders the same account usage through WebView2, with Windows paths and hidden helper processes             | done (v0.6.0, D-020) — pane observation explicitly excluded |

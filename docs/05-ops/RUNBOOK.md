@@ -6,7 +6,7 @@
 
 # RUNBOOK
 
-> Status: living · Date: 2026-09-07 · Owner: chquandogong
+> Status: living · Date: 2026-09-15 · Owner: chquandogong
 
 ## Install
 
@@ -78,21 +78,26 @@ cargo build --release --locked # binary at target/release/qhud
   relay to the running widget through the single-instance channel —
   bindable to a shortcut. `qhud --claude-usage`, `qhud --codex-usage` and
   `qhud --agy-usage` run the same fetches standalone, print JSON, and
-  record to the fetched store exactly like a click. `qhud
---codex-appserver` exercises the expired-token fallback on demand.
-  `QHUD_EXTRA_DIAG=1 qhud --claude-usage` reports only whether the live
-  body contains `extra_usage` and `spend`, for shape-drift diagnosis.
-- **⟳ says "usage response did not parse: …"?** The endpoint's shape
-  drifted. The rest of the line gives a redacted error category and JSON
-  position; it deliberately omits the unexpected provider value. Precedent
-  (2026-09-01, v0.5.3): `extra_usage.used_credits` started arriving as
-  `4997.0` instead of `4997`, and one optional field failed the whole
-  body for two days. Integer-meaning money fields now accept an
-  integral float; a NEW integer-typed field must go through the same
-  lenient reader (`lenient_i64`/`lenient_u8` in `usage_cache.rs`, D-019)
-  or it becomes the next two-day outage. If the message names a window
-  or a percent instead, the drift is in a field qhud renders and needs
-  a code change, not leniency.
+  record to the fetched store exactly like a click. `qhud --codex-appserver`
+  exercises the expired-token fallback on demand.
+  `QHUD_EXTRA_DIAG=1 qhud --claude-usage >/dev/null` logs only whether
+  the live body contains `extra_usage` and `spend` as a shape-drift clue.
+- **⟳ says "usage response did not parse: …"?** The parser reports only
+  a coarse category (`schema mismatch`, JSON syntax, incomplete JSON, or
+  I/O) and line/column. It does **not** name a field or show a provider
+  value; the position alone cannot establish whether a window, percent,
+  or money field changed. For an extra-usage clue, run
+  `QHUD_EXTRA_DIAG=1 qhud --claude-usage >/dev/null`: its diagnostic
+  breadcrumb on stderr reports only whether `extra_usage` and `spend`
+  are present. Keep provider responses and the local Claude cache private.
+  Compare any locally held response with the expected types in
+  `src-tauri/src/usage_cache.rs`, then make a
+  synthetic, redacted minimal JSON reproduction before proposing a parser
+  fix. The 2026-09-01, v0.5.3 `extra_usage.used_credits` change from an
+  integer to an integral float was one confirmed case (D-019); `lenient_i64` /
+  `lenient_u8` handle integer-meaning money fields. A confirmed change to
+  a displayed window or percent needs its own contract review. Do not
+  post the raw response, account identifiers, or token-bearing files.
 - **Accounts and plans** live in `~/.config/qhud/accounts.json`,
   deliberately outside this public repo. `labels` / `plans` /
   `workspace_names` / `workspace_plans` set display text; `known[]`
@@ -188,20 +193,29 @@ manual checklist.
 
 ## Release procedure
 
-1. Update README, CHANGELOG, platform instructions, and
-   `docs/05-ops/releases/v<version>.md` before publishing. Keep the package,
-   Tauri config and Cargo lock package version aligned.
-2. Push a `codex/` preparation branch and require both Ubuntu and Windows CI
-   to pass. Linux uses the canonical pinned Git dependency; Windows runs
-   `scripts/Build-Windows.ps1 -Test` and verifies that the manifest/lock are
-   restored. Do not run simultaneous Cargo commands in that Windows checkout.
-3. Integrate the tested revision into `main` without overwriting unrelated
-   commits. Create an annotated `v<version>` tag on the release revision and
-   push it.
-4. The Release workflow tests/builds both platforms, packages the existing
-   Linux x86_64 tarball and Windows x86_64 ZIP with SHA-256 checksums, and
-   attests them. Its publish job runs only after both builds succeed and
-   uses the checked-in release notes.
-5. Confirm the workflow succeeded and all platform downloads/checksums are
-   attached. A passed CI build is not a substitute for a live desktop check;
-   record any desktop integration that has not been exercised.
+1. Update README, CHANGELOG, platform instructions, and the English, Korean,
+   and Chinese `docs/05-ops/releases/v<version>.md` notes. Align the Cargo
+   package, Tauri config, and Cargo lock package versions.
+2. Push a `codex/` preparation branch and open a PR. Update it against `main`
+   for strict checks, resolve review conversations, and wait for all seven
+   required statuses (Ubuntu, Windows, docs/metadata, dependency review, and
+   three CodeQL Analyze contexts). The current `main` ruleset requires a PR,
+   linear history, and squash merge; it requires zero approving reviews for
+   the sole maintainer. Windows CI uses `scripts/Build-Windows.ps1 -Test` and
+   verifies manifest/lock restoration; do not run Cargo concurrently there.
+3. Squash-merge the gated PR into `main`. Create and push an annotated stable
+   `vX.Y.Z` tag on a commit already contained in `origin/main`; protected
+   `v*` tags cannot be changed or deleted. Release preflight also requires
+   matching Cargo/Tauri versions, release notes, and a CHANGELOG entry.
+4. The tag-triggered Release workflow runs the full CI quality gate, then
+   packages the quality-gated Linux x86_64 binary and Windows x86_64 binary
+   as a tarball and ZIP, with SHA-256 files and provenance attestations. It
+   verifies exactly four assets and both checksums before the `release`
+   environment gates publication. As last verified on 2026-09-14, that gate
+   needs the maintainer's review and permits self-review. After approval,
+   the publish job creates or resumes a **draft first**, checks draft assets
+   byte-for-byte, uploads missing assets, and publishes only the complete
+   draft. It refuses to replace an already published release.
+5. Confirm the workflow succeeded, inspect the release notes and all four
+   downloadable assets, verify checksums and attestations, and record any
+   desktop integration not exercised on a live supported platform.

@@ -36,10 +36,10 @@ qhud 将分散在各个命令行界面的账户配额和会话状态集中到小
 | 查看内容 | 获得的信息 |
 | --- | --- |
 | **用量与重置** | 账户时间窗口、可用时的模型独立配额池、重置倒计时和准确重置时刻。 |
-| **账户信息** | 独立账户/工作区行、可配置显示名称，以及重启后仍带时间的快照。 |
+| **账户信息** | 独立账户/工作区行及重启后仍标注时间的快照。Codex 在本地登录含邮箱时自动显示邮箱；操作者标签优先，缺少邮箱则回退到账户 ID。 |
 | **会话活动** | 在受支持的 Linux 环境中：状态、上下文压力、模型、推理力度、分支、工作目录和冲突指示。 |
 | **新旧程度** | 每 2 秒本地观测；只有显式刷新时才请求供应商用量。 |
-| **系统用量与关于** | 低调显示 CPU、内存、受支持 GPU、磁盘和网络历史；选择指标查看详情。About 显示构建版本、作者和主页。 |
+| **系统用量与关于** | 低调显示 CPU、内存、受支持 GPU、磁盘和网络历史；选择指标查看详情。About 显示构建版本、作者 Chenghao Quan 和[主页](https://chquandogong.github.io/CHENGHAO-QUAN/)。 |
 
 <!-- qhud:anchor -->
 <a id="a-compact-view-with-room-for-detail"></a>
@@ -53,7 +53,7 @@ qhud 将分散在各个命令行界面的账户配额和会话状态集中到小
   </tr>
 </table>
 
-*截图使用 Linux 演示夹具和示例数值。当前账户布局及可用模型窗口取决于供应商、登录和平台。*
+*截图使用较早 Linux 演示夹具中的示例值，展示供应商与会话区域。v0.7.x 的系统条和 About 对话框见[用户指南](docs/i18n/zh-CN/docs/GUIDE.md)。实际账户行和可显示的模型窗口取决于供应商、登录和平台。*
 
 <!-- qhud:anchor -->
 <a id="platform-support"></a>
@@ -82,6 +82,11 @@ qhud 将分散在各个命令行界面的账户配额和会话状态集中到小
 | --- | --- |
 | [Windows x64 ZIP](https://github.com/chquandogong/qhud/releases/download/v0.7.1/qhud-v0.7.1-windows-x86_64.zip) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.7.1/qhud-v0.7.1-windows-x86_64.zip.sha256) |
 | [Linux x86_64 tarball](https://github.com/chquandogong/qhud/releases/download/v0.7.1/qhud-v0.7.1-linux-x86_64.tar.gz) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.7.1/qhud-v0.7.1-linux-x86_64.tar.gz.sha256) |
+
+上面的下载是 **v0.7.1 二进制包**。该标签之后，`main` 增加了依赖安全补丁和
+日常诊断脱敏；受保护分支与发布标签也已经管理当前仓库。标签之后的代码修改记在
+[未发布更新日志](docs/i18n/zh-CN/CHANGELOG.md)，不包含在上述压缩包中。
+未来的新标签发布会在通过完整质量门禁后打包它们。
 
 当前 release workflow 发布的压缩包还带 GitHub 构建来源证明。使用 GitHub CLI 时，将文件名替换为实际下载的压缩包路径；验证压缩包本身，而非其 `.sha256` 配套文件。
 
@@ -150,6 +155,19 @@ qhud --peek
 | [Windows 设置](docs/i18n/zh-CN/docs/05-ops/WINDOWS.md) · [Linux 运维](docs/i18n/zh-CN/docs/05-ops/RUNBOOK.md) | [规格](docs/i18n/zh-CN/docs/03-spec/SPEC.md) · [决策日志](docs/i18n/zh-CN/docs/02-decisions/DECISION_LOG.md) |
 | [参与贡献](docs/i18n/zh-CN/CONTRIBUTING.md) | [测试计划](docs/i18n/zh-CN/docs/04-quality/TEST_PLAN.md) · [风险登记](docs/i18n/zh-CN/docs/04-quality/RISK_REGISTER.md) |
 | [更新日志](docs/i18n/zh-CN/CHANGELOG.md) | [完整文档索引](docs/i18n/zh-CN/docs/README.md) |
+| [仓库运维](docs/i18n/zh-CN/docs/05-ops/REPOSITORY.md) | [安全政策](SECURITY.md) · [支持](SUPPORT.md) |
+
+<!-- qhud:anchor -->
+<a id="work-with-this-repository"></a>
+
+## 参与仓库维护
+
+缺陷和范围明确的提案使用 [issue 表单](https://github.com/chquandogong/qhud/issues/new/choose)，
+修改 `main` 则提交 pull request。合并前须通过 Linux、Windows、文档、依赖审查和
+CodeQL 必需检查。[贡献指南](docs/i18n/zh-CN/CONTRIBUTING.md)说明报告和 PR 的内容；
+[仓库运维指南](docs/i18n/zh-CN/docs/05-ops/REPOSITORY.md)说明受保护分支、发布标签、
+安全流程，以及个人 private、团队 private 和 public 仓库的策略差异。
+漏洞请通过[私密报告流程](SECURITY.md)提交，不要发布公开 issue。
 
 <!-- qhud:anchor -->
 <a id="contribute"></a>

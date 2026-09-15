@@ -12,6 +12,10 @@
 
 qhud 全部文档均提供三种语言，涵盖首次安装、架构、决策和发布历史。
 
+最新下载是 v0.7.1。`main` 还包含之后未发布的安全与仓库维护修改；源码状态见
+[更新日志](../CHANGELOG.md)，已发布二进制包见
+[v0.7.1 发布说明](05-ops/releases/v0.7.1.md)。早期研究和带日期的实机验证保留当时的范围。
+
 <!-- qhud:anchor -->
 <a id="start-using-qhud"></a>
 
@@ -23,7 +27,9 @@ qhud 全部文档均提供三种语言，涵盖首次安装、架构、决策和
 | [用户指南](GUIDE.md) | 用量/重置语义、命令、多账户、配置及故障排查。 |
 | [Windows 设置](05-ops/WINDOWS.md) | WebView2 要求、便携安装和原生 MSVC 构建。 |
 | [运维手册](05-ops/RUNBOOK.md) | Linux 设置、GNOME 集成、诊断和发布流程。 |
+| [仓库运维](05-ops/REPOSITORY.md) | 分支/标签保护、必需检查、安全处置、发布和个人/团队/公开仓库策略。 |
 | [参与贡献](../CONTRIBUTING.md) | 缺陷报告、开发检查、翻译和 pull request。 |
+| [安全政策](../SECURITY.md) · [支持](../SUPPORT.md) | 私密漏洞报告和支持渠道。 |
 | [更新日志](../CHANGELOG.md) | 各版本变化和带日期的验证说明。 |
 
 <!-- qhud:anchor -->

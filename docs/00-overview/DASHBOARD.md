@@ -6,7 +6,7 @@
 
 # DASHBOARD — qhud
 
-> Status: v0.7.1 released · Updated: 2026-09-14 · Owner: chquandogong
+> Status: v0.7.1 released; later `main` work unreleased · Updated: 2026-09-15 · Owner: chquandogong
 > Public project snapshot. Git history, tagged releases, and workflow runs are
 > the authoritative records; dated observations below keep their original scope.
 
@@ -15,6 +15,8 @@
 | Item | Value |
 | --- | --- |
 | Current release | [v0.7.1](https://github.com/chquandogong/qhud/releases/tag/v0.7.1) — Intel GPU measurement on Linux, completing the conditional GPU support introduced by [v0.7.0](https://github.com/chquandogong/qhud/releases/tag/v0.7.0). Linux x86_64 tarball and Windows x86_64 ZIP. |
+| Source after release | GitHub `main` was [c00bcd7](https://github.com/chquandogong/qhud/commit/c00bcd71c8d13cf99ffeed37c66c819c032f96ee) when checked on 2026-09-15. Since the v0.7.1 tag, [#1](https://github.com/chquandogong/qhud/pull/1) added repository/release governance, [#7](https://github.com/chquandogong/qhud/pull/7) patched `quinn-proto`, and [#14](https://github.com/chquandogong/qhud/pull/14) redacted normal diagnostics. These commits are not in the v0.7.1 archives. |
+| Post-tag automated checks | For `c00bcd7`, [main CI](https://github.com/chquandogong/qhud/actions/runs/34823834972) and [CodeQL](https://github.com/chquandogong/qhud/actions/runs/34823834684) both succeeded on 2026-09-14. CI includes Linux/Windows builds, Node/Rust tests and documentation integrity; a separate dependency-review job gates pull requests. CodeQL covers Rust, JavaScript/TypeScript and Actions. This is source validation, not a new binary or live desktop pass. |
 | Pipeline dependency | qmonster @ `6a21c44`; canonical Git dependency on Linux, command-scoped Windows patch with lockfile restoration. |
 | Supported platforms | Ubuntu 24.04 / GNOME and native Windows x64 / WebView2. Native Windows terminal-tab observation remains outside the supported scope. |
 | Current runtime evidence | **Ubuntu 2026-09-11, v0.7.1:** Intel Arc (Meteor Lake, `i915`, gt0+gt1) measured. `--system-dump` reported 24.8%; an independent rc6-residency calculation over the same interval returned 24.8%. The live widget rendered CPU, memory, GPU, disk and network history. v0.7.1 changes only the Linux GPU sampler, so the Windows runtime was not re-exercised for that patch. |
@@ -48,6 +50,7 @@ Full entries and evidence are in [DECISION_LOG](../02-decisions/DECISION_LOG.md)
 | v0.6.0–v0.6.2: native Windows account widget, mux-less real-account view, ownership safeguards, portable packaging, rewritten core docs and automatic Codex email display | released 2026-09-07/08 |
 | v0.7.0: bounded system history for CPU, memory, conditional GPU, disk and network; accessible About | released 2026-09-10 |
 | v0.7.1: Intel i915/xe idle-residency GPU sampler and same-window field comparison | released and verified 2026-09-11 |
+| Post-v0.7.1 `main`: branch/tag protection, security dependency patch, redacted ambient logs | merged 2026-09-14; binary release pending a future version |
 
 ## Open verification and backlog
 
@@ -57,6 +60,9 @@ Full entries and evidence are in [DECISION_LOG](../02-decisions/DECISION_LOG.md)
 | Plain tmux live observation fallback | pending field pass |
 | Second organization row from a live multi-organization login | pending field pass; keep credentials and machine paths outside the repository |
 | Windows, AMD and NVIDIA system-metrics breadth | pending additional hardware evidence |
+| [glib 0.18 advisory migration](https://github.com/chquandogong/qhud/issues/13) | tracked; GTK 3 dependency constrains the migration |
+| [Duplicate CI runs on open codex branches](https://github.com/chquandogong/qhud/issues/15) | P2 repository operations backlog |
+| [Classify remaining library error text](https://github.com/chquandogong/qhud/issues/16) | P2 privacy defense-in-depth backlog; the identified leaks in #14 are fixed |
 | Tile → terminal-pane focus jump | backlog |
 | GNOME Shell extension for overview-clean pinning and desktop-icons coexistence | backlog |
 | Upstream `ObserveSnapshot`, `.deb` packaging, agy multi-account | backlog |

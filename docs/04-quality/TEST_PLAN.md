@@ -29,6 +29,19 @@ Windows MSVC uses the scoped dependency patch through the build script:
 git diff --exit-code -- Cargo.toml Cargo.lock
 ```
 
+CI also runs a separate Ubuntu `repository-integrity` job with Node 22:
+
+```bash
+node scripts/check-repository.mjs
+```
+
+It checks package/Tauri/lockfile version alignment, the byte-identical Korean
+README copy, current release notes and installation examples, corresponding
+English/Korean/Simplified Chinese documentation file sets and release-note
+language links, and local Markdown link targets. For a documentation-only
+change, run this command locally without compiling Rust; CI still runs all
+jobs on the push or pull request.
+
 `-Test` runs qhud Rust tests and then builds in the same dependency context.
 Run `node --test tests/system-metrics.test.cjs` with Node 22 for the frontend
 system-metrics helpers.
@@ -176,4 +189,6 @@ identical clicks vanish with DING enabled (A/B).
 - No file under `~/.qmonster` is created/modified by qhud (R5):
   `find ~/.qmonster -newer /tmp/mark` after a 10-minute run ⇒ only
   TUI-attributable files.
-- Widget never takes keyboard focus on click (pointer-only contract).
+- On Linux, pointer selection and drag/resize work through compositor-delivered
+  input; system-metric buttons also activate with Enter or
+  Space after Tab, and closing About restores focus to its trigger.

@@ -22,10 +22,24 @@
 
 ### 安全
 
+- 将锁定依赖图中的 `quinn-proto` 更新至 0.11.17，修复旧版远程内存耗尽
+  安全通告。
 - 对 Codex、Claude、终端多路复用器、存储及前端的日常诊断日志进行脱敏。UI 事件记录改用
   类型化允许列表，在保留有界数量、交互状态和目标种类的同时，不接受账户标签、ID、路径、
   用量值或异常原文。供应商 JSON 失败只报告错误类别和位置，`QHUD_EXTRA_DIAG` 只报告字段
   是否存在而不输出值。显式 JSON dump 命令仍是操作者主动请求的诊断，分享前必须脱敏。
+
+<!-- qhud:anchor -->
+<a id="repository-and-documentation"></a>
+
+### 仓库与文档
+
+- 保护 `main` 与发布标签；要求 PR、最新 Linux/Windows 构建、文档完整性、
+  依赖审查、解决评审对话，以及 Rust/JavaScript/Actions CodeQL 分析。
+  限制 workflow 权限与外部 Action，并准备经过门禁的发布环境和未来发布的不可变设置。
+- 增加 issue 表单、PR 模板、CODEOWNERS、代理指令、安全/支持/社区政策、
+  Dependabot 自动化，以及适用于个人 private、团队 private、public 的仓库运维指南。
+- 明确区分 v0.7.1 二进制包与后续 `main` 修改；修正脱敏错误排查和键盘控件文档。
 
 ## [0.7.1] — 2026-09-11
 

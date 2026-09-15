@@ -10,6 +10,12 @@
 qhud's complete documentation is available in all three languages, from first
 installation to architecture, decisions, and release history.
 
+The latest download is v0.7.1. `main` also contains later, unreleased security
+and repository-maintenance changes; read the [changelog](../CHANGELOG.md) for
+the source state and the [release notes](05-ops/releases/v0.7.1.md) for the
+published binary. Earlier research and dated field checks keep their original
+scope.
+
 ## Start using qhud
 
 | Document | What it covers |
@@ -18,7 +24,9 @@ installation to architecture, decisions, and release history.
 | [User guide](GUIDE.md) | Usage/reset semantics, commands, multiple accounts, configuration, and troubleshooting. |
 | [Windows setup](05-ops/WINDOWS.md) | WebView2 requirements, portable installation, and native MSVC builds. |
 | [Operations runbook](05-ops/RUNBOOK.md) | Linux setup, GNOME integration, diagnostics, and release procedure. |
+| [Repository operations](05-ops/REPOSITORY.md) | Protected branches/tags, required checks, security triage, releases, and solo/team/public policy. |
 | [Contributing](../CONTRIBUTING.md) | Bug reports, development checks, translations, and pull requests. |
+| [Security policy](../SECURITY.md) · [Support](../SUPPORT.md) | Private vulnerability reporting and support routes. |
 | [Changelog](../CHANGELOG.md) | Version-by-version changes and dated verification notes. |
 
 ## Understand the implementation

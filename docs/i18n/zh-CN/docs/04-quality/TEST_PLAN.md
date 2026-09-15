@@ -33,6 +33,14 @@ Windows MSVC 通过构建脚本使用限定范围的依赖补丁：
 git diff --exit-code -- Cargo.toml Cargo.lock
 ```
 
+CI 还使用 Node 22 运行独立的 Ubuntu `repository-integrity` 作业：
+
+```bash
+node scripts/check-repository.mjs
+```
+
+它检查包、Tauri 和 lockfile 版本是否一致，韩语 README 副本是否逐字节相同，当前发布说明与安装示例，英语、韩语、简体中文文档文件集及发布说明的语言链接，以及本地 Markdown 链接目标。仅修改文档时可在本地运行此命令，无需编译 Rust；推送或 pull request 的 CI 仍执行所有作业。
+
 `-Test` 在同一依赖上下文先运行 qhud Rust 测试，再构建。使用 Node 22 运行 `node --test tests/system-metrics.test.cjs`，检查前端系统指标辅助函数。Windows 命令结束后脚本恢复规范 lockfile；Linux 构建无需同级检出或 Windows 补丁。发布等待 Ubuntu 和 Windows 测试、构建全部成功。
 
 2026-09-07：[CI 34117359064](https://github.com/chquandogong/qhud/actions/runs/34117359064) 在 `1514e09` 上通过：Ubuntu fmt/clippy、**98/98 项测试**和 release 构建；Windows **98/98 项测试**、release 构建及规范依赖文件检查。本地 Windows 脚本也通过 98/98 项测试和 release 构建。
@@ -130,4 +138,4 @@ git diff --exit-code -- Cargo.toml Cargo.lock
 ## 防回归不变量
 
 - qhud 不创建或修改 `~/.qmonster` 下的文件（R5）：运行 10 分钟后 `find ~/.qmonster -newer /tmp/mark` 只能列出归于 TUI 的文件。
-- 点击组件绝不取得键盘焦点，遵循仅指针交互契约。
+- 在 Linux 上，指针选择及移动/缩放须通过合成器传递的输入正常工作；Tab 可移动到系统指标按钮并用 Enter 或 Space 激活，关闭 About 后焦点返回其触发按钮。

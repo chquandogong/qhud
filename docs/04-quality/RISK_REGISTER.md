@@ -39,6 +39,8 @@
 Recorded here so they are not re-litigated. Running an OAuth refresh grant
 (single-use rotated tokens would break the operator's login), installing Unix
 signal handlers in this process (a reserved signal segfaults the webview),
-logging a usage response body (it carries an account uuid and an email), and
-taking keyboard focus (the widget is pointer-only) are all prohibited in code
-and asserted by tests or protocol.
+logging a usage response body (it carries an account uuid and an email) are
+all prohibited in code and asserted by tests or protocol. Keyboard focus is
+intentional for system-metric buttons and About controls: metrics activate with
+Enter or Space, and closing About restores focus to its trigger. The Linux
+desktop-layer pointer path remains subject to compositor-delivery checks.

@@ -36,10 +36,10 @@ qhud는 여러 명령행 인터페이스에 흩어진 계정 할당량과 세션
 | 확인할 정보 | 제공 내용 |
 | --- | --- |
 | **사용량과 초기화** | 계정별 기간, 제공되는 모델별 풀, 초기화 카운트다운, 정확한 초기화 타임스탬프. |
-| **계정 맥락** | 구분된 계정/작업공간 행, 설정 가능한 표시 이름, 재시작 후에도 시점이 표시되는 스냅샷. |
+| **계정 맥락** | 구분된 계정/작업공간 행과 재시작 후에도 시점이 표시되는 스냅샷. Codex는 로컬 로그인에 이메일이 있으면 표시하고, 운영자 레이블을 우선하며, 이메일이 없으면 계정 ID를 표시합니다. |
 | **세션 활동** | 지원하는 Linux 환경에서 상태, 컨텍스트 사용 정도, 모델, 추론 노력, 브랜치, 작업 디렉터리, 충돌 표시. |
 | **최신성** | 2초마다 로컬 관찰. 공급자 사용량 요청은 명시적으로 새로고침할 때 실행. |
-| **시스템 사용량과 정보** | CPU·메모리·지원되는 GPU·디스크·네트워크의 작은 기록 그래프. 항목을 선택하면 상세 정보가, About에는 빌드 버전·제작자·홈페이지가 표시됩니다. |
+| **시스템 사용량과 정보** | CPU·메모리·지원되는 GPU·디스크·네트워크의 작은 기록 그래프. 항목을 선택하면 상세 정보가, About에는 빌드 버전·제작자 Chenghao Quan·[홈페이지](https://chquandogong.github.io/CHENGHAO-QUAN/)가 표시됩니다. |
 
 <!-- qhud:anchor -->
 <a id="a-compact-view-with-room-for-detail"></a>
@@ -53,7 +53,7 @@ qhud는 여러 명령행 인터페이스에 흩어진 계정 할당량과 세션
   </tr>
 </table>
 
-*스크린샷은 예시 값을 사용하는 Linux 데모 픽스처입니다. 현재 계정 배치와 표시 가능한 모델별 기간은 공급자, 로그인, 플랫폼에 따라 달라집니다.*
+*스크린샷은 이전 Linux 데모 픽스처의 예시 값으로 공급자·세션 영역을 보여 줍니다. v0.7.x의 시스템 표시줄과 About은 [사용자 가이드](docs/i18n/ko/docs/GUIDE.md)에 설명합니다. 현재 계정 배치와 표시 가능한 모델별 기간은 공급자, 로그인, 플랫폼에 따라 달라집니다.*
 
 <!-- qhud:anchor -->
 <a id="platform-support"></a>
@@ -83,6 +83,12 @@ qhud는 여러 명령행 인터페이스에 흩어진 계정 할당량과 세션
 | --- | --- |
 | [Windows x64 ZIP](https://github.com/chquandogong/qhud/releases/download/v0.7.1/qhud-v0.7.1-windows-x86_64.zip) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.7.1/qhud-v0.7.1-windows-x86_64.zip.sha256) |
 | [Linux x86_64 tarball](https://github.com/chquandogong/qhud/releases/download/v0.7.1/qhud-v0.7.1-linux-x86_64.tar.gz) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.7.1/qhud-v0.7.1-linux-x86_64.tar.gz.sha256) |
+
+위 다운로드는 **v0.7.1 바이너리**입니다. 그 태그 이후 `main`에는 의존성 보안
+패치와 평상시 진단 로그의 비식별화가 반영됐습니다. 보호된 브랜치와 릴리스 태그도
+현재 저장소에 적용됩니다. 태그 이후 코드 변경은
+[미출시 변경 이력](docs/i18n/ko/CHANGELOG.md)에 기록하며, 위 아카이브에는 포함되지
+않습니다. 이후 새 태그의 릴리스가 전체 검증을 통과하면 패키지로 제공됩니다.
 
 현재 release workflow로 게시한 아카이브는 GitHub 빌드 출처 증명도 제공합니다. GitHub CLI에서 실제 다운로드한 아카이브 경로를 사용해 확인하세요. `.sha256` 파일이 아닌 아카이브 자체를 검증합니다.
 
@@ -152,6 +158,20 @@ qhud --peek
 | [Windows 설정](docs/i18n/ko/docs/05-ops/WINDOWS.md) · [Linux 운영](docs/i18n/ko/docs/05-ops/RUNBOOK.md) | [명세](docs/i18n/ko/docs/03-spec/SPEC.md) · [결정 로그](docs/i18n/ko/docs/02-decisions/DECISION_LOG.md) |
 | [기여 안내](docs/i18n/ko/CONTRIBUTING.md) | [테스트 계획](docs/i18n/ko/docs/04-quality/TEST_PLAN.md) · [위험 등록부](docs/i18n/ko/docs/04-quality/RISK_REGISTER.md) |
 | [변경 이력](docs/i18n/ko/CHANGELOG.md) | [전체 문서 색인](docs/i18n/ko/docs/README.md) |
+| [저장소 운영](docs/i18n/ko/docs/05-ops/REPOSITORY.md) | [보안 정책](SECURITY.md) · [지원](SUPPORT.md) |
+
+<!-- qhud:anchor -->
+<a id="work-with-this-repository"></a>
+
+## 저장소에 참여하기
+
+버그나 범위가 정해진 제안은 [이슈 양식](https://github.com/chquandogong/qhud/issues/new/choose)으로,
+`main`의 변경은 풀 리퀘스트로 제출합니다. Linux·Windows·문서·의존성 검토·CodeQL
+필수 검사가 통과해야 병합할 수 있습니다. 보고·PR에 필요한 정보는
+[기여 가이드](docs/i18n/ko/CONTRIBUTING.md)에, 브랜치와 릴리스 태그 보호,
+보안 절차, 1인 private·팀 private·public 운영의 차이는
+[저장소 운영 가이드](docs/i18n/ko/docs/05-ops/REPOSITORY.md)에 설명합니다.
+취약점은 공개 이슈 대신 [비공개 신고 절차](SECURITY.md)로 보고합니다.
 
 <!-- qhud:anchor -->
 <a id="contribute"></a>

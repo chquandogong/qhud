@@ -370,8 +370,10 @@ v0.6.0 added the account-id conjunct so a refresh cannot land on the wrong row.
 **Selection expands a row inline.** Hover tooltips barely exist for a
 keep-below window you are rarely pointing at, so the facts move into the row on
 click — and network runs only from the refresh controls, never from selecting a
-row. Every interaction binds `pointerdown`, never `click`, because this webview
-delivers pointerdown reliably and does not synthesize click (D-009).
+row. Quota-row and tile pointer actions bind `pointerdown`, not `click`, because
+this webview delivers pointerdown reliably but does not synthesize click for
+those actions (D-009). System-metric buttons and About controls use `click`,
+which also supports their keyboard activation.
 
 **Geometry is self-driven** (D-008). Compositor-side interactive move and
 resize are unreliable for a keep-below XWayland window, and this webview's
@@ -380,8 +382,10 @@ requestAnimationFrame loop reads Tauri's global cursor position and sets
 position or size directly; pointer events only arm and disarm the loop. The
 window's own reported position and size are deliberately unused because the
 toolkit mis-reports both by a phantom frame height for an undecorated X11
-window. Ctrl+wheel zooms 70–160% and persists; the widget never takes keyboard
-focus.
+window. Ctrl+wheel zooms 70–160% and persists. The XWayland desktop-layer
+behavior affects pointer delivery and stacking, but controls can receive
+keyboard focus: system-metric buttons activate with Enter or Space, and closing
+About restores focus to its trigger.
 
 **Observability is deliberate and redacted.** Breadcrumbs go to stderr through
 one command and prove that rendering or interaction stages ran: strip and label

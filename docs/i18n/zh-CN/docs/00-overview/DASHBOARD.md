@@ -9,7 +9,7 @@
 
 # 项目看板 — qhud
 
-> 状态：v0.7.1 已发布 · 更新：2026-09-14 · 负责人：chquandogong
+> 状态：v0.7.1 已发布，之后的 `main` 修改未发布 · 更新：2026-09-15 · 负责人：chquandogong
 > 公开项目快照。Git 历史、带标签发布及 workflow 运行是权威记录；下方带日期观察保留其原始验证范围。
 
 <!-- qhud:anchor -->
@@ -20,6 +20,8 @@
 | 项目 | 值 |
 | --- | --- |
 | 当前版本 | [v0.7.1](https://github.com/chquandogong/qhud/releases/tag/v0.7.1)：增加 Linux Intel GPU 测量，补全 [v0.7.0](https://github.com/chquandogong/qhud/releases/tag/v0.7.0) 引入的条件 GPU 支持。提供 Linux x86_64 tarball 和 Windows x86_64 ZIP。 |
+| 发布后源码 | 2026-09-15 查询到 GitHub `main` 为 [c00bcd7](https://github.com/chquandogong/qhud/commit/c00bcd71c8d13cf99ffeed37c66c819c032f96ee)。v0.7.1 标签之后，[#1](https://github.com/chquandogong/qhud/pull/1)加入仓库/发布治理，[#7](https://github.com/chquandogong/qhud/pull/7)修复 `quinn-proto`，[#14](https://github.com/chquandogong/qhud/pull/14)脱敏日常诊断。这些提交不包含在 v0.7.1 压缩包内。 |
+| 标签后自动检查 | `c00bcd7` 的 [main CI](https://github.com/chquandogong/qhud/actions/runs/34823834972) 与 [CodeQL](https://github.com/chquandogong/qhud/actions/runs/34823834684) 均于 2026-09-14 成功。CI 包含 Linux/Windows 构建、Node/Rust 测试及文档完整性；单独的依赖审查作业为 PR 设置门禁。CodeQL 分析 Rust、JavaScript/TypeScript 和 Actions。这是源码验证，不是新二进制包或实机桌面验证。 |
 | 流水线依赖 | qmonster @ `6a21c44`；Linux 使用规范 Git 依赖，Windows 使用命令级补丁并恢复 lockfile。 |
 | 支持平台 | Ubuntu 24.04 / GNOME 与原生 Windows x64 / WebView2。原生 Windows 终端标签页观测仍在支持范围之外。 |
 | 当前运行证据 | **Ubuntu 2026-09-11，v0.7.1：**测量 Intel Arc（Meteor Lake、`i915`、gt0+gt1）。`--system-dump` 报告 24.8%，同一区间独立 rc6 空闲驻留计算也是 24.8%；运行中小组件显示 CPU、内存、GPU、磁盘和网络历史。v0.7.1 只修改 Linux GPU 采样器，因此该补丁未重新执行 Windows 实机验证。 |
@@ -50,6 +52,7 @@ D-001 第二前端 · D-002 Tauri v2 · D-003 XWayland/EWMH 层 · D-004 qmonste
 | v0.6.0–v0.6.2：原生 Windows 账户组件、无 mux 真实账户视图、归属保护、便携打包、核心文档重写及 Codex 邮箱自动显示 | 2026-09-07/08 发布 |
 | v0.7.0：CPU、内存、条件 GPU、磁盘、网络的有限系统历史及无障碍 About | 2026-09-10 发布 |
 | v0.7.1：Intel i915/xe 空闲驻留 GPU 采样器及同区间现场比较 | 2026-09-11 发布并验证 |
+| v0.7.1 之后的 `main`：分支/标签保护、安全依赖补丁、日常日志脱敏 | 2026-09-14 合并；二进制包等待未来版本 |
 
 <!-- qhud:anchor -->
 <a id="open-verification-and-backlog"></a>
@@ -62,6 +65,9 @@ D-001 第二前端 · D-002 Tauri v2 · D-003 XWayland/EWMH 层 · D-004 qmonste
 | 普通 tmux 实时观测回退 | 等待现场检查 |
 | 真实多组织登录的第二组织行 | 等待现场检查；凭据和机器路径保存在仓库外 |
 | Windows、AMD、NVIDIA 系统指标 | 等待额外硬件证据 |
+| [glib 0.18 通告迁移](https://github.com/chquandogong/qhud/issues/13) | 受 GTK 3 依赖限制，持续追踪 |
+| [开放 codex 分支重复 CI 运行](https://github.com/chquandogong/qhud/issues/15) | P2 仓库运维待办 |
+| [对剩余库错误原文分类](https://github.com/chquandogong/qhud/issues/16) | P2 隐私纵深防护待办；#14 中识别出的泄漏已修复 |
 | 卡片 → 终端窗格聚焦跳转 | 待办 |
 | 用于概览干净固定及桌面图标共存的 GNOME Shell 扩展 | 待办 |
 | 上游 `ObserveSnapshot`、`.deb` 打包、agy 多账户 | 待办 |

@@ -33,6 +33,14 @@ Windows MSVC는 빌드 스크립트를 통해 범위가 한정된 의존성 패�
 git diff --exit-code -- Cargo.toml Cargo.lock
 ```
 
+CI는 Node 22를 쓰는 별도의 Ubuntu `repository-integrity` 작업도 실행합니다.
+
+```bash
+node scripts/check-repository.mjs
+```
+
+이 명령은 패키지·Tauri·lockfile 버전 일치, 한국어 README 사본의 바이트 단위 일치, 현재 릴리스 노트와 설치 예시, 영어·한국어·중국어 간체 문서 파일 집합과 릴리스 노트 언어 링크, 로컬 Markdown 링크 대상을 검사합니다. 문서만 바꿨다면 Rust를 컴파일하지 않고 로컬에서 이 명령을 실행할 수 있습니다. push 또는 pull request에서는 CI가 모든 작업을 실행합니다.
+
 `-Test`는 같은 의존성 환경에서 qhud Rust 테스트 후 빌드합니다. Node 22에서 `node --test tests/system-metrics.test.cjs`를 실행해 프런트엔드 시스템 지표 도우미도 검사합니다. 스크립트는 Windows 명령 후 기준 lockfile을 복원합니다. Linux 빌드에는 형제 checkout이나 Windows 패치가 필요하지 않습니다. Ubuntu와 Windows 테스트 및 빌드가 모두 성공해야 릴리스를 공개합니다.
 
 2026-09-07: `1514e09`의 [CI 34117359064](https://github.com/chquandogong/qhud/actions/runs/34117359064)가 통과했습니다. Ubuntu fmt/clippy, **98/98 테스트**, 릴리스 빌드; Windows **98/98 테스트**, 릴리스 빌드, 기준 의존성 파일 검사가 통과했습니다. 로컬 Windows 스크립트도 98/98 테스트와 릴리스 빌드를 통과했습니다.
@@ -130,4 +138,4 @@ git diff --exit-code -- Cargo.toml Cargo.lock
 ## 회귀 방지 불변 조건
 
 - qhud가 `~/.qmonster` 아래 파일을 생성/수정하지 않습니다(R5). 10분 실행 뒤 `find ~/.qmonster -newer /tmp/mark` 결과는 TUI가 만든 파일만이어야 합니다.
-- 위젯은 클릭으로 키보드 포커스를 가져가지 않습니다(포인터 전용 계약).
+- Linux에서는 포인터 선택과 이동/크기 조절이 컴포지터 경로 입력으로 작동합니다. 시스템 지표 버튼은 Tab으로 이동한 뒤 Enter·Space로도 활성화되며 About을 닫으면 열기 버튼으로 포커스가 돌아옵니다.
