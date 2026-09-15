@@ -12,6 +12,8 @@ All notable changes to qhud. Format: [Keep a Changelog](https://keepachangelog.c
 
 ### Security
 
+- Patch `quinn-proto` to 0.11.17 in the locked dependency graph, addressing
+  a remote memory-exhaustion advisory in the earlier revision.
 - Redact normal diagnostics across Codex, Claude, terminal-multiplexer, storage,
   and frontend paths. UI breadcrumbs now use a typed allowlist that preserves
   bounded counts, interaction state, and target kinds without accepting account
@@ -19,6 +21,19 @@ All notable changes to qhud. Format: [Keep a Changelog](https://keepachangelog.c
   report only an error category and position, and `QHUD_EXTRA_DIAG` reports field
   presence without values. Explicit JSON dump commands remain operator-requested
   diagnostics and must be redacted before sharing.
+
+### Repository and documentation
+
+- Protect `main` and release tags; require pull requests, up-to-date Linux and
+  Windows builds, documentation integrity, dependency review, conversation
+  resolution, and Rust/JavaScript/Actions CodeQL analyses. Restrict workflow
+  permissions and third-party actions, and prepare releases through a gated
+  environment with immutable future releases.
+- Add issue forms, a pull request template, CODEOWNERS, agent instructions,
+  security/support/community policies, Dependabot automation, and a repository
+  operations guide for solo private, team private, and public work.
+- Clarify the distinction between the v0.7.1 binaries and later `main` changes;
+  correct redacted-error troubleshooting and keyboard-control documentation.
 
 ## [0.7.1] — 2026-09-11
 

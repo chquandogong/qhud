@@ -9,7 +9,7 @@
 
 # 运维手册
 
-> 状态：持续维护 · 日期：2026-09-07 · 负责人：chquandogong
+> 状态：持续维护 · 日期：2026-09-15 · 负责人：chquandogong
 
 <!-- qhud:anchor -->
 <a id="install"></a>
@@ -51,9 +51,8 @@ cargo build --release --locked # binary at target/release/qhud
 - **怀疑某个数字？** `~/.local/bin/qhud --dump` 输出组件实际渲染的完整载荷，一次观测，格式化 JSON。它可能包含账户、工作区、会话、命令和路径标识符；共享前请脱敏。
 - **配额行丢失费用或重置倒计时？** 旁路文件归属会按设计在三个位置静默拒绝。用 `QMONSTER_SIDEFILE_DIAG=1 qhud --dump 2>&1 >/dev/null` 明确是哪一个：no-cwd-match、60 s 同 cwd 歧义守卫，或后代 CLI 不匹配。
 - **组件确实在渲染吗？** stderr 只记录脱敏后的渲染与交互阶段：配额区/标签完成、指针与选择传递、前端错误是否发生；账户标签、工作区与窗格 ID、路径、用量值及异常原文均不会记录。但事件记录证明的是**逻辑**，不是像素；无错误**不能**证明已绘制。曾有帧呈现冻结，使点击和获取不可见地执行数天，才学到此教训。像素**可以**验证：间隔几秒两次 `xwd -id <qhud window> | md5sum` 必须不同，因为页脚时钟每秒重绘；xwd 也可解码为图片。`framestall:` 记录表示内置看门狗发现冻结帧时钟并正在恢复，抖动 → 重新执行。
-- **无需点击的获取入口**：底层组件收不到合成指针输入，见 D-010。`qhud --refresh-all`、`qhud --refresh-claude`、`qhud --fetch-codex` 经单实例通道转发到运行组件，可绑定快捷键。`qhud --claude-usage`、`qhud --codex-usage`、`qhud --agy-usage` 独立运行相同获取，输出 JSON，并像点击一样写入获取存储。`qhud
- --codex-appserver` 按需运行令牌过期回退。`QHUD_EXTRA_DIAG=1 qhud --claude-usage` 只报告实时响应中是否存在 `extra_usage` 与 `spend`，用于格式漂移诊断。
-- **⟳ 显示“usage response did not parse: …”？** 端点结构漂移；后面只给出脱敏错误类别和 JSON 位置，不包含意外的供应商值。先例：2026-09-01、v0.5.3，`extra_usage.used_credits` 从 `4997` 变为 `4997.0`，一个可选字段让整份响应失败两天。整数语义金额字段现接受整数值浮点数；**新**整数类型字段也必须通过同一宽容读取器（`usage_cache.rs` 中 `lenient_i64`/`lenient_u8`，D-019），否则成为下次两天中断。
+- **无需点击的获取入口**：底层组件收不到合成指针输入，见 D-010。`qhud --refresh-all`、`qhud --refresh-claude`、`qhud --fetch-codex` 经单实例通道转发到运行组件，可绑定快捷键。`qhud --claude-usage`、`qhud --codex-usage`、`qhud --agy-usage` 独立运行相同获取，输出 JSON，并像点击一样写入获取存储。`qhud --codex-appserver` 按需运行令牌过期回退。`QHUD_EXTRA_DIAG=1 qhud --claude-usage >/dev/null` 的诊断记录只报告实时响应中是否存在 `extra_usage` 与 `spend`，用作格式漂移线索。
+- **⟳ 显示“usage response did not parse: …”？** 解析器仅返回粗略类别（`schema mismatch`、JSON 语法错误、不完整 JSON 或 I/O 错误）和行、列位置；不会显示字段名或供应商值。仅凭位置无法确定是窗口、百分比还是金额字段发生变化。要获取额外用量的线索，可运行 `QHUD_EXTRA_DIAG=1 qhud --claude-usage >/dev/null`：stderr 中的诊断记录只报告 `extra_usage` 和 `spend` 是否存在。供应商响应和本地 Claude 缓存须保持私密。将本地持有的响应与 `src-tauri/src/usage_cache.rs` 中预期的类型比较，在提出解析器修复前用脱敏的合成最小 JSON 复现。2026-09-01、v0.5.3，`extra_usage.used_credits` 从整数变为值为整数的浮点数，是已确认的一例（D-019）；`lenient_i64` / `lenient_u8` 处理整数语义的金额字段。若确认显示的窗口或百分比发生变化，须另行审查数据契约。不要发布原始响应、账户标识符或含令牌的文件。
 - **账户和套餐**位于 `~/.config/qhud/accounts.json`，刻意在此公开仓库外。`labels` / `plans` / `workspace_names` / `workspace_plans` 设置显示文字；`known[]` 列出曾连接账户；`forgotten` 隐藏占位行，但不隐藏实时账户。显示名称由操作者提供，不得根据传输 `plan_type`“修正”：`prolite` 显示为 ChatGPT Pro 5x，`team` 为 ChatGPT Business。
 - **每供应商多个账户**（D-015）：各额外账户在自己的目录保持登录，然后注册目录：
 
@@ -138,8 +137,8 @@ cp ~/.config/autostart/qhud.desktop ~/.local/share/applications/qhud.desktop
 
 ## 发布流程
 
-1. 发布前更新 README、CHANGELOG、平台说明及 `docs/05-ops/releases/v<version>.md`。保持包、Tauri 配置和 Cargo lock 包版本一致。
-2. 推送 `codex/` 准备分支，要求 Ubuntu 和 Windows CI 均通过。Linux 使用规范固定 Git 依赖；Windows 运行 `scripts/Build-Windows.ps1 -Test` 并验证清单/lock 已恢复。该 Windows 检出中不要同时运行 Cargo 命令。
-3. 将已测试 revision 合入 `main`，不覆盖无关提交。在发布 revision 创建带注释 `v<version>` 标签并推送。
-4. Release 工作流测试、构建两平台，打包现有 Linux x86_64 tarball 和 Windows x86_64 ZIP，附 SHA-256 校验和及证明。发布作业仅在两构建成功后运行，使用仓库内发布说明。
-5. 确认工作流成功，各平台下载和校验和均已附上。CI 构建通过不能代替实机桌面检查；记录任何未验证的桌面集成。
+1. 更新 README、CHANGELOG、平台说明，以及英文、韩文和中文 `docs/05-ops/releases/v<version>.md` 发布说明。保持 Cargo 包、Tauri 配置和 Cargo lock 中的包版本一致。
+2. 推送 `codex/` 准备分支并创建 PR。按严格检查策略更新分支以包含 `main`，解决评审对话，并等待全部七项必需状态检查（Ubuntu、Windows、文档/元数据、依赖审查及三项 CodeQL Analyze）通过。当前 `main` 规则要求 PR、线性历史和 squash merge；单人维护时所需的批准评审数为零。Windows CI 运行 `scripts/Build-Windows.ps1 -Test` 并核实清单/lock 已恢复；不要在该检出中同时运行 Cargo。
+3. 将通过检查的 PR 以 squash merge 合入 `main`。在已包含于 `origin/main` 的提交上创建并推送带注释的稳定版本 `vX.Y.Z` 标签；受保护的 `v*` 标签不可修改或删除。发布预检还要求 Cargo/Tauri 版本一致、发布说明和 CHANGELOG 条目齐备。
+4. 标签触发的 Release 工作流运行完整 CI 质量关卡，然后把通过质量关卡的 Linux x86_64 与 Windows x86_64 二进制文件打包为 tarball 和 ZIP，并生成 SHA-256 文件与构建来源证明。它核验恰好四项资产及两份校验和，随后通过 `release` 环境审核来控制发布。截至 2026-09-14 最近一次核查，该关卡要求维护者审核并允许自行批准。批准后，发布作业**先创建或继续处理草稿**，逐字节比对已有草稿资产，上传缺少的资产，仅发布完整草稿；拒绝替换已发布的版本。
+5. 确认工作流成功，检查发布说明和四项可下载资产，验证校验和及构建来源证明，并记录尚未在受支持平台实机上验证的桌面集成。

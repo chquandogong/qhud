@@ -30,6 +30,10 @@
 
 诊断可能包含邮箱、账户 ID、本地路径、会话内容及凭据。分享前检查并脱敏。绝不附上 `auth.json`、`.credentials.json` 或完整供应商配置目录。若涉及凭据泄露，请描述问题，不要在公开 issue 粘贴凭据。
 
+`main` 的日常 stderr 事件记录省略可识别值。已发布的 v0.7.1 二进制包早于此
+安全修订。`--dump`、`--codex-usage` 等显式 JSON 命令在两个版本中仍输出
+操作者请求的完整载荷；分享前检查并脱敏。
+
 <!-- qhud:anchor -->
 <a id="build-and-check"></a>
 
@@ -87,6 +91,10 @@ git diff --exit-code -- Cargo.toml Cargo.lock
 
 修改文档时同步对应翻译。保留命令语法、API 标识符、日期、需求/决策 ID 及完整表格行。历史记录描述当时情况，不要静默把旧观察改成当前事实。MIT 许可证原文保持不变。
 
+纯文档修改运行 `node scripts/check-repository.mjs`，检查各语言文件集合、版本、
+发布说明链接和本地 Markdown 链接。下载版本应对应最新公开发布；新二进制标签
+发布之前，`main` 的后续行为须明确标为未发布。
+
 从各文档实际目录检查相对链接与段落锚点。使用现有或明确标为演示的截图，不把示例用量当作实机账户读数。文档索引列出[英语](../../../docs/README.md)、[韩语](../ko/docs/README.md)及[简体中文](docs/README.md)全部页面。
 
 <!-- qhud:anchor -->
@@ -95,6 +103,12 @@ git diff --exit-code -- Cargo.toml Cargo.lock
 ## 提交 pull request
 
 描述改了什么、为什么，列出相关验证，说明尚存的平台或视觉验证缺口。修改解析器、scope、持久化或身份行为时增加回归测试。纯文档变更需要链接、翻译和渲染检查，无需重建应用。
+
+从聚焦的分支向 `main` 提交 PR，不要以推送发布标签替代评审。受保护分支要求
+Linux 与 Windows 构建/测试、仓库完整性与依赖审查，以及 Rust、
+JavaScript/TypeScript、Actions CodeQL 分析。解决评审对话；检查过期时更新
+分支。个人维护的必需批准数为 0；团队仓库应要求独立评审者。设置及
+private/public 变体见[仓库运维指南](docs/05-ops/REPOSITORY.md)。
 
 构建通过不能证明桌面行为。窗口/层级变化须遵循[测试计划](docs/04-quality/TEST_PLAN.md)，区分自动检查与实际合成器/像素验证。不要仅根据合成夹具声称做过真实供应商测试。
 

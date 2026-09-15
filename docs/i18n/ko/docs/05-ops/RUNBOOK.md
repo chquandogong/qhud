@@ -9,7 +9,7 @@
 
 # 운영 가이드
 
-> 상태: 지속 갱신 · 날짜: 2026-09-07 · 담당: chquandogong
+> 상태: 지속 갱신 · 날짜: 2026-09-15 · 담당: chquandogong
 
 <!-- qhud:anchor -->
 <a id="install"></a>
@@ -51,9 +51,8 @@ cargo build --release --locked # binary at target/release/qhud
 - **수치가 의심스러운가요?** `~/.local/bin/qhud --dump`가 위젯이 표시하는 정확한 페이로드를 출력합니다(관찰 한 주기, 보기 좋은 JSON). 계정, 작업공간, 세션, 명령, 경로 식별자가 포함될 수 있으므로 공유 전에 가려야 합니다.
 - **사용 한도 행에서 비용이나 초기화 카운트다운이 사라졌나요?** 보조 파일 귀속은 설계상 세 지점에서 조용히 거부됩니다. `QMONSTER_SIDEFILE_DIAG=1 qhud --dump 2>&1 >/dev/null`로 어느 지점인지 확인합니다. cwd 불일치, 60초 동일 cwd 모호성 검사, 자손 CLI 불일치 중 하나를 보고합니다.
 - **위젯이 실제로 렌더링하나요?** stderr에는 비식별화한 렌더링·상호작용 단계만 남습니다. 사용량 영역/레이블 완료, 포인터·선택 전달, 프런트엔드 오류 발생 여부를 기록하며 계정 레이블, 작업공간·창 ID, 경로, 사용량 값, 예외 원문은 기록하지 않습니다. 이 추적 로그는 픽셀이 아닌 로직을 증명합니다. 오류가 없다는 사실은 무언가 그려졌다는 증거가 **아닙니다**. 실제 프레임 정지 중 클릭과 조회가 며칠간 보이지 않게 실행되며 배운 교훈입니다. 픽셀은 검증할 수 있습니다. `xwd -id <qhud window> | md5sum`을 몇 초 간격으로 두 번 실행하면 달라야 하며(푸터 시계가 매초 갱신됨), xwd는 볼 수 있는 이미지로 디코딩됩니다. `framestall:` 로그는 내장 감시기가 멈춘 프레임 시계를 감지해 복구 중이라는 뜻입니다(흔들기 → 재실행).
-- **클릭 없는 조회 경로**(keep-below 위젯은 합성 포인터 입력을 받지 않음, D-010): `qhud --refresh-all`, `qhud --refresh-claude`, `qhud --fetch-codex`는 단일 인스턴스 채널로 실행 중인 위젯에 전달되며 단축키에 연결할 수 있습니다. `qhud --claude-usage`, `qhud --codex-usage`, `qhud --agy-usage`는 같은 조회를 독립 실행하고 JSON을 출력하며 클릭과 마찬가지로 조회 저장소에 기록합니다. `qhud
- --codex-appserver`는 만료 토큰 대체 경로를 요청 시 실행합니다. `QHUD_EXTRA_DIAG=1 qhud --claude-usage`는 형식 변경 확인을 위해 실제 응답에 `extra_usage`와 `spend`가 존재하는지만 보고합니다.
-- **⟳가 “usage response did not parse: …”를 표시하나요?** Endpoint의 형식이 바뀐 것입니다. 이후 부분은 예상하지 못한 공급자 값을 생략한 비식별 오류 범주와 JSON 위치입니다. 선례(2026-09-01, v0.5.3): `extra_usage.used_credits`가 `4997` 대신 `4997.0`으로 오기 시작해 선택적 필드 하나가 이틀간 응답 전체를 실패시켰습니다. 이제 정수 의미의 금액 필드는 정수값인 실수를 허용합니다. 새 정수형 필드도 같은 유연한 읽기 함수(`usage_cache.rs`의 `lenient_i64`/`lenient_u8`, D-019)를 거쳐야 다음 이틀짜리 장애를 막을 수 있습니다.
+- **클릭 없는 조회 경로**(keep-below 위젯은 합성 포인터 입력을 받지 않음, D-010): `qhud --refresh-all`, `qhud --refresh-claude`, `qhud --fetch-codex`는 단일 인스턴스 채널로 실행 중인 위젯에 전달되며 단축키에 연결할 수 있습니다. `qhud --claude-usage`, `qhud --codex-usage`, `qhud --agy-usage`는 같은 조회를 독립 실행하고 JSON을 출력하며 클릭과 마찬가지로 조회 저장소에 기록합니다. `qhud --codex-appserver`는 만료 토큰 대체 경로를 요청 시 실행합니다. `QHUD_EXTRA_DIAG=1 qhud --claude-usage >/dev/null`의 진단 추적 로그는 실제 응답에 `extra_usage`와 `spend`가 존재하는지만 보고합니다.
+- **⟳가 “usage response did not parse: …”를 표시하나요?** 파서는 대략적인 범주(`schema mismatch`, JSON 구문 오류, 불완전한 JSON 또는 I/O 오류)와 줄·열만 반환합니다. 필드 이름이나 공급자 값은 표시하지 않습니다. 위치만으로 window, percent, 금액 필드 중 무엇이 바뀌었는지 확정할 수 없습니다. 추가 사용량에 관한 단서를 보려면 `QHUD_EXTRA_DIAG=1 qhud --claude-usage >/dev/null`을 실행합니다. stderr의 진단 추적 로그에는 `extra_usage`와 `spend`의 존재 여부만 기록됩니다. 공급자 응답과 로컬 Claude 캐시는 비공개로 유지하세요. 로컬에 보유한 응답을 `src-tauri/src/usage_cache.rs`의 예상 타입과 비교하고, 파서 수정안을 내기 전에 민감 정보를 제거한 합성 최소 JSON으로 재현하세요. 2026-09-01, v0.5.3에 `extra_usage.used_credits`가 정수에서 정수값인 실수로 바뀐 사례는 확인된 한 가지 경우입니다(D-019). `lenient_i64` / `lenient_u8`은 정수 의미의 금액 필드를 처리합니다. 표시되는 window나 percent의 변경이 확인되면 별도로 데이터 계약을 검토해야 합니다. 원본 응답, 계정 식별자 또는 토큰을 포함한 파일은 게시하지 마세요.
 - **계정과 플랜**은 이 공개 저장소 밖의 `~/.config/qhud/accounts.json`에 있습니다. `labels` / `plans` / `workspace_names` / `workspace_plans`는 표시 텍스트, `known[]`은 과거 연결 계정 목록, `forgotten`은 자리 표시자 숨김에 사용합니다(활성 계정은 숨기지 않음). 표시 이름은 운영자가 제공하며 응답의 `plan_type`으로 “수정”하면 안 됩니다. `prolite`는 ChatGPT Pro 5x, `team`은 ChatGPT Business로 표시합니다.
 - **공급자당 여러 계정**(D-015): 추가 계정을 각각 자체 디렉터리에서 로그인 상태로 유지한 뒤 디렉터리를 등록합니다.
 
@@ -138,8 +137,8 @@ cp ~/.config/autostart/qhud.desktop ~/.local/share/applications/qhud.desktop
 
 ## 릴리스 절차
 
-1. 공개 전에 README, CHANGELOG, 플랫폼 안내, `docs/05-ops/releases/v<version>.md`를 갱신합니다. 패키지, Tauri 설정, Cargo lock의 패키지 버전을 맞춥니다.
-2. `codex/` 준비 브랜치를 push하고 Ubuntu와 Windows CI 모두 통과해야 합니다. Linux는 기준 고정 Git 의존성을 사용합니다. Windows는 `scripts/Build-Windows.ps1 -Test`를 실행하고 manifest/lock 복원을 검증합니다. 해당 Windows checkout에서 Cargo 명령을 동시에 실행하지 않습니다.
-3. 무관한 커밋을 덮어쓰지 않고 검증한 revision을 `main`에 통합합니다. 릴리스 revision에 주석 있는 `v<version>` 태그를 만들고 push합니다.
-4. Release 워크플로는 두 플랫폼을 테스트/빌드하고 기존 Linux x86_64 tarball 및 Windows x86_64 ZIP을 SHA-256 체크섬과 함께 패키징하고 출처를 증명합니다. 공개 작업은 두 빌드가 성공해야 실행되며 저장소의 릴리스 노트를 사용합니다.
-5. 워크플로 성공과 모든 플랫폼 다운로드/체크섬 첨부를 확인합니다. CI 빌드 통과는 실제 데스크톱 검증을 대체하지 않습니다. 실행해 보지 않은 데스크톱 통합 항목을 기록합니다.
+1. README, CHANGELOG, 플랫폼 안내와 영어·한국어·중국어 `docs/05-ops/releases/v<version>.md` 릴리스 노트를 갱신합니다. Cargo 패키지, Tauri 설정, Cargo lock의 패키지 버전을 맞춥니다.
+2. `codex/` 준비 브랜치를 push하고 PR을 엽니다. 엄격한 검사 정책에 맞게 `main`을 반영하고 검토 대화를 해결한 뒤 필수 상태 검사 7개(Ubuntu, Windows, 문서/메타데이터, 의존성 검토, CodeQL Analyze 3개)가 모두 통과할 때까지 기다립니다. 현재 `main` 규칙은 PR, 선형 기록, squash merge를 요구하며 단독 관리자에게 필요한 승인 리뷰 수는 0개입니다. Windows CI는 `scripts/Build-Windows.ps1 -Test`를 실행하고 manifest/lock 복원을 검증합니다. 해당 checkout에서 Cargo를 동시에 실행하지 마세요.
+3. 검사를 통과한 PR을 squash merge로 `main`에 합칩니다. 이미 `origin/main`에 포함된 커밋에 주석 있는 안정 버전 `vX.Y.Z` 태그를 만들고 push합니다. 보호된 `v*` 태그는 수정하거나 삭제할 수 없습니다. 릴리스 사전 검사는 Cargo/Tauri 버전 일치, 릴리스 노트, CHANGELOG 항목도 요구합니다.
+4. 태그로 시작된 Release 워크플로는 전체 CI 품질 검사를 실행한 뒤 이를 통과한 Linux x86_64 및 Windows x86_64 바이너리를 tarball과 ZIP으로 패키징하고 SHA-256 파일과 출처 증명을 만듭니다. 정확히 4개 자산과 두 체크섬을 검증한 뒤 `release` 환경이 공개 작업을 승인 대상으로 둡니다. 2026-09-14 마지막 확인 당시 이 게이트는 관리자의 검토를 요구하고 자체 승인을 허용했습니다. 승인 후 공개 작업은 **먼저 초안을 만들거나 이어서 처리**하고, 기존 초안 자산을 바이트 단위로 대조하며, 누락된 자산을 업로드하고, 완전한 초안만 공개합니다. 이미 공개된 릴리스는 교체하지 않습니다.
+5. 워크플로 성공을 확인하고 릴리스 노트와 다운로드 가능한 자산 4개를 살펴보며 체크섬과 출처 증명을 검증합니다. 지원 플랫폼에서 실제로 실행해 보지 않은 데스크톱 통합 항목을 기록합니다.

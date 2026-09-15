@@ -33,6 +33,11 @@ credentials. Inspect and redact material before sharing it. Never attach
 If a report concerns a credential exposure, describe the issue without posting
 the credential in a public issue.
 
+On `main`, ordinary stderr breadcrumbs omit identifying values. Published
+v0.7.1 binaries predate that hardening. Explicit JSON commands such as `--dump`
+and `--codex-usage` still print full operator-requested payloads on either
+revision; inspect and redact those outputs before sharing.
+
 ## Build and check
 
 The repository declares Rust 1.88 or later; CI uses stable Rust. The application
@@ -102,6 +107,11 @@ syntax, API identifiers, dates, requirement/decision IDs, and complete table
 rows. Historical records describe their own date; do not silently rewrite an
 old observation as a current fact. Keep the MIT license text in its original form.
 
+For documentation-only changes, run `node scripts/check-repository.mjs` to
+check mirrored file sets, versions, release-note links, and local Markdown links.
+Keep the version named in downloads aligned with the latest published release;
+describe later `main` behavior as unreleased until a new binary is tagged.
+
 Check relative links and section anchors from each document's actual directory.
 Use existing or clearly labeled demo screenshots; do not present illustrative
 usage as a live account reading. The documentation index lists every page in
@@ -114,6 +124,15 @@ Describe what changed and why, list relevant validation, and state any remaining
 platform or visual verification gaps. Add regression tests when changing parser,
 scope, persistence, or identity behavior. Documentation-only changes need link,
 translation, and rendering checks rather than application rebuilds.
+
+Open a focused branch and PR against `main`; do not push a release tag as a
+substitute for review. The protected branch requires the Linux and Windows
+build/test jobs, repository-integrity and dependency-review jobs, and Rust,
+JavaScript/TypeScript, and Actions CodeQL analyses. Resolve review conversations
+and update the branch if checks become stale. Solo maintenance uses zero required
+approvals; a team repository should require an independent reviewer. See the
+[repository operations guide](docs/05-ops/REPOSITORY.md) for those settings and
+their private/public variants.
 
 A passed build does not establish desktop behavior. For window/layer changes,
 follow the [test plan](docs/04-quality/TEST_PLAN.md) and distinguish automated
