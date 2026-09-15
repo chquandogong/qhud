@@ -45,15 +45,16 @@ backend and a lightweight webview. No Node.js or npm is required to build it.
 
 <table>
   <tr>
-    <td align="center"><img src="docs/assets/widget-compact.png" width="330" alt="Linux demo with a compact provider strip and session tiles"><br><sub>Compact session overview</sub></td>
-    <td align="center"><img src="docs/assets/widget-expanded.png" width="330" alt="Linux demo with an expanded session and conflict details"><br><sub>Details when you need them</sub></td>
+    <td align="center"><img src="docs/assets/widget-compact.png" width="330" alt="v0.7.1 demo with provider usage, session tiles, and the bottom system strip"><br><sub>Compact session overview</sub></td>
+    <td align="center"><img src="docs/assets/widget-expanded.png" width="330" alt="v0.7.1 demo with expanded session and conflict details plus the bottom system strip"><br><sub>Details when you need them</sub></td>
   </tr>
 </table>
 
-*These screenshots show the provider and session area in earlier Linux demo
-fixtures with illustrative values. The v0.7.x system strip and About dialog
-are described in the [user guide](docs/GUIDE.md). The current account layout
-and available model windows depend on the provider, login, and platform.*
+*These screenshots render the v0.7.1 frontend with a browser-only demo fixture.
+Provider, session, and system values are illustrative; they are not captures of
+live accounts or the native desktop app. The About dialog is described in the
+[user guide](docs/GUIDE.md). The actual account layout and available model
+windows depend on the provider, login, and platform.*
 
 ## Platform support
 

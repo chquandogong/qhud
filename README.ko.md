@@ -48,12 +48,12 @@ qhud는 여러 명령행 인터페이스에 흩어진 계정 할당량과 세션
 
 <table>
   <tr>
-    <td align="center"><img src="docs/assets/widget-compact.png" width="330" alt="간결한 공급자 사용량 영역과 세션 타일을 보여 주는 Linux 데모"><br><sub>간결한 세션 개요</sub></td>
-    <td align="center"><img src="docs/assets/widget-expanded.png" width="330" alt="세션과 충돌 상세 정보를 펼친 Linux 데모"><br><sub>필요할 때 펼치는 상세 정보</sub></td>
+    <td align="center"><img src="docs/assets/widget-compact.png" width="330" alt="v0.7.1 데모: 공급자 사용량, 세션 타일, 하단 시스템 표시줄"><br><sub>간결한 세션 개요</sub></td>
+    <td align="center"><img src="docs/assets/widget-expanded.png" width="330" alt="v0.7.1 데모: 펼친 세션과 충돌 상세 정보, 하단 시스템 표시줄"><br><sub>필요할 때 펼치는 상세 정보</sub></td>
   </tr>
 </table>
 
-*스크린샷은 이전 Linux 데모 픽스처의 예시 값으로 공급자·세션 영역을 보여 줍니다. v0.7.x의 시스템 표시줄과 About은 [사용자 가이드](docs/i18n/ko/docs/GUIDE.md)에 설명합니다. 현재 계정 배치와 표시 가능한 모델별 기간은 공급자, 로그인, 플랫폼에 따라 달라집니다.*
+*스크린샷은 v0.7.1의 프런트엔드를 브라우저 전용 데모 픽스처로 렌더링한 모습입니다. 공급자·세션·시스템 수치는 모두 예시 값이며, 실제 계정이나 데스크톱 실행 화면을 캡처한 것은 아닙니다. About 대화상자는 [사용자 가이드](docs/i18n/ko/docs/GUIDE.md)에 설명합니다. 실제 계정 배치와 표시 가능한 모델별 기간은 공급자, 로그인, 플랫폼에 따라 달라집니다.*
 
 <!-- qhud:anchor -->
 <a id="platform-support"></a>
