@@ -51,6 +51,12 @@
 - 将锁定依赖图中的 `rustls` 更新至 0.23.45（同时更新 `aws-lc-rs` 1.18.1、`aws-lc-sys`
   0.45.0 和 `rustls-webpki` 0.103.15），修复 TLS 1.3 握手消息跨加密级别边界被接受的
   RUSTSEC-2026-0285。
+- 将其余日常库错误归约为类型化类别允许列表（`timeout`、`network`、`authentication`、
+  `rate-limited`、`not-found`、`permission-denied`、`io`、`spawn`、`unavailable`、`protocol`、
+  `parse`、`configuration`、`platform`）。HTTP 客户端、进程启动、托盘、链接打开、用量存储、
+  注册表及 qmonster 错误不再把可能含有 URL、路径或 tmux/herdr 输出的上游原文复制到 stderr
+  或 ⟳ 错误中。qmonster 启动诊断以后端、阶段、类别和窗格数量的形式恢复；持续无法连接的多路复用器
+  只在结果变化时汇总。显式 JSON 转储命令保持不变（#16）。
 
 <!-- qhud:anchor -->
 <a id="dependencies"></a>

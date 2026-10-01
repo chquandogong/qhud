@@ -51,6 +51,13 @@ qhud의 모든 주요 변경 사항을 기록합니다. 형식: [Keep a Changelo
 - 고정된 의존성 그래프의 `rustls`를 0.23.45로 갱신하여(`aws-lc-rs` 1.18.1, `aws-lc-sys`
   0.45.0, `rustls-webpki` 0.103.15 포함) TLS 1.3 핸드셰이크 메시지를 암호화 수준 경계를 넘어
   받아들이던 RUSTSEC-2026-0285를 해결했습니다.
+- 남아 있던 평상시 라이브러리 오류를 형식화된 범주 허용 목록(`timeout`, `network`,
+  `authentication`, `rate-limited`, `not-found`, `permission-denied`, `io`, `spawn`,
+  `unavailable`, `protocol`, `parse`, `configuration`, `platform`)으로 축소했습니다. HTTP
+  클라이언트, 프로세스 시작, 트레이, 링크 열기, 사용량 저장소, 레지스트리, qmonster 오류는 URL,
+  경로, tmux/herdr 출력을 담을 수 있는 상위 원문을 더 이상 stderr나 ⟳ 오류에 복사하지 않습니다.
+  qmonster 시작 진단은 백엔드, 단계, 범주, 창 개수로 다시 제공되며, 계속 연결되지 않는
+  멀티플렉서는 결과가 바뀔 때만 요약합니다. 명시적 JSON dump 명령은 바뀌지 않았습니다(#16).
 
 <!-- qhud:anchor -->
 <a id="dependencies"></a>

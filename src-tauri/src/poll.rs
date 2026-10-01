@@ -11,7 +11,7 @@ use qmonster::notify::desktop::NotifyBackend;
 use qmonster::store::sink::NoopSink;
 use qmonster::tmux::TmuxSource;
 
-use crate::{accounts, demo, fetched_store, registry, system_metrics, usage_cache, view};
+use crate::{accounts, demo, diag, fetched_store, registry, system_metrics, usage_cache, view};
 
 const POLL: Duration = Duration::from_secs(2);
 const LIVE_RETRY: Duration = Duration::from_secs(10);
@@ -63,11 +63,14 @@ pub fn run(app: AppHandle) {
                         payload.backend = Some((*backend).to_string());
                         Some(payload)
                     }
-                    Err(_) => {
+                    Err(e) => {
                         // Mux server went away (stopped, socket gone):
                         // Retain real accounts and saved usage while
                         // waiting for the mux to become available again.
-                        eprintln!("qhud: {backend} source lost; local accounts fallback");
+                        eprintln!(
+                            "qhud: {backend} source lost ({}); local accounts fallback",
+                            diag::mux(&e)
+                        );
                         live = None;
                         None
                     }
@@ -279,17 +282,22 @@ fn build_live() -> Option<(LiveCtx, &'static str)> {
             vec![base]
         };
 
+    let tried = candidates.len();
+    let mut outcomes: Vec<ProbeOutcome> = Vec::with_capacity(tried);
     for config in candidates {
         let attempt = config_label(&config);
-        let source = match build_tmux_source(&config) {
+        let (source, notice) = match build_tmux_source(&config) {
             Ok(build) => {
-                if build.startup_notice.is_some() {
-                    eprintln!("qhud: multiplexed source reported a startup notice");
-                }
-                build.source
+                let notice = build.startup_notice.as_ref().map(startup_notice_kind);
+                (build.source, notice)
             }
-            Err(_) => {
-                eprintln!("qhud: {attempt} source unavailable");
+            Err(e) => {
+                outcomes.push(ProbeOutcome {
+                    backend: attempt,
+                    stage: ProbeStage::Build,
+                    kind: diag::mux_build(&*e),
+                    notice: None,
+                });
                 continue;
             }
         };
@@ -303,13 +311,98 @@ fn build_live() -> Option<(LiveCtx, &'static str)> {
         let mut ctx = Context::new(config, source, SilentNotify, Box::new(NoopSink));
         match event_loop::run_once(&mut ctx, Instant::now()) {
             Ok(reports) => {
+                if let Some(notice) = notice {
+                    eprintln!("qhud: {backend} startup notice: {}", notice.label());
+                }
                 eprintln!("qhud: live via {backend} ({} panes)", reports.len());
+                report_probe(None);
                 return Some((ctx, backend));
             }
-            Err(_) => continue,
+            Err(e) => outcomes.push(ProbeOutcome {
+                backend,
+                stage: ProbeStage::Observe,
+                kind: diag::mux(&e),
+                notice,
+            }),
         }
     }
+    report_probe(Some(probe_summary(tried, &outcomes)));
     None
+}
+
+/// A startup notice's body embeds the raw control-mode attach error, so it
+/// is never printed. The title is matched against qmonster's known fixed
+/// titles; anything else is reported only as "other".
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum StartupNotice {
+    ControlModeFallback,
+    Other,
+}
+
+impl StartupNotice {
+    fn label(self) -> &'static str {
+        match self {
+            Self::ControlModeFallback => "control-mode attach failed, polling this session",
+            Self::Other => "other",
+        }
+    }
+}
+
+fn startup_notice_kind(notice: &qmonster::app::system_notice::SystemNotice) -> StartupNotice {
+    if notice.title == "tmux source fallback" {
+        StartupNotice::ControlModeFallback
+    } else {
+        StartupNotice::Other
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum ProbeStage {
+    Build,
+    Observe,
+}
+
+/// One backend's failed attempt: only static labels and a typed category.
+#[derive(Clone, Copy, Debug)]
+struct ProbeOutcome {
+    backend: &'static str,
+    stage: ProbeStage,
+    kind: diag::ErrorKind,
+    notice: Option<StartupNotice>,
+}
+
+fn probe_summary(tried: usize, outcomes: &[ProbeOutcome]) -> String {
+    let detail = outcomes
+        .iter()
+        .map(|o| {
+            let stage = match o.stage {
+                ProbeStage::Build => "build",
+                ProbeStage::Observe => "observe",
+            };
+            let fallback = match o.notice {
+                Some(StartupNotice::ControlModeFallback) => " after control-mode fallback",
+                Some(StartupNotice::Other) => " after startup notice",
+                None => "",
+            };
+            format!("{}={stage} {}{fallback}", o.backend, o.kind)
+        })
+        .collect::<Vec<_>>()
+        .join(", ");
+    format!("qhud: no live mux source ({tried} tried: {detail}); local accounts fallback")
+}
+
+/// `build_live` re-probes every `LIVE_RETRY` while no mux answers. Print a
+/// probe summary only when it changes, so a stopped mux is diagnosable
+/// without a breadcrumb every ten seconds; a success re-arms the report.
+fn report_probe(summary: Option<String>) {
+    static LAST: std::sync::Mutex<Option<String>> = std::sync::Mutex::new(None);
+    let mut last = LAST.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+    if let Some(line) = &summary
+        && last.as_ref() != Some(line)
+    {
+        eprintln!("{line}");
+    }
+    *last = summary;
 }
 
 fn config_label(config: &QmonsterConfig) -> &'static str {
@@ -333,8 +426,11 @@ fn load_config() -> Option<QmonsterConfig> {
         if path.exists() {
             match qmonster::app::config::load_with_local_override(&path) {
                 Ok(config) => return Some(config),
-                Err(_) => {
-                    eprintln!("qhud: failed to read qmonster config; using defaults");
+                Err(e) => {
+                    eprintln!(
+                        "qhud: failed to read qmonster config ({}); using defaults",
+                        diag::qmonster_config(&e)
+                    );
                 }
             }
         }
@@ -504,5 +600,64 @@ mod tests {
         assert_eq!(row.h5.as_ref().unwrap().pct, 37);
         assert_eq!(row.origin, Some("fetched"));
         assert_eq!(row.cache_fetched_at_ms, Some(snapshot.fetched_at_ms));
+    }
+
+    const MUX_CANARY: &str =
+        "person@example.com sk-ant-oat01-CANARY /home/person/.qmonster %42 claude@work";
+
+    #[test]
+    fn startup_notices_are_classified_by_title_and_never_echo_the_body() {
+        use qmonster::app::system_notice::SystemNotice;
+        use qmonster::domain::origin::SourceKind;
+        let fallback = SystemNotice {
+            title: "tmux source fallback".into(),
+            body: format!("control_mode attach failed: {MUX_CANARY}"),
+            severity: Severity::Warning,
+            source_kind: SourceKind::ProjectCanonical,
+        };
+        assert_eq!(
+            startup_notice_kind(&fallback),
+            StartupNotice::ControlModeFallback
+        );
+        let unknown = SystemNotice {
+            title: MUX_CANARY.into(),
+            ..fallback
+        };
+        assert_eq!(startup_notice_kind(&unknown), StartupNotice::Other);
+        for kind in [StartupNotice::ControlModeFallback, StartupNotice::Other] {
+            assert!(!kind.label().contains('@'));
+        }
+    }
+
+    #[test]
+    fn probe_summary_reports_backends_stages_and_categories_only() {
+        use qmonster::tmux::PollingError;
+        let herdr = PollingError::Command(MUX_CANARY.into());
+        let tmux = PollingError::NonZero(MUX_CANARY.into());
+        let line = probe_summary(
+            2,
+            &[
+                ProbeOutcome {
+                    backend: "herdr",
+                    stage: ProbeStage::Observe,
+                    kind: diag::mux(&herdr),
+                    notice: None,
+                },
+                ProbeOutcome {
+                    backend: "tmux",
+                    stage: ProbeStage::Observe,
+                    kind: diag::mux(&tmux),
+                    notice: Some(StartupNotice::ControlModeFallback),
+                },
+            ],
+        );
+        assert_eq!(
+            line,
+            "qhud: no live mux source (2 tried: herdr=observe spawn, \
+             tmux=observe unavailable after control-mode fallback); local accounts fallback"
+        );
+        for fragment in MUX_CANARY.split_whitespace() {
+            assert!(!line.contains(fragment), "{fragment} leaked: {line}");
+        }
     }
 }

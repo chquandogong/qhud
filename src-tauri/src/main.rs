@@ -6,6 +6,7 @@ mod agy_usage;
 mod claude_usage;
 mod codex_usage;
 mod demo;
+mod diag;
 mod fetched_store;
 mod frame_guard;
 mod paths;
@@ -310,7 +311,10 @@ pub fn respawn(app: &tauri::AppHandle) {
     if let Ok(exe) = std::env::current_exe() {
         match std::process::Command::new(exe).arg("--respawned").spawn() {
             Ok(_) => app.exit(0),
-            Err(e) => eprintln!("qhud: self-restart spawn failed: {e}"),
+            Err(e) => eprintln!(
+                "qhud: {}",
+                diag::failure("self-restart spawn", diag::spawn(&e))
+            ),
         }
     }
 }
@@ -427,7 +431,7 @@ fn main() {
         match serde_json::to_string_pretty(&collector.sample()) {
             Ok(json) => println!("{json}"),
             Err(e) => {
-                eprintln!("qhud: system metrics: {e}");
+                eprintln!("qhud: system metrics: {}", diag::json(&e));
                 std::process::exit(1);
             }
         }
@@ -456,7 +460,10 @@ fn main() {
         let rt = match tokio::runtime::Runtime::new() {
             Ok(rt) => rt,
             Err(e) => {
-                eprintln!("qhud: runtime: {e}");
+                eprintln!(
+                    "qhud: {}",
+                    diag::failure("async runtime start", diag::io(&e))
+                );
                 return;
             }
         };
@@ -474,7 +481,10 @@ fn main() {
         let rt = match tokio::runtime::Runtime::new() {
             Ok(rt) => rt,
             Err(e) => {
-                eprintln!("qhud: runtime: {e}");
+                eprintln!(
+                    "qhud: {}",
+                    diag::failure("async runtime start", diag::io(&e))
+                );
                 return;
             }
         };
@@ -495,7 +505,10 @@ fn main() {
         let rt = match tokio::runtime::Runtime::new() {
             Ok(rt) => rt,
             Err(e) => {
-                eprintln!("qhud: runtime: {e}");
+                eprintln!(
+                    "qhud: {}",
+                    diag::failure("async runtime start", diag::io(&e))
+                );
                 return;
             }
         };
@@ -510,7 +523,10 @@ fn main() {
         let rt = match tokio::runtime::Runtime::new() {
             Ok(rt) => rt,
             Err(e) => {
-                eprintln!("qhud: runtime: {e}");
+                eprintln!(
+                    "qhud: {}",
+                    diag::failure("async runtime start", diag::io(&e))
+                );
                 return;
             }
         };
@@ -571,8 +587,12 @@ fn main() {
             let _ = win.set_visible_on_all_workspaces(true);
             let _ = win.set_skip_taskbar(true);
 
-            if let Err(e) = tray(app) {
-                eprintln!("qhud: tray unavailable ({e}); continuing without it");
+            if tray(app).is_err() {
+                // tauri::Error text can carry icon paths or D-Bus names.
+                eprintln!(
+                    "qhud: tray unavailable ({}); continuing without it",
+                    diag::ErrorKind::Platform
+                );
             }
 
             let handle = app.handle().clone();

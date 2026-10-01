@@ -37,6 +37,15 @@ All notable changes to qhud. Format: [Keep a Changelog](https://keepachangelog.c
   1.18.1, `aws-lc-sys` 0.45.0, and `rustls-webpki` 0.103.15), addressing
   RUSTSEC-2026-0285, where TLS 1.3 handshake messages were accepted across
   encryption-level boundaries.
+- Reduce the remaining ambient library errors to a typed category allowlist
+  (`timeout`, `network`, `authentication`, `rate-limited`, `not-found`,
+  `permission-denied`, `io`, `spawn`, `unavailable`, `protocol`, `parse`,
+  `configuration`, `platform`). HTTP client, process start, tray, opener,
+  usage-store, registry, and qmonster errors no longer copy upstream text, which
+  can embed a URL, path, or tmux/herdr output, into stderr or a ⟳ error. qmonster
+  startup diagnosis returns as backend, stage, category, and pane-count lines,
+  and a mux that stays unreachable is summarized only when the outcome changes.
+  Explicit JSON dump commands are unchanged (#16).
 
 ### Dependencies
 
