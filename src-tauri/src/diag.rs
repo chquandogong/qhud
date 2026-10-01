@@ -312,7 +312,7 @@ mod tests {
         // Userinfo, a token-like path segment, and an account query: all
         // places a reqwest Display string would echo back.
         format!(
-            "http://127.0.0.1:{port}/person@example.com/sk-ant-oat01-CANARYTOKEN\
+            "https://127.0.0.1:{port}/person@example.com/sk-ant-oat01-CANARYTOKEN\
              ?account=acct-7f3c9d2e&workspace=workspace-123"
         )
     }
@@ -320,7 +320,7 @@ mod tests {
     #[test]
     fn reqwest_builder_errors_drop_the_url() {
         let error = reqwest::Client::new()
-            .get("http://person@example.com:not-a-port/sk-ant-oat01-CANARYTOKEN")
+            .get("https://person@example.com:not-a-port/sk-ant-oat01-CANARYTOKEN")
             .build()
             .expect_err("a non-numeric port is not a URL");
         assert_eq!(reqwest(&error), ErrorKind::Configuration);
@@ -337,6 +337,13 @@ mod tests {
             .build()
             .unwrap();
         runtime.block_on(async {
+            // Windows retries a refused loopback SYN for about two seconds
+            // before reporting it, so the refusal case gets a generous
+            // deadline; only the silent listener should time out.
+            let patient = reqwest::Client::builder()
+                .timeout(std::time::Duration::from_secs(15))
+                .build()
+                .unwrap();
             let client = reqwest::Client::builder()
                 .timeout(std::time::Duration::from_millis(200))
                 .build()
@@ -345,7 +352,7 @@ mod tests {
             let closed = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
             let closed_port = closed.local_addr().unwrap().port();
             drop(closed);
-            let refused = client
+            let refused = patient
                 .get(canary_url(closed_port))
                 .send()
                 .await
