@@ -216,7 +216,14 @@ for (const releaseTag of releaseTags) {
         continue;
       }
       const match = matches[0];
-      if (!gitObjectExists(`${match[1]}:${target}`)) {
+      // The current version's tag can only be created after its preparation
+      // PR merges, so until it exists the working tree stands in for it.
+      const untaggedCurrent =
+        cargoVersion &&
+        match[1] === `v${cargoVersion}` &&
+        !gitObjectExists(`refs/tags/${match[1]}`) &&
+        fs.existsSync(repositoryPath(target));
+      if (!untaggedCurrent && !gitObjectExists(`${match[1]}:${target}`)) {
         errors.push(`${note} links to ${target}, which does not exist at ${match[1]}.`);
       }
     }
