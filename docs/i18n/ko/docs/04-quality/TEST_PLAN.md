@@ -16,7 +16,7 @@
 
 ## 자동 검증 기준
 
-CI는 `main`과 `codex/**` push 및 pull request에서 실행합니다. Ubuntu 24.04는 기준 고정 Git 의존성으로 다음을 실행합니다.
+CI는 `main` push와 pull request에서 실행합니다. `codex/**` 브랜치는 초안 PR을 열어 검증합니다. Ubuntu 24.04는 기준 고정 Git 의존성으로 다음을 실행합니다.
 
 ```bash
 cargo fmt --all --check

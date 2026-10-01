@@ -51,6 +51,13 @@ gh attestation verify .\qhud-vX.Y.Z-windows-x86_64.zip --repo chquandogong/qhud
 
 체크섬은 함께 제공된 파일을 기준으로 전송 손상이나 교체를 찾고, 증명은 GitHub Actions가 이 저장소를 위해 아카이브를 빌드했는지 확인합니다. 증명 기능을 켜기 전에 만든 릴리스는 검증되지 않습니다.
 
+v0.7.2 이후 릴리스에는 CycloneDX 1.5 JSON 소프트웨어 자재 명세서(SBOM) `qhud-vX.Y.Z-sbom.cdx.json`도 별도의 `.sha256` 파일, 빌드 출처 증명과 함께 제공됩니다. release workflow는 태그된 소스와 고정된 `Cargo.lock`에서 모든 대상 플랫폼 기준으로 SBOM을 만들므로 Linux와 Windows 빌드의 Rust 크레이트를 모두 담습니다. 프런트엔드는 qhud가 직접 작성한 HTML·CSS·JavaScript이며 외부 패키지가 없습니다. 게시 전에 로컬 빌드 경로를 제거합니다. SBOM 파일 자체를 검증하세요(Windows에서는 위와 같이 `Get-FileHash` 결과를 제공 파일과 비교합니다).
+
+```sh
+sha256sum -c qhud-vX.Y.Z-sbom.cdx.json.sha256
+gh attestation verify ./qhud-vX.Y.Z-sbom.cdx.json --repo chquandogong/qhud
+```
+
 각 공급자의 자체 CLI로 로그인합니다. qhud는 기존 계정 정보를 읽으며 공급자의 로그인 절차를 대체하지 않습니다. qhud를 시작한 다음 ⟳를 눌러 사용량을 조회합니다. 포터블 패키지는 바로가기나 자동 시작을 등록하지 않습니다.
 
 <!-- qhud:anchor -->

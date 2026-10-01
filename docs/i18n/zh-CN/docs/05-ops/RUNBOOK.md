@@ -134,12 +134,33 @@ cp ~/.config/autostart/qhud.desktop ~/.local/share/applications/qhud.desktop
 升级 `src-tauri/Cargo.toml` 的 `rev`，运行 `cargo build`，修复编译器在 `view.rs`/`poll.rs` 指出的问题，重跑 TEST_PLAN 手工清单。
 
 <!-- qhud:anchor -->
+<a id="dependency-policy-exceptions"></a>
+
+## 依赖策略例外
+
+推送依赖或 `deny.toml` 的变更前，先在本地运行依赖门禁：
+
+```sh
+cargo install --locked cargo-deny@0.20.2
+cargo deny --locked check
+```
+
+检查失败时：
+
+1. **漏洞：** 通过范围明确、有意为之的 lockfile 变更升级受影响的 crate，例如 `cargo update -p <crate> --precise <fixed-version>`，然后重新运行 Rust 检查。只有在没有可用的修复版本时才忽略漏洞，并在条目中写明理由和跟踪 issue。
+2. **无人维护或不健全通告：** 优先升级或替换。如果 qhud 无法改变的上游技术栈固定了该 crate，则按通告 ID 各添加一个 `ignore` 条目，写明依赖路径和移除条件。
+3. **许可证或来源：** 不要为单个 crate 放宽全局允许列表。添加注明理由、仅作用于该 crate 的 `exceptions` 条目，或移除该依赖。
+4. 当 cargo-deny 报告某个已忽略的通告或已允许的许可证不再出现时，删除该条目。
+
+每当 Tauri、GTK 栈或 qmonster `rev` 变化时复查 `ignore` 列表，并保持 `deny.toml`、[仓库策略](REPOSITORY.md#rust-dependency-policy)及其翻译一致。升级 cargo-deny 本身时，在 `.github/workflows/ci.yml` 中同时修改 `CARGO_DENY_VERSION` 和 `CARGO_DENY_SHA256`；SHA-256 取自上游发布的 `.sha256` 文件，并与下载的归档核对。
+
+<!-- qhud:anchor -->
 <a id="release-procedure"></a>
 
 ## 发布流程
 
 1. 更新 README、CHANGELOG、平台说明，以及英文、韩文和中文 `docs/05-ops/releases/v<version>.md` 发布说明。保持 Cargo 包、Tauri 配置和 Cargo lock 中的包版本一致。
-2. 推送 `codex/` 准备分支并创建 PR。按严格检查策略更新分支以包含 `main`，解决评审对话，并等待全部七项必需状态检查（Ubuntu、Windows、文档/元数据、依赖审查及三项 CodeQL Analyze）通过。当前 `main` 规则要求 PR、线性历史和 squash merge；单人维护时所需的批准评审数为零。Windows CI 运行 `scripts/Build-Windows.ps1 -Test` 并核实清单/lock 已恢复；不要在该检出中同时运行 Cargo。
+2. 推送 `codex/` 准备分支并创建 PR；仅推送分支不会运行 CI，草稿 PR 即可启动 CI。按严格检查策略更新分支以包含 `main`，解决评审对话，并等待全部七项必需状态检查（Ubuntu、Windows、文档/元数据、依赖审查及三项 CodeQL Analyze）通过。当前 `main` 规则要求 PR、线性历史和 squash merge；单人维护时所需的批准评审数为零。Windows CI 运行 `scripts/Build-Windows.ps1 -Test` 并核实清单/lock 已恢复；不要在该检出中同时运行 Cargo。
 3. 将通过检查的 PR 以 squash merge 合入 `main`。在已包含于 `origin/main` 的提交上创建并推送带注释的稳定版本 `vX.Y.Z` 标签；受保护的 `v*` 标签不可修改或删除。发布预检还要求 Cargo/Tauri 版本一致、发布说明和 CHANGELOG 条目齐备。
-4. 标签触发的 Release 工作流运行完整 CI 质量关卡，然后把通过质量关卡的 Linux x86_64 与 Windows x86_64 二进制文件打包为 tarball 和 ZIP，并生成 SHA-256 文件与构建来源证明。它核验恰好四项资产及两份校验和，随后通过 `release` 环境审核来控制发布。截至 2026-09-14 最近一次核查，该关卡要求维护者审核并允许自行批准。批准后，发布作业**先创建或继续处理草稿**，逐字节比对已有草稿资产，上传缺少的资产，仅发布完整草稿；拒绝替换已发布的版本。
-5. 确认工作流成功，检查发布说明和四项可下载资产，验证校验和及构建来源证明，并记录尚未在受支持平台实机上验证的桌面集成。
+4. 标签触发的 Release 工作流运行完整 CI 质量关卡，然后把通过质量关卡的 Linux x86_64 与 Windows x86_64 二进制文件打包为 tarball 和 ZIP，并从打标签的锁定源码树生成已移除本地路径的 CycloneDX SBOM；这三个文件各有 SHA-256 文件与构建来源证明。它核验恰好六项资产及三份校验和，随后通过 `release` 环境审核来控制发布。截至 2026-09-14 最近一次核查，该关卡要求维护者审核并允许自行批准。批准后，发布作业**先创建或继续处理草稿**，逐字节比对已有草稿资产，上传缺少的资产，仅发布完整草稿。由于 GitHub 的标签查询只返回已发布的版本，草稿通过列出全部 release 查找；拒绝替换已发布的版本，同一标签有多个草稿时也不会擅自选择。
+5. 确认工作流成功，检查发布说明和六项可下载资产，验证校验和及构建来源证明，并记录尚未在受支持平台实机上验证的桌面集成。

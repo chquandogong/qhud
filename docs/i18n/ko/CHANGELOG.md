@@ -17,10 +17,40 @@ qhud의 모든 주요 변경 사항을 기록합니다. 형식: [Keep a Changelo
 ## [미출시]
 
 <!-- qhud:anchor -->
+<a id="added"></a>
+
+### 추가
+
+- 릴리스에 태그된 고정 트리에서 모든 대상 플랫폼 기준으로 만든 CycloneDX 1.5 JSON SBOM을
+  SHA-256 파일, 빌드 출처 증명과 함께 첨부합니다. 업로드 전에 로컬 빌드 경로를 제거하고 확인합니다.
+
+<!-- qhud:anchor -->
+<a id="fixed"></a>
+
+### 수정
+
+- release workflow가 릴리스 목록에서 초안을 찾습니다. GitHub의 태그 조회는 공개된 릴리스만
+  반환하므로 v0.7.2 실행은 초안을 만든 직후 실패했고, 검사를 통과한 자산으로 수동 완료했습니다.
+
+<!-- qhud:anchor -->
+<a id="changed"></a>
+
+### 변경
+
+- `codex/**` 브랜치 push에서 CI를 따로 실행하지 않습니다. 브랜치 작업은 (초안) PR로 검증하므로
+  커밋마다 실행이 하나입니다. 필수 검사 이름은 바뀌지 않았습니다.
+
+<!-- qhud:anchor -->
 <a id="security"></a>
 
 ### 보안
 
+- Rust 의존성 정책 게이트를 추가했습니다. `deny.toml`과 `Rust dependency policy` CI 작업이
+  `Cargo.lock`에 대해 cargo-deny로 RustSec 권고, 라이선스, 출처를 검사하며, 수용한 예외마다
+  이유를 문서화합니다.
+- 고정된 의존성 그래프의 `rustls`를 0.23.45로 갱신하여(`aws-lc-rs` 1.18.1, `aws-lc-sys`
+  0.45.0, `rustls-webpki` 0.103.15 포함) TLS 1.3 핸드셰이크 메시지를 암호화 수준 경계를 넘어
+  받아들이던 RUSTSEC-2026-0285를 해결했습니다.
 - 남아 있던 평상시 라이브러리 오류를 형식화된 범주 허용 목록(`timeout`, `network`,
   `authentication`, `rate-limited`, `not-found`, `permission-denied`, `io`, `spawn`,
   `unavailable`, `protocol`, `parse`, `configuration`, `platform`)으로 축소했습니다. HTTP
@@ -29,10 +59,26 @@ qhud의 모든 주요 변경 사항을 기록합니다. 형식: [Keep a Changelo
   qmonster 시작 진단은 백엔드, 단계, 범주, 창 개수로 다시 제공되며, 계속 연결되지 않는
   멀티플렉서는 결과가 바뀔 때만 요약합니다. 명시적 JSON dump 명령은 바뀌지 않았습니다(#16).
 
+<!-- qhud:anchor -->
+<a id="dependencies"></a>
+
+### 의존성
+
+- `base64`를 0.23, `libloading`을 0.9, `reqwest`를 0.13.5, `toml`을 1.1.6으로
+  갱신하고 `dtolnay/rust-toolchain`을 2026-09-12 커밋에 고정했습니다. Tauri 2.12
+  묶음과 `sysinfo` 0.39는 최소 Rust 버전을 각각 1.90과 1.95로 올리므로 보류했습니다.
+
+<!-- qhud:anchor -->
+<a id="repository-and-documentation"></a>
+
+### 저장소 및 문서
+
+- 번역 작업 절차를 정했습니다. CONTRIBUTING에 한국어·중국어 간체 전체 미러가 필요한 문서와 하나의 기준 언어로 유지하는 기록을 명시하고, 의미·링크·개인정보 검토자 체크리스트를 추가했습니다. 저장소 검사기는 모든 영어 원문과 미러 사이의 ID, 날짜, 릴리스 버전, 코드 블록, 표 행, 제목을 비교합니다. PR에서는 영어 원문이 두 번역 없이 바뀌면 실패하며, 영어 전용 변경은 `Translation-Exempt` 커밋 트레일러로 확인 표시할 수 있습니다.
+
 ## [0.7.2] — 2026-10-01
 
 <!-- qhud:anchor -->
-<a id="fixed"></a>
+<a id="fixed-1"></a>
 
 ### 수정
 
@@ -42,7 +88,7 @@ qhud의 모든 주요 변경 사항을 기록합니다. 형식: [Keep a Changelo
   우선합니다.
 
 <!-- qhud:anchor -->
-<a id="security"></a>
+<a id="security-1"></a>
 
 ### 보안
 
@@ -55,7 +101,7 @@ qhud의 모든 주요 변경 사항을 기록합니다. 형식: [Keep a Changelo
   명령은 운영자가 요청하는 진단 기능으로 유지하며 공유 전에 가려야 합니다.
 
 <!-- qhud:anchor -->
-<a id="repository-and-documentation"></a>
+<a id="repository-and-documentation-1"></a>
 
 ### 저장소 및 문서
 
@@ -141,7 +187,7 @@ NVML을 계속 사용합니다. Ubuntu 24.04에서 Intel Arc(Meteor Lake, i915)�
 문서 및 검증 릴리스다. 동작 변경은 없다. 소스 수정은 오래된 주석뿐이며 바이너리는 v0.6.0과 동일하게 동작한다.
 
 <!-- qhud:anchor -->
-<a id="changed"></a>
+<a id="changed-1"></a>
 
 ### 변경
 
@@ -170,7 +216,7 @@ NVML을 계속 사용합니다. Ubuntu 24.04에서 Intel Arc(Meteor Lake, i915)�
 ## [0.6.0] — 2026-09-07
 
 <!-- qhud:anchor -->
-<a id="added"></a>
+<a id="added-1"></a>
 
 ### 추가
 
@@ -179,7 +225,7 @@ NVML을 계속 사용합니다. Ubuntu 24.04에서 Intel Arc(Meteor Lake, i915)�
 - 스크롤 가능한 계정 사용량과 전체 이름을 줄바꿈하는 모델 레이블. 게이지 툴팁과 펼친 모델 상세 정보에 정확한 초기화 날짜와 시간을 표시한다.
 
 <!-- qhud:anchor -->
-<a id="fixed"></a>
+<a id="fixed-3"></a>
 
 ### 수정
 
@@ -202,14 +248,14 @@ NVML을 계속 사용합니다. Ubuntu 24.04에서 Intel Arc(Meteor Lake, i915)�
 사용량 엔드포인트가 숫자 하나의 표기 방식을 바꾸었다. qhud는 이틀 동안 본문 전체를 읽지 못했다.
 
 <!-- qhud:anchor -->
-<a id="fixed-1"></a>
+<a id="fixed-4"></a>
 
 ### 수정
 
 - **전송 숫자가 부동소수점으로 바뀌어 모든 Claude ⟳가 실패했다.** 2026-09-01 18:26부터 모든 새로고침이 “usage response did not parse”를 보고했다. HTTP는 200이었고 같은 클릭의 Codex와 agy 조회는 성공했다. 사용량 영역은 08-31 19:00 스냅샷을 올바른 날짜와 함께 이틀간 계속 렌더링했다. 배포된 진단(`QHUD_EXTRA_DIAG=1 qhud --claude-usage`)으로 찾은 원인: 본문은 유효한 JSON이지만, `extra_usage.used_credits`가 이전의 `4997` 대신 `4997.0`으로 들어왔고 serde가 `i64`에 부동소수점을 거부했다. 따라서 선택적 대체 필드 하나 때문에 관계없는 5h/7d 기간을 포함한 전체 응답이 실패했다. 같은 4997 최소 단위가 `spend.used.amount_minor`에는 여전히 정수로 도착한다. 이 사실이 해당 부동소수점도 달러가 아닌 최소 단위임을 입증한다. 의미상 정수인 금액 필드(`used_credits`, `decimal_places`, `amount_minor`, `exponent`)는 이제 정수값 부동소수점을 해당 정수로 읽는다. 소수부가 있으면 기존 배율 추측 금지에 따라 버리지만, 어느 경우도 더 이상 본문을 실패시키지 않는다. 실기 검증: 위젯 자체 ⟳가 추가 사용량 행을 유지한 채 `claude usage ok [default] (5h 49%, 7d 7%, 3 scoped)`를 응답했고 결과가 조회 저장소에 영속화되었다.
 
 <!-- qhud:anchor -->
-<a id="changed-1"></a>
+<a id="changed-2"></a>
 
 ### 변경
 
@@ -227,7 +273,7 @@ NVML을 계속 사용합니다. Ubuntu 24.04에서 Intel Arc(Meteor Lake, i915)�
 ## [0.5.2] — 2026-08-17
 
 <!-- qhud:anchor -->
-<a id="fixed-2"></a>
+<a id="fixed-5"></a>
 
 ### 수정
 
@@ -245,7 +291,7 @@ NVML을 계속 사용합니다. Ubuntu 24.04에서 Intel Arc(Meteor Lake, i915)�
 “선택이 안 됨” — 새 입력 추적 로그로 실제 원인 세 가지를 순서대로 벗겨 냈고, 마지막에는 멈춘 렌더러에 도달했다.
 
 <!-- qhud:anchor -->
-<a id="fixed-3"></a>
+<a id="fixed-6"></a>
 
 ### 수정
 
@@ -259,7 +305,7 @@ NVML을 계속 사용합니다. Ubuntu 24.04에서 Intel Arc(Meteor Lake, i915)�
 - **codex 행 클릭은 더 이상 네트워크 조회를 실행하지 않는다.** 조회는 Claude와 agy처럼 행의 명시적 ⟳로 옮겼다. 행 선택이 네트워크 동작이어서는 안 된다. `--fetch-codex`는 변경하지 않았다.
 
 <!-- qhud:anchor -->
-<a id="added-1"></a>
+<a id="added-2"></a>
 
 ### 추가
 
@@ -270,7 +316,7 @@ NVML을 계속 사용합니다. Ubuntu 24.04에서 Intel Arc(Meteor Lake, i915)�
 공급자 웹페이지 없이 모든 계정을 한눈에 확인한다. 여러 Claude 계정 동시 표시, 창 분할 없는 agy, 만료 토큰에서도 조회되는 Codex, 추가 사용 요금, 재시작 후 유지되는 조회 값이다.
 
 <!-- qhud:anchor -->
-<a id="added-2"></a>
+<a id="added-3"></a>
 
 ### 추가
 
@@ -283,7 +329,7 @@ NVML을 계속 사용합니다. Ubuntu 24.04에서 Intel Arc(Meteor Lake, i915)�
 - **`QHUD_EXTRA_DIAG=1`**: 형식 변화 진단용으로, 환경 변수로 활성화하는 실제 본문의 `extra_usage`/`spend` 하위 객체 덤프. 식별 정보는 없다. 뜻밖의 결과가 파싱 버그가 아닌 실제 데이터임을 입증하는 데 사용했다. 조직은 추가 사용을 비활성화했는데 하루 전 캐시는 여전히 활성화로 표시하고 있었다.
 
 <!-- qhud:anchor -->
-<a id="changed-2"></a>
+<a id="changed-3"></a>
 
 ### 변경
 
@@ -293,7 +339,7 @@ NVML을 계속 사용합니다. Ubuntu 24.04에서 Intel Arc(Meteor Lake, i915)�
 - app-server 자식을 위해 tokio에 `process`/`io-util`/`time`을 추가했다.
 
 <!-- qhud:anchor -->
-<a id="fixed-4"></a>
+<a id="fixed-7"></a>
 
 ### 수정
 
@@ -307,7 +353,7 @@ NVML을 계속 사용합니다. Ubuntu 24.04에서 Intel Arc(Meteor Lake, i915)�
 신뢰할 수 있는 할당량: 이제 숫자가 공급자 자체 화면과 일치하며, 일치할 수 없는 곳에서는 위젯이 추측 대신 그 사실을 밝힌다.
 
 <!-- qhud:anchor -->
-<a id="fixed-5"></a>
+<a id="fixed-8"></a>
 
 ### 수정
 
@@ -316,7 +362,7 @@ NVML을 계속 사용합니다. Ubuntu 24.04에서 Intel Arc(Meteor Lake, i915)�
 - **모델별 기간 하나가 27시간 전 값을 실시간처럼 표시했다**(Fable 실제 22%에 대해 5%). 이제 칩별 출처와 행 출처를 구분한다.
 
 <!-- qhud:anchor -->
-<a id="added-3"></a>
+<a id="added-4"></a>
 
 ### 추가
 
@@ -328,7 +374,7 @@ NVML을 계속 사용합니다. Ubuntu 24.04에서 Intel Arc(Meteor Lake, i915)�
 - **웹뷰 밖에서 잘못된 출력을 확인할 수 있는 진단 기능.** `scrot`이 XWayland 합성 창을 캡처하지 못하기 때문이다(D-010). `QMONSTER_SIDEFILE_DIAG=1`은 세 가지 조용한 귀속 거부 중 무엇이 발생했는지 밝힌다. 위젯은 실제로 만든 구조, 렌더링 텍스트, 게이지 수를 보고한다. `--claude-usage` / `--codex-usage` / `--fetch-codex` / `--refresh-claude`로 포인터 입력을 합성하지 않고 각 경로를 실행한다.
 
 <!-- qhud:anchor -->
-<a id="changed-3"></a>
+<a id="changed-4"></a>
 
 ### 변경
 
@@ -347,14 +393,14 @@ NVML을 계속 사용합니다. Ubuntu 24.04에서 Intel Arc(Meteor Lake, i915)�
 ## [0.3.2] — 2026-08-06
 
 <!-- qhud:anchor -->
-<a id="fixed-6"></a>
+<a id="fixed-9"></a>
 
 ### 수정
 
 - **만료 기간의 할당량 오염**(선제 수정): 최대 스냅샷 집계 때문에 유휴 창 분할의 초기화 전 백분율이 초기화 후 최신 값보다 영원히 우선할 수 있었다. 이제 초기화 시점이 지난 스냅샷은 제외한다(90 s 유예). 모든 스냅샷이 만료되면 잘못 표시하는 대신 해당 기간을 생략한다. 단위 테스트 완료.
 
 <!-- qhud:anchor -->
-<a id="added-4"></a>
+<a id="added-5"></a>
 
 ### 추가
 
@@ -363,7 +409,7 @@ NVML을 계속 사용합니다. Ubuntu 24.04에서 Intel Arc(Meteor Lake, i915)�
 ## [0.3.0] — 2026-08-06
 
 <!-- qhud:anchor -->
-<a id="added-5"></a>
+<a id="added-6"></a>
 
 ### 추가
 
@@ -372,7 +418,7 @@ NVML을 계속 사용합니다. Ubuntu 24.04에서 Intel Arc(Meteor Lake, i915)�
 - **단일 인스턴스 가드**: qhud를 두 번 실행해도 두 번째 위젯이 겹치지 않는다(tauri-plugin-single-instance).
 
 <!-- qhud:anchor -->
-<a id="fixed-7"></a>
+<a id="fixed-10"></a>
 
 ### 수정
 
@@ -381,7 +427,7 @@ NVML을 계속 사용합니다. Ubuntu 24.04에서 Intel Arc(Meteor Lake, i915)�
 ## [0.2.0] — 2026-08-06
 
 <!-- qhud:anchor -->
-<a id="changed-4"></a>
+<a id="changed-5"></a>
 
 ### 변경
 
@@ -392,21 +438,21 @@ NVML을 계속 사용합니다. Ubuntu 24.04에서 Intel Arc(Meteor Lake, i915)�
 ## [0.1.4] — 2026-08-06
 
 <!-- qhud:anchor -->
-<a id="fixed-8"></a>
+<a id="fixed-11"></a>
 
 ### 수정
 
 - **모든 합성 테스트가 통과했는데도 Ubuntu GNOME에서 실제 마우스 상호작용은 여전히 안 됐다.** Ubuntu의 Desktop Icons NG(DING) 확장 창이 데스크톱 계층의 실제 포인터 입력을 삼킨다. XTEST 기반 검증은 Mutter의 표면 선택을 완전히 우회한다. 이 방법론의 맹점을 Mutter RemoteDesktop API를 통한 컴포지터 경로 입력 주입으로 해소했다(D-010). A/B 입증: 같은 컴포지터 경로 클릭이 DING을 끄면 선택을 전환하고 켜면 사라진다. 기준 컴퓨터는 DING을 끄고 실행한다(`~/Desktop`이 비어 있음). 아이콘 사용자는 RUNBOOK과 동반 확장 백로그 항목을 참조한다.
 
 <!-- qhud:anchor -->
-<a id="added-6"></a>
+<a id="added-7"></a>
 
 ### 추가
 
 - 영구 stderr 상호작용 추적 로그(`ui_event` 명령을 통한 `qhud ui: …`). 이제 어떤 컴퓨터에서도 로그로 실제 입력 동작을 검증할 수 있다.
 
 <!-- qhud:anchor -->
-<a id="changed-5"></a>
+<a id="changed-6"></a>
 
 ### 변경
 
@@ -415,7 +461,7 @@ NVML을 계속 사용합니다. Ubuntu 24.04에서 Intel Arc(Meteor Lake, i915)�
 ## [0.1.3] — 2026-08-06
 
 <!-- qhud:anchor -->
-<a id="fixed-9"></a>
+<a id="fixed-12"></a>
 
 ### 수정
 
@@ -424,7 +470,7 @@ NVML을 계속 사용합니다. Ubuntu 24.04에서 Intel Arc(Meteor Lake, i915)�
 ## [0.1.2] — 2026-08-05
 
 <!-- qhud:anchor -->
-<a id="fixed-10"></a>
+<a id="fixed-13"></a>
 
 ### 수정
 
@@ -433,7 +479,7 @@ NVML을 계속 사용합니다. Ubuntu 24.04에서 Intel Arc(Meteor Lake, i915)�
 - **로그아웃/강제 종료 시 창 위치·크기 소실**: window-state 플러그인은 정상 종료 때만 영속화한다. 이제 폴링 루프에서 30 s마다 위치·크기를 체크포인트로 기록한다.
 
 <!-- qhud:anchor -->
-<a id="changed-6"></a>
+<a id="changed-7"></a>
 
 ### 변경
 
@@ -442,14 +488,14 @@ NVML을 계속 사용합니다. Ubuntu 24.04에서 Intel Arc(Meteor Lake, i915)�
 ## [0.1.1] — 2026-08-05
 
 <!-- qhud:anchor -->
-<a id="fixed-11"></a>
+<a id="fixed-14"></a>
 
 ### 수정
 
 - **herdr 환경은 실시간 상태로 전환되지 않았다**. v0.1.0은 tmux 폴링 소스를 하드코딩했다. 이제 qhud가 qmonster 자체 `build_tmux_source` 팩터리로 창 분할 소스를 구성하므로, `[mux] backend`(`auto` / `tmux` / `herdr`)가 두 프런트엔드에서 같은 의미를 갖는다(D-007).
 
 <!-- qhud:anchor -->
-<a id="added-7"></a>
+<a id="added-8"></a>
 
 ### 추가
 
@@ -462,7 +508,7 @@ NVML을 계속 사용합니다. Ubuntu 24.04에서 Intel Arc(Meteor Lake, i915)�
 첫 릴리스 — 유용한 최소 제품 범위.
 
 <!-- qhud:anchor -->
-<a id="added-8"></a>
+<a id="added-9"></a>
 
 ### 추가
 

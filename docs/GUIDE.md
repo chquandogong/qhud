@@ -52,6 +52,20 @@ The checksum detects transfer damage or replacement relative to its sidecar;
 the attestation verifies that GitHub Actions built the archive for this
 repository. A release created before attestations were enabled will not verify.
 
+Releases after v0.7.2 also carry a CycloneDX 1.5 JSON software bill of
+materials, `qhud-vX.Y.Z-sbom.cdx.json`, with its own `.sha256` sidecar and
+build-provenance attestation. The release workflow generates it from the
+tagged source and its locked `Cargo.lock` for every target platform, so it
+lists the Rust crates of both the Linux and Windows builds; the frontend is
+qhud's own HTML, CSS, and JavaScript and has no third-party packages. Local
+build paths are removed before publication. Verify the SBOM itself (on
+Windows, compare `Get-FileHash` with the sidecar as above):
+
+```sh
+sha256sum -c qhud-vX.Y.Z-sbom.cdx.json.sha256
+gh attestation verify ./qhud-vX.Y.Z-sbom.cdx.json --repo chquandogong/qhud
+```
+
 Sign in using each provider's own CLI. qhud reads existing account information;
 it does not replace provider login flows. Start qhud, then press ⟳ to fetch usage.
 The portable packages do not register shortcuts or automatic startup.

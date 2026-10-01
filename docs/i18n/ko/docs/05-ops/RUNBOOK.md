@@ -134,12 +134,33 @@ cp ~/.config/autostart/qhud.desktop ~/.local/share/applications/qhud.desktop
 `src-tauri/Cargo.toml`의 `rev`를 올리고 `cargo build`를 실행합니다. `view.rs`/`poll.rs`에서 컴파일러가 지적하는 문제를 수정하고 TEST_PLAN 수동 체크리스트를 다시 실행합니다.
 
 <!-- qhud:anchor -->
+<a id="dependency-policy-exceptions"></a>
+
+## 의존성 정책 예외
+
+의존성이나 `deny.toml`을 바꿨다면 push 전에 로컬에서 의존성 게이트를 실행합니다.
+
+```sh
+cargo install --locked cargo-deny@0.20.2
+cargo deny --locked check
+```
+
+검사가 실패하면 다음과 같이 처리합니다.
+
+1. **취약점:** 영향받는 크레이트를 범위가 좁은 의도적 lockfile 변경으로 업그레이드합니다. 예: `cargo update -p <crate> --precise <fixed-version>`. 그런 다음 Rust 검사를 다시 실행합니다. 쓸 수 있는 수정 버전이 없을 때만 취약점을 무시하며, 항목에 이유와 추적 이슈를 적습니다.
+2. **유지보수 중단 또는 건전성 결함 공지:** 업그레이드나 대체를 우선합니다. qhud가 바꿀 수 없는 상위 스택이 해당 크레이트를 고정한다면 권고 ID마다 `ignore` 항목 하나를 추가하고 의존성 경로와 제거 조건을 적습니다.
+3. **라이선스 또는 출처:** 크레이트 하나 때문에 전역 허용 목록을 넓히지 않습니다. 이유를 적은 크레이트 단위 `exceptions` 항목을 추가하거나 의존성을 제거합니다.
+4. 무시한 권고나 허용한 라이선스가 더 이상 발견되지 않는다고 cargo-deny가 보고하면 그 항목을 삭제합니다.
+
+Tauri, GTK 스택, qmonster `rev`가 바뀔 때마다 `ignore` 목록을 검토하고, `deny.toml`, [저장소 정책](REPOSITORY.md#rust-dependency-policy), 그 번역을 일치시킵니다. cargo-deny 자체를 갱신할 때는 `.github/workflows/ci.yml`의 `CARGO_DENY_VERSION`과 `CARGO_DENY_SHA256`을 함께 바꿉니다. SHA-256은 상위 릴리스의 `.sha256` 파일에서 가져오고, 내려받은 압축 파일과 대조해 확인합니다.
+
+<!-- qhud:anchor -->
 <a id="release-procedure"></a>
 
 ## 릴리스 절차
 
 1. README, CHANGELOG, 플랫폼 안내와 영어·한국어·중국어 `docs/05-ops/releases/v<version>.md` 릴리스 노트를 갱신합니다. Cargo 패키지, Tauri 설정, Cargo lock의 패키지 버전을 맞춥니다.
-2. `codex/` 준비 브랜치를 push하고 PR을 엽니다. 엄격한 검사 정책에 맞게 `main`을 반영하고 검토 대화를 해결한 뒤 필수 상태 검사 7개(Ubuntu, Windows, 문서/메타데이터, 의존성 검토, CodeQL Analyze 3개)가 모두 통과할 때까지 기다립니다. 현재 `main` 규칙은 PR, 선형 기록, squash merge를 요구하며 단독 관리자에게 필요한 승인 리뷰 수는 0개입니다. Windows CI는 `scripts/Build-Windows.ps1 -Test`를 실행하고 manifest/lock 복원을 검증합니다. 해당 checkout에서 Cargo를 동시에 실행하지 마세요.
+2. `codex/` 준비 브랜치를 push하고 PR을 엽니다. 브랜치 push만으로는 CI가 실행되지 않으며, 초안 PR로도 CI가 시작됩니다. 엄격한 검사 정책에 맞게 `main`을 반영하고 검토 대화를 해결한 뒤 필수 상태 검사 7개(Ubuntu, Windows, 문서/메타데이터, 의존성 검토, CodeQL Analyze 3개)가 모두 통과할 때까지 기다립니다. 현재 `main` 규칙은 PR, 선형 기록, squash merge를 요구하며 단독 관리자에게 필요한 승인 리뷰 수는 0개입니다. Windows CI는 `scripts/Build-Windows.ps1 -Test`를 실행하고 manifest/lock 복원을 검증합니다. 해당 checkout에서 Cargo를 동시에 실행하지 마세요.
 3. 검사를 통과한 PR을 squash merge로 `main`에 합칩니다. 이미 `origin/main`에 포함된 커밋에 주석 있는 안정 버전 `vX.Y.Z` 태그를 만들고 push합니다. 보호된 `v*` 태그는 수정하거나 삭제할 수 없습니다. 릴리스 사전 검사는 Cargo/Tauri 버전 일치, 릴리스 노트, CHANGELOG 항목도 요구합니다.
-4. 태그로 시작된 Release 워크플로는 전체 CI 품질 검사를 실행한 뒤 이를 통과한 Linux x86_64 및 Windows x86_64 바이너리를 tarball과 ZIP으로 패키징하고 SHA-256 파일과 출처 증명을 만듭니다. 정확히 4개 자산과 두 체크섬을 검증한 뒤 `release` 환경이 공개 작업을 승인 대상으로 둡니다. 2026-09-14 마지막 확인 당시 이 게이트는 관리자의 검토를 요구하고 자체 승인을 허용했습니다. 승인 후 공개 작업은 **먼저 초안을 만들거나 이어서 처리**하고, 기존 초안 자산을 바이트 단위로 대조하며, 누락된 자산을 업로드하고, 완전한 초안만 공개합니다. 이미 공개된 릴리스는 교체하지 않습니다.
-5. 워크플로 성공을 확인하고 릴리스 노트와 다운로드 가능한 자산 4개를 살펴보며 체크섬과 출처 증명을 검증합니다. 지원 플랫폼에서 실제로 실행해 보지 않은 데스크톱 통합 항목을 기록합니다.
+4. 태그로 시작된 Release 워크플로는 전체 CI 품질 검사를 실행한 뒤 이를 통과한 Linux x86_64 및 Windows x86_64 바이너리를 tarball과 ZIP으로 패키징하고, 태그된 고정 트리에서 로컬 경로를 제거한 CycloneDX SBOM을 만듭니다. 세 파일마다 SHA-256 파일과 출처 증명을 만들고, 정확히 6개 자산과 세 체크섬을 검증한 뒤 `release` 환경이 공개 작업을 승인 대상으로 둡니다. 2026-09-14 마지막 확인 당시 이 게이트는 관리자의 검토를 요구하고 자체 승인을 허용했습니다. 승인 후 공개 작업은 **먼저 초안을 만들거나 이어서 처리**하고, 기존 초안 자산을 바이트 단위로 대조하며, 누락된 자산을 업로드하고, 완전한 초안만 공개합니다. GitHub의 태그 조회는 공개된 릴리스만 반환하므로 초안은 릴리스 목록에서 찾습니다. 이미 공개된 릴리스는 교체하지 않으며, 한 태그에 초안이 여러 개이면 어느 것도 고르지 않습니다.
+5. 워크플로 성공을 확인하고 릴리스 노트와 다운로드 가능한 자산 6개를 살펴보며 체크섬과 출처 증명을 검증합니다. 지원 플랫폼에서 실제로 실행해 보지 않은 데스크톱 통합 항목을 기록합니다.

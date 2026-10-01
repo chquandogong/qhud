@@ -18,10 +18,39 @@
 ## [未发布]
 
 <!-- qhud:anchor -->
+<a id="added"></a>
+
+### 新增
+
+- 发布附带从打标签的锁定源码树、针对所有目标平台生成的 CycloneDX 1.5 JSON SBOM，
+  以及 SHA-256 配套文件和构建来源证明。上传前会移除并检查本地构建路径。
+
+<!-- qhud:anchor -->
+<a id="fixed"></a>
+
+### 修复
+
+- release workflow 通过列出 release 查找草稿。GitHub 的标签查询只返回已发布的版本，
+  因此 v0.7.2 的运行在创建草稿后立即失败，随后用通过门禁的资产手动完成。
+
+<!-- qhud:anchor -->
+<a id="changed"></a>
+
+### 变更
+
+- `codex/**` 分支推送不再单独运行 CI；分支工作通过其（草稿）PR 验证，每个提交只运行一次。
+  必需检查名称不变。
+
+<!-- qhud:anchor -->
 <a id="security"></a>
 
 ### 安全
 
+- 新增 Rust 依赖策略门禁：`deny.toml` 和 `Rust dependency policy` CI 作业使用 cargo-deny
+  针对 `Cargo.lock` 检查 RustSec 通告、许可证和来源，每项已接受的例外都写明理由。
+- 将锁定依赖图中的 `rustls` 更新至 0.23.45（同时更新 `aws-lc-rs` 1.18.1、`aws-lc-sys`
+  0.45.0 和 `rustls-webpki` 0.103.15），修复 TLS 1.3 握手消息跨加密级别边界被接受的
+  RUSTSEC-2026-0285。
 - 将其余日常库错误归约为类型化类别允许列表（`timeout`、`network`、`authentication`、
   `rate-limited`、`not-found`、`permission-denied`、`io`、`spawn`、`unavailable`、`protocol`、
   `parse`、`configuration`、`platform`）。HTTP 客户端、进程启动、托盘、链接打开、用量存储、
@@ -29,10 +58,26 @@
   或 ⟳ 错误中。qmonster 启动诊断以后端、阶段、类别和窗格数量的形式恢复；持续无法连接的多路复用器
   只在结果变化时汇总。显式 JSON 转储命令保持不变（#16）。
 
+<!-- qhud:anchor -->
+<a id="dependencies"></a>
+
+### 依赖
+
+- 将 `base64` 更新至 0.23、`libloading` 至 0.9、`reqwest` 至 0.13.5、`toml` 至 1.1.6，
+  并将 `dtolnay/rust-toolchain` 固定到 2026-09-12 的提交。Tauri 2.12 组与 `sysinfo` 0.39
+  会把最低 Rust 版本分别提高到 1.90 和 1.95，因此暂缓。
+
+<!-- qhud:anchor -->
+<a id="repository-and-documentation"></a>
+
+### 仓库与文档
+
+- 确立翻译流程。CONTRIBUTING 现列明需要完整韩语和简体中文镜像的文档及保持单一规范语言的记录，并给出针对含义、链接和隐私的审阅者检查清单。仓库检查器比较每个英文源文档与其镜像之间的 ID、日期、发布版本、代码块、表格行和标题。在 pull request 中，若英文源文档修改而两种译文未同步，检查失败，除非 `Translation-Exempt` 提交 trailer 确认这是仅英文的修改。
+
 ## [0.7.2] — 2026-10-01
 
 <!-- qhud:anchor -->
-<a id="fixed"></a>
+<a id="fixed-1"></a>
 
 ### 修复
 
@@ -40,7 +85,7 @@
   一个空闲的 Codex 窗格报告每周 0% 却没有重置时间，遮住了上次获取早已得知的重置时间。百分比仍以窗格读数为准。
 
 <!-- qhud:anchor -->
-<a id="security"></a>
+<a id="security-1"></a>
 
 ### 安全
 
@@ -52,7 +97,7 @@
   是否存在而不输出值。显式 JSON dump 命令仍是操作者主动请求的诊断，分享前必须脱敏。
 
 <!-- qhud:anchor -->
-<a id="repository-and-documentation"></a>
+<a id="repository-and-documentation-1"></a>
 
 ### 仓库与文档
 
@@ -131,7 +176,7 @@ GPU 计数器不受支持不代表机器没有 GPU。支持范围见
 这是一次文档与验证版本发布。行为没有变化：唯一的源码修改是过时的注释，二进制文件的行为与 v0.6.0 相同。
 
 <!-- qhud:anchor -->
-<a id="changed"></a>
+<a id="changed-1"></a>
 
 ### 变更
 
@@ -160,7 +205,7 @@ GPU 计数器不受支持不代表机器没有 GPU。支持范围见
 ## [0.6.0] — 2026-09-07
 
 <!-- qhud:anchor -->
-<a id="added"></a>
+<a id="added-1"></a>
 
 ### 新增
 
@@ -169,7 +214,7 @@ GPU 计数器不受支持不代表机器没有 GPU。支持范围见
 - 可滚动的账户用量区域及完整换行显示的模型标签。仪表提示和展开的模型详情会显示精确的重置日期与时间。
 
 <!-- qhud:anchor -->
-<a id="fixed"></a>
+<a id="fixed-3"></a>
 
 ### 修复
 
@@ -192,14 +237,14 @@ GPU 计数器不受支持不代表机器没有 GPU。支持范围见
 用量端点改变了一个数值的写法。qhud 因此两天都无法读取整个响应体。
 
 <!-- qhud:anchor -->
-<a id="fixed-1"></a>
+<a id="fixed-4"></a>
 
 ### 修复
 
 - **一个变成浮点数的传输数值导致每次 Claude ⟳ 都失败。** 自 2026-09-01 18:26 起，每次刷新都报告“usage response did not parse”，尽管 HTTP 状态为 200，且同一次点击中的 Codex 和 agy 获取均成功；用量条继续显示 08-31 19:00 的快照，日期标注正确，但持续了两天。通过运行随产品发布的诊断命令（`QHUD_EXTRA_DIAG=1 qhud --claude-usage`）找到了原因：响应体是有效 JSON，但 `extra_usage.used_credits` 现在以 `4997.0` 而非原来的 `4997` 传入，serde 不接受将浮点数赋给 `i64`——于是仅一个可选的回退字段就使整个响应失败，包括与它毫无关系的 5h/7d 窗口。同样的 4997 个最小货币单位在 `spend.used.amount_minor` 中仍以整数形式传入，这证明那里的浮点数表示最小货币单位，而非美元。语义上为整数的金额字段（`used_credits`、`decimal_places`、`amount_minor`、`exponent`）现在会将值为整数的浮点数读为对应整数；有小数部分的浮点数继续遵循既有的禁止猜测缩放比例原则，被丢弃——但两者都不再使整个响应体失败。已在线验证：小组件自身的 ⟳ 返回 `claude usage ok [default] (5h 49%, 7d 7%, 3 scoped)`，额外用量行保持完整，结果也已持久化到获取结果存储中。
 
 <!-- qhud:anchor -->
-<a id="changed-1"></a>
+<a id="changed-2"></a>
 
 ### 变更
 
@@ -217,7 +262,7 @@ GPU 计数器不受支持不代表机器没有 GPU。支持范围见
 ## [0.5.2] — 2026-08-17
 
 <!-- qhud:anchor -->
-<a id="fixed-2"></a>
+<a id="fixed-5"></a>
 
 ### 修复
 
@@ -235,7 +280,7 @@ GPU 计数器不受支持不代表机器没有 GPU。支持范围见
 “选择不起作用”——借助新的输入面包屑，依次剥离出三个真实原因，最终定位到冻结的渲染器。
 
 <!-- qhud:anchor -->
-<a id="fixed-3"></a>
+<a id="fixed-6"></a>
 
 ### 修复
 
@@ -249,7 +294,7 @@ GPU 计数器不受支持不代表机器没有 GPU。支持范围见
 - **点击 codex 行不再触发网络获取。** 获取操作移至该行上显式的 ⟳ 按钮（与 Claude 和 agy 一致）——选择一行绝不能成为网络操作。`--fetch-codex` 不变。
 
 <!-- qhud:anchor -->
-<a id="added-1"></a>
+<a id="added-2"></a>
 
 ### 新增
 
@@ -260,7 +305,7 @@ GPU 计数器不受支持不代表机器没有 GPU。支持范围见
 无需打开提供商网页，即可一览所有账户：同时查看多个 Claude 账户、无窗格时查看 agy、令牌过期后仍可读取的 Codex、额外用量支出，以及重启后仍保留的读数。
 
 <!-- qhud:anchor -->
-<a id="added-2"></a>
+<a id="added-3"></a>
 
 ### 新增
 
@@ -273,7 +318,7 @@ GPU 计数器不受支持不代表机器没有 GPU。支持范围见
 - **`QHUD_EXTRA_DIAG=1`**：由环境变量控制、不会输出身份信息的实时响应体 `extra_usage`/`spend` 子对象转储，用于排查结构漂移。它曾用于证明一项意外结果来自真实数据，而非解析缺陷：组织已禁用额外用量，但一天前的缓存仍显示启用。
 
 <!-- qhud:anchor -->
-<a id="changed-2"></a>
+<a id="changed-3"></a>
 
 ### 变更
 
@@ -283,7 +328,7 @@ GPU 计数器不受支持不代表机器没有 GPU。支持范围见
 - tokio 新增 `process`/`io-util`/`time` 功能，用于 app-server 子进程。
 
 <!-- qhud:anchor -->
-<a id="fixed-4"></a>
+<a id="fixed-7"></a>
 
 ### 修复
 
@@ -297,7 +342,7 @@ GPU 计数器不受支持不代表机器没有 GPU。支持范围见
 可信的额度：数值现在与提供商自身界面显示的一致；无法一致时，小组件会明确说明，而非猜测。
 
 <!-- qhud:anchor -->
-<a id="fixed-5"></a>
+<a id="fixed-8"></a>
 
 ### 修复
 
@@ -306,7 +351,7 @@ GPU 计数器不受支持不代表机器没有 GPU。支持范围见
 - **一个按模型划分的窗口将 27 小时前的数值显示得如同实时数据**（Fable 为 5%，实际为 22%）。每个标签的来源现在与所在行的来源分开标注。
 
 <!-- qhud:anchor -->
-<a id="added-3"></a>
+<a id="added-4"></a>
 
 ### 新增
 
@@ -318,7 +363,7 @@ GPU 计数器不受支持不代表机器没有 GPU。支持范围见
 - **可从 webview 外部发现错误输出的诊断能力**，因为 `scrot` 无法捕获经 XWayland 合成的窗口（D-010）：`QMONSTER_SIDEFILE_DIAG=1` 会指出三种静默拒绝归属判定中的哪一种被触发；小组件报告它实际构建的结构、渲染文本及仪表数量；`--claude-usage` / `--codex-usage` / `--fetch-codex` / `--refresh-claude` 无需合成指针输入即可暴露各条路径。
 
 <!-- qhud:anchor -->
-<a id="changed-3"></a>
+<a id="changed-4"></a>
 
 ### 变更
 
@@ -337,14 +382,14 @@ GPU 计数器不受支持不代表机器没有 GPU。支持范围见
 ## [0.3.2] — 2026-08-06
 
 <!-- qhud:anchor -->
-<a id="fixed-6"></a>
+<a id="fixed-9"></a>
 
 ### 修复
 
 - **过期窗口污染额度**（预防性修复）：取最大值的快照汇总会让空闲窗格在重置前的百分比永远压过重置后的新读数。现在会排除重置时刻已过的快照（宽限 90 s）；如果所有快照都已过期，则省略该窗口，而非显示错误结果。已进行单元测试。
 
 <!-- qhud:anchor -->
-<a id="added-4"></a>
+<a id="added-5"></a>
 
 ### 新增
 
@@ -353,7 +398,7 @@ GPU 计数器不受支持不代表机器没有 GPU。支持范围见
 ## [0.3.0] — 2026-08-06
 
 <!-- qhud:anchor -->
-<a id="added-5"></a>
+<a id="added-6"></a>
 
 ### 新增
 
@@ -362,7 +407,7 @@ GPU 计数器不受支持不代表机器没有 GPU。支持范围见
 - **单实例保护**：启动 qhud 两次不再叠加第二个小组件（tauri-plugin-single-instance）。
 
 <!-- qhud:anchor -->
-<a id="fixed-7"></a>
+<a id="fixed-10"></a>
 
 ### 修复
 
@@ -371,7 +416,7 @@ GPU 计数器不受支持不代表机器没有 GPU。支持范围见
 ## [0.2.0] — 2026-08-06
 
 <!-- qhud:anchor -->
-<a id="changed-4"></a>
+<a id="changed-5"></a>
 
 ### 变更
 
@@ -382,21 +427,21 @@ GPU 计数器不受支持不代表机器没有 GPU。支持范围见
 ## [0.1.4] — 2026-08-06
 
 <!-- qhud:anchor -->
-<a id="fixed-8"></a>
+<a id="fixed-11"></a>
 
 ### 修复
 
 - **在 Ubuntu GNOME 上，真实鼠标交互仍然失效**，尽管所有合成测试均通过：Ubuntu 的 Desktop Icons NG（DING）扩展窗口会吞掉桌面层上的真实指针输入，而基于 XTEST 的验证完全绕过了 Mutter 的表面选取——这是方法上的盲点，现在通过 Mutter RemoteDesktop API 在合成器路径注入输入来补上（D-010）。A/B 验证已证明：相同的合成器路径点击在禁用 DING 时可切换选择，在启用 DING 时则消失。参考机器禁用了 DING（其 `~/Desktop` 为空）；使用桌面图标的用户请参见 RUNBOOK 及配套扩展的待办条目。
 
 <!-- qhud:anchor -->
-<a id="added-6"></a>
+<a id="added-7"></a>
 
 ### 新增
 
 - 永久性的 stderr 交互面包屑（通过 `ui_event` 命令输出 `qhud ui: …`）——现在可以在任意机器上从日志验证真实输入行为。
 
 <!-- qhud:anchor -->
-<a id="changed-5"></a>
+<a id="changed-6"></a>
 
 ### 变更
 
@@ -405,7 +450,7 @@ GPU 计数器不受支持不代表机器没有 GPU。支持范围见
 ## [0.1.3] — 2026-08-06
 
 <!-- qhud:anchor -->
-<a id="fixed-9"></a>
+<a id="fixed-12"></a>
 
 ### 修复
 
@@ -414,7 +459,7 @@ GPU 计数器不受支持不代表机器没有 GPU。支持范围见
 ## [0.1.2] — 2026-08-05
 
 <!-- qhud:anchor -->
-<a id="fixed-10"></a>
+<a id="fixed-13"></a>
 
 ### 修复
 
@@ -423,7 +468,7 @@ GPU 计数器不受支持不代表机器没有 GPU。支持范围见
 - **注销/强制终止时窗口位置与大小丢失**：window-state 插件只在正常退出时持久化；现在由轮询循环每隔 30 s 保存一次几何状态检查点。
 
 <!-- qhud:anchor -->
-<a id="changed-6"></a>
+<a id="changed-7"></a>
 
 ### 变更
 
@@ -432,14 +477,14 @@ GPU 计数器不受支持不代表机器没有 GPU。支持范围见
 ## [0.1.1] — 2026-08-05
 
 <!-- qhud:anchor -->
-<a id="fixed-11"></a>
+<a id="fixed-14"></a>
 
 ### 修复
 
 - **herdr 环境从未进入实时状态**：v0.1.0 将轮询源硬编码为 tmux。qhud 现在通过 qmonster 自身的 `build_tmux_source` 工厂创建窗格数据源，因此 `[mux] backend`（`auto` / `tmux` / `herdr`）在两个前端中的含义一致（D-007）。
 
 <!-- qhud:anchor -->
-<a id="added-7"></a>
+<a id="added-8"></a>
 
 ### 新增
 
@@ -452,7 +497,7 @@ GPU 计数器不受支持不代表机器没有 GPU。支持范围见
 首次发布——最小可用切入点。
 
 <!-- qhud:anchor -->
-<a id="added-8"></a>
+<a id="added-9"></a>
 
 ### 新增
 
