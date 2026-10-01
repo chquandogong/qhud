@@ -10,6 +10,7 @@
   const metaEl = document.getElementById("meta");
   const srcBadge = document.getElementById("srcBadge");
   const grip = document.getElementById("grip");
+  const { codexPlanDisplay } = window.QhudPlanLabels;
 
   // localStorage can be denied outright in WebKitGTK for the tauri
   // custom-protocol origin (writes throw SecurityError) — never let
@@ -547,14 +548,9 @@
     if (sig === codexRowsSig) return; // same rows; only the caption moved
     codexRowsSig = sig;
     clearRows();
-    // The plan belongs to a WORKSPACE, not the login. Leaving it on the
-    // account line made three rows for two workspaces, with the parent
-    // duplicating the personal one and reading as a third account.
-
-    // The signed-in login's plan, shown inline on the codex row itself.
-    // Deliberately NOT lifting w.plan_type onto the parent row: it is a wire
-    // enum ('prolite', 'team'), not the name the operator sees. The display
-    // name comes from the registry via account.plan.
+    // The plan belongs to a WORKSPACE, not the login. A reviewed presentation
+    // mapping turns known wire values into product names; unknown values stay
+    // in the tooltip instead of leaking into the badge.
 
     let after = anchor;
     for (const w of visible) {
@@ -576,7 +572,10 @@
         el(
           "span",
           "q-plan",
-          (state.payload?.workspace_plans || {})[w.account_id] || "",
+          codexPlanDisplay(
+            (state.payload?.workspace_plans || {})[w.account_id],
+            w.plan_type,
+          ) || "",
         ),
       );
       for (const x of wins) {
@@ -962,10 +961,20 @@
       // does not work on a keep-below widget you are not pointing at.
       const planEl = row.querySelector(".q-plan");
       const bits = [];
-      if (q.account?.plan) {
+      const activeWsPlan = activeWs
+        ? (state.payload?.workspace_plans || {})[activeWs.account_id]
+        : null;
+      const planOverride = [q.account?.plan, activeWsPlan].find(
+        (value) => typeof value === "string" && value.trim(),
+      );
+      const codexPlan =
+        q.provider === "codex"
+          ? codexPlanDisplay(planOverride, activeWs?.plan_type)
+          : null;
+      if (codexPlan || q.account?.plan) {
         // An explicit plan string is already complete. Appending the derived
         // tier here is what produced "team (max_5x) (max_5x)".
-        bits.push(q.account.plan);
+        bits.push(codexPlan || q.account.plan);
       } else {
         if (q.account?.org_type) bits.push(shortPlan(q.account.org_type));
         for (const t of q.account?.tiers || []) {

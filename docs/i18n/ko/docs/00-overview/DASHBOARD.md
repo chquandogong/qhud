@@ -9,7 +9,7 @@
 
 # 대시보드 — qhud
 
-> 상태: v0.7.2 출시 · 갱신: 2026-10-01 · 담당: chquandogong
+> 상태: v0.7.3 출시 · 갱신: 2026-10-01 · 담당: chquandogong
 > 공개 프로젝트 현황입니다. Git 이력, 태그가 붙은 릴리스, workflow 실행이 기준 기록이며 아래 날짜별 관찰은 당시 검증 범위를 유지합니다.
 
 <!-- qhud:anchor -->
@@ -19,12 +19,12 @@
 
 | 항목 | 값 |
 | --- | --- |
-| 현재 릴리스 | [v0.7.2](https://github.com/chquandogong/qhud/releases/tag/v0.7.2) — 패인 값에 리셋 시각이 없어도 할당량 행이 스냅숏의 리셋 카운트다운을 유지하며, v0.7.1 이후 보안 작업을 처음 패키지에 담은 릴리스. Linux x86_64 tarball 및 Windows x86_64 ZIP. |
-| 릴리스 이후 소스 | v0.7.2는 v0.7.1 태그 이후의 모든 코드 변경을 패키지에 담습니다: [#1](https://github.com/chquandogong/qhud/pull/1) 저장소·릴리스 운영 체계, [#7](https://github.com/chquandogong/qhud/pull/7) `quinn-proto` 패치, [#14](https://github.com/chquandogong/qhud/pull/14) 평상시 진단 로그 비식별화, 리셋 카운트다운 수정. 앞서 2026-09-15에 확인한 GitHub `main`은 [c00bcd7](https://github.com/chquandogong/qhud/commit/c00bcd71c8d13cf99ffeed37c66c819c032f96ee)였고, 이 커밋들은 v0.7.1 아카이브에 없었습니다. |
-| 태그 이후 자동 검사 | `c00bcd7`의 [main CI](https://github.com/chquandogong/qhud/actions/runs/34823834972)와 [CodeQL](https://github.com/chquandogong/qhud/actions/runs/34823834684)은 2026-09-14에 모두 통과했습니다. CI에는 Linux·Windows 빌드, Node·Rust 테스트, 문서 무결성이 포함되고 별도 의존성 검토 작업이 PR을 검사합니다. CodeQL은 Rust·JavaScript/TypeScript·Actions를 분석합니다. 이는 소스 검증이며 새 바이너리나 실제 데스크톱 실행 검증은 아닙니다. |
+| 현재 릴리스 | [v0.7.3](https://github.com/chquandogong/qhud/releases/tag/v0.7.3) — 알려진 Codex 요금제 값을 **Pro 100**, **Pro 200**, **Pro 500**으로 표시하며, 운영자가 명시한 override가 우선하고 알 수 없는 값은 배지에서 숨깁니다. v0.7.2 이후 완료한 보안, 의존성, 릴리스 workflow, 번역 운영 작업도 패키지에 담습니다. Linux x86_64 tarball, Windows x86_64 ZIP, CycloneDX SBOM을 제공하며 각각 SHA-256 파일과 출처 증명이 있습니다. |
+| 릴리스 이후 소스 | v0.7.3은 v0.7.2 태그 이후의 모든 소스 변경을 패키지에 담습니다: [#22](https://github.com/chquandogong/qhud/pull/22) 의존성과 rustls 보안 갱신, [#23](https://github.com/chquandogong/qhud/pull/23) Rust 의존성 정책 게이트, [#24](https://github.com/chquandogong/qhud/pull/24) 번역 workflow, [#25](https://github.com/chquandogong/qhud/pull/25) 릴리스 강화와 SBOM, [#26](https://github.com/chquandogong/qhud/pull/26) 형식화된 비식별 오류, 이번 릴리스의 Codex 요금제 이름 매핑. |
+| 요금제 레이블 자동 검사 | **v0.7.3 로컬 소스 트리, 2026-10-01:** Node 테스트 8/8 통과. 요금제 레이블 테스트 2개가 `prolite` / `pro` / `promax` 매핑, 정규화, 명시적 override 우선순위, 알 수 없는 값 숨김을 다룹니다. 이는 합성 입력을 사용한 자동화 근거이며 실제 공급자나 데스크톱 표시 검증이 아닙니다. |
 | 파이프라인 의존성 | qmonster @ `6a21c44`; Linux 기준 Git 의존성, Windows 명령 범위 패치 및 lockfile 복원. |
 | 지원 플랫폼 | Ubuntu 24.04 / GNOME 및 Windows x64 네이티브 / WebView2. Windows 터미널 탭 네이티브 관찰은 지원 범위 밖입니다. |
-| 현재 실행 근거 | **Ubuntu 2026-10-01, v0.7.2 트리:** 빌드 후 `~/.local/bin`에 설치하고 실제 GNOME 세션에서 재시작했습니다. 주간 0%를 리셋 시각 없이 보고하는 유휴 Codex 패인이 있는 상태에서 `--dump`가 그날 Codex 조회 결과의 리셋 시각을 담았고, 위젯은 v0.7.1이 카운트다운 없이 `0%`만 보이던 자리에 `7D 6% · 6d 20h`를 표시했습니다. Windows는 같은 병합 코드를 쓰며 실제 기기에서 다시 확인하지 않았습니다. 이전 근거: **Ubuntu 2026-09-11, v0.7.1:** Intel Arc(Meteor Lake, `i915`, gt0+gt1)를 측정했습니다. `--system-dump` 24.8%와 같은 구간의 독립 rc6 유휴 잔류 계산 24.8%가 일치했고 실행 위젯이 CPU, 메모리, GPU, 디스크, 네트워크 기록을 표시했습니다. v0.7.1은 Linux GPU 샘플러만 바꾸므로 이 패치에서 Windows 실행은 다시 확인하지 않았습니다. |
+| 현재 실행 근거 | **v0.7.3 요금제 레이블:** 실제 Codex 계정이나 데스크톱 실행 검증은 아직 수행하지 않았으며 직접 근거는 위 자동 매핑 테스트로 한정됩니다. 최신 실제 실행 근거는 계속 **Ubuntu 2026-10-01, v0.7.2 트리:** 빌드 후 `~/.local/bin`에 설치하고 실제 GNOME 세션에서 재시작했습니다. 주간 0%를 리셋 시각 없이 보고하는 유휴 Codex 패인이 있는 상태에서 `--dump`가 그날 Codex 조회 결과의 리셋 시각을 담았고, 위젯은 v0.7.1이 카운트다운 없이 `0%`만 보이던 자리에 `7D 6% · 6d 20h`를 표시했습니다. Windows는 같은 병합 코드를 쓰며 실제 기기에서 다시 확인하지 않았습니다. 이전 근거: **Ubuntu 2026-09-11, v0.7.1:** Intel Arc(Meteor Lake, `i915`, gt0+gt1)를 측정했습니다. `--system-dump` 24.8%와 같은 구간의 독립 rc6 유휴 잔류 계산 24.8%가 일치했고 실행 위젯이 CPU, 메모리, GPU, 디스크, 네트워크 기록을 표시했습니다. v0.7.1은 Linux GPU 샘플러만 바꾸므로 이 패치에서 Windows 실행은 다시 확인하지 않았습니다. |
 | 이전 플랫폼 근거 | **공개 v0.6.0 Linux 배포 파일, Ubuntu 2026-09-07:** 체크섬 일치, GNOME/Wayland 계층 상태, 픽셀 갱신, herdr 창 8개, 세 공급자 새로고침 통과. **Windows v0.6.0:** 네이티브 표시, 계정 이메일, 초기화 시간, Codex 새로고침, app-server 대체 경로 통과. 정확한 환경과 해시는 TEST_PLAN을 참고하세요. |
 | 품질 근거 | **v0.7.2 Ubuntu 로컬, 2026-10-01:** 형식과 clippy `-D warnings` 이상 없음, Rust 테스트 129/129, Node 테스트 6/6, `--locked` 릴리스 빌드 2분 00초. 이전 근거: **v0.7.1 Ubuntu 로컬, 2026-09-11:** 형식과 clippy `-D warnings` 이상 없음, Rust 테스트 127/127, Node 테스트 6/6, 릴리스 빌드 2분 08초. 이전 v0.6.0 Ubuntu·Windows CI는 Rust 테스트 98/98과 릴리스 빌드를 통과했습니다: [CI 34117359064](https://github.com/chquandogong/qhud/actions/runs/34117359064). |
 | 입력 검증 원칙 | Linux 조작 주장은 컴포지터 경로 주입이나 사람이 직접 조작해야 하며 XTEST만으로는 인정하지 않습니다(D-010). |

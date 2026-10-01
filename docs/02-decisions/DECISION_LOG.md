@@ -518,3 +518,26 @@ Format: context → options → decision → rationale → residual risk.
   stays unreachable is reported once per changed outcome. Canary tests cover
   email, token-like text, POSIX and Windows paths, account and workspace IDs,
   and pane labels.
+
+## D-022 · Codex plan badges use reviewed upstream display names
+
+> Adopted for v0.7.3 on 2026-10-01.
+
+- **Context**: qhud stopped placing Codex `plan_type` directly in a badge after
+  raw values such as `prolite` leaked into the interface. That removed a wrong
+  label, but it also meant a real plan change could remain invisible unless the
+  operator maintained `accounts.json` on every computer.
+- **Decision**: keep the raw value in the payload and detail view. In the
+  visible badge, map only the three Pro values whose current display names are
+  defined and tested by the upstream Codex client: `prolite` → `Pro 100`,
+  `pro` → `Pro 200`, and `promax` → `Pro 500`. A nonblank `plans` or
+  `workspace_plans` value remains an explicit operator override. Every unknown
+  value stays out of the badge and remains available in detail for diagnosis.
+- **Rejected**: displaying every raw value; deriving a price or multiplier from
+  usage percentages; reading an undocumented token claim; and guessing a name
+  for a future enum. Each would turn provider metadata into an unsupported
+  billing claim.
+- **Evidence**: OpenAI Codex commit `f70810b` defines the three wire values,
+  their status labels, and a regression test for the exact strings. qhud's
+  frontend test asserts all three labels, override precedence, and unknown-value
+  suppression.

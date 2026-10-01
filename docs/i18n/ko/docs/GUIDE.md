@@ -23,20 +23,20 @@ qhud 설치, 기존 CLI 계정 연결, 저장된 스냅샷과 현재 응답을 �
 | Windows x64 | ZIP을 풀고 추출된 디렉터리 안의 `qhud.exe`를 실행합니다. | Microsoft Edge WebView2 Runtime. [Windows 설정](05-ops/WINDOWS.md)을 참조하세요. |
 | Linux x86_64 | tarball을 풀고 버전 디렉터리 안의 바이너리를 설치합니다. | GTK/WebKitGTK. 기준 시스템은 Ubuntu 24.04입니다. [Linux 운영](05-ops/RUNBOOK.md)을 참조하세요. |
 
-Linux v0.7.2에서 두 파일을 모두 다운로드한 뒤 실행합니다.
+Linux v0.7.3에서 두 파일을 모두 다운로드한 뒤 실행합니다.
 
 ```sh
-sha256sum -c qhud-v0.7.2-linux-x86_64.tar.gz.sha256
-tar -xzf qhud-v0.7.2-linux-x86_64.tar.gz
-install -Dm755 qhud-v0.7.2-linux-x86_64/qhud "$HOME/.local/bin/qhud"
+sha256sum -c qhud-v0.7.3-linux-x86_64.tar.gz.sha256
+tar -xzf qhud-v0.7.3-linux-x86_64.tar.gz
+install -Dm755 qhud-v0.7.3-linux-x86_64/qhud "$HOME/.local/bin/qhud"
 "$HOME/.local/bin/qhud"
 ```
 
 Windows 다운로드는 표시된 해시를 `.sha256` 파일과 비교합니다.
 
 ```powershell
-Get-FileHash -Algorithm SHA256 .\qhud-v0.7.2-windows-x86_64.zip
-Get-Content .\qhud-v0.7.2-windows-x86_64.zip.sha256
+Get-FileHash -Algorithm SHA256 .\qhud-v0.7.3-windows-x86_64.zip
+Get-Content .\qhud-v0.7.3-windows-x86_64.zip.sha256
 ```
 
 현재 release workflow로 게시한 아카이브에는 GitHub 빌드 출처 증명도 있습니다. GitHub CLI를 설치하고 실제 다운로드한 파일명으로 바꿔 `.sha256` 제공 파일이 아닌 아카이브 자체를 검증합니다.
@@ -174,18 +174,23 @@ qhud 설정은 소스 저장소 밖에 보관합니다.
   "labels": {
     "codex:YOUR_ACCOUNT_ID": "work@example.com"
   },
+  "plans": {
+    "codex:YOUR_ACCOUNT_ID": "Pro 200"
+  },
   "workspace_names": {
-    "YOUR_ACCOUNT_ID": "Work"
+    "YOUR_OTHER_WORKSPACE_ID": "Work"
   },
   "workspace_plans": {
-    "YOUR_ACCOUNT_ID": "My workspace plan"
+    "YOUR_OTHER_WORKSPACE_ID": "Pro 500"
   },
   "claude_config_dirs": ["~/claude-personal"],
   "codex_homes": ["~/.codex-personal"]
 }
 ```
 
-Codex는 로컬 `auth.json`의 ID 토큰에 있는 이메일을 자동으로 표시합니다. 이메일은 표시용 보조 정보이며 없거나 형식이 잘못되면 계정/작업공간 ID로 대체합니다. 새 컴퓨터에서도 일반적인 이메일 표시에 별도 레이블 파일이 필요하지 않습니다. 일치하는 `labels` 항목은 이메일보다 우선하며, 이메일과 레이블 모두 사용량을 구분하는 계정/작업공간 식별자를 바꾸지 않습니다. 요금제 레이블은 전송 열거형에서 추측하지 말고 운영자가 지정한 값을 유지하세요.
+Codex는 로컬 `auth.json`의 ID 토큰에 있는 이메일을 자동으로 표시합니다. 이메일은 표시용 보조 정보이며 없거나 형식이 잘못되면 계정/작업공간 ID로 대체합니다. 새 컴퓨터에서도 일반적인 이메일 표시에 별도 레이블 파일이 필요하지 않습니다. 일치하는 `labels` 항목은 이메일보다 우선하며, 이메일과 레이블 모두 사용량을 구분하는 계정/작업공간 식별자를 바꾸지 않습니다.
+
+Codex 플랜 배지에서 qhud는 검토한 전송 값 세 개에 현재 업스트림 상태 이름을 적용합니다. `prolite`는 **Pro 100**, `pro`는 **Pro 200**, `promax`는 **Pro 500**으로 표시합니다. 명시적인 `plans` 항목은 계정 배지를, `workspace_plans` 항목은 일치하는 작업공간 배지를 재정의합니다. 알 수 없는 전송 값은 확장 세부 정보와 툴팁에만 남고 표시 플랜 배지가 되지 않습니다.
 
 <!-- qhud:anchor -->
 <a id="more-than-one-account"></a>

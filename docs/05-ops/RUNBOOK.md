@@ -119,9 +119,11 @@ cargo build --release --locked # binary at target/release/qhud
   deliberately outside this public repo. `labels` / `plans` /
   `workspace_names` / `workspace_plans` set display text; `known[]`
   lists ever-connected accounts; `forgotten` hides a placeholder (never
-  a live account). Display names are operator-supplied and must never be
-  "corrected" from a wire `plan_type` — `prolite` is shown as ChatGPT
-  Pro 5x, `team` as ChatGPT Business.
+  a live account). Codex plan badges follow the reviewed upstream status
+  mapping: `prolite` → **Pro 100**, `pro` → **Pro 200**, and `promax` →
+  **Pro 500**. Explicit `plans` and `workspace_plans` values win over that
+  mapping. Unknown wire `plan_type` values stay in expanded details and
+  tooltips instead of becoming visible badges.
 - **Several accounts per provider** (D-015): keep each extra account
   signed in under its own dir, then register the dir —
 

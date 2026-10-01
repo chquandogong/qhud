@@ -546,9 +546,12 @@ account alone would feed one organization's numbers to both rows of one login.
 
 Display names use the operator's registry label first, then the locally read
 email, then the account ID. The registry lives outside this repository and
-remains an optional override when an email is available. Operator plan labels
-are never "corrected" from a wire plan string: those are the provider's
-internal words, not the name the operator sees.
+remains an optional override when an email is available. Plan display follows a
+small reviewed presentation mapping rather than exposing arbitrary provider
+strings. Codex `prolite`, `pro`, and `promax` display as Pro 100, Pro 200, and
+Pro 500, matching the current upstream status labels. Operator `plans` and
+`workspace_plans` values take precedence. An unknown wire value stays in the
+expanded detail or tooltip and does not become a visible badge.
 
 ## 17. Registry and placeholders
 

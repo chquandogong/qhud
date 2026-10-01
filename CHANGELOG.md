@@ -10,6 +10,8 @@ All notable changes to qhud. Format: [Keep a Changelog](https://keepachangelog.c
 
 ## [Unreleased]
 
+## [0.7.3] — 2026-10-01
+
 ### Added
 
 - Releases attach a CycloneDX 1.5 JSON SBOM generated from the tagged, locked
@@ -18,6 +20,16 @@ All notable changes to qhud. Format: [Keep a Changelog](https://keepachangelog.c
 
 ### Fixed
 
+- Display Codex's current subscription names from its reviewed wire values:
+  `prolite` as **Pro 100**, `pro` as **Pro 200**, and `promax` as **Pro 500**,
+  following the upstream [wire enum](https://github.com/openai/codex/blob/f70810bcd210ed780a3da5940e9e60f74ac8ee60/codex-rs/protocol/src/auth.rs#L73-L95),
+  [display mapping](https://github.com/openai/codex/blob/f70810bcd210ed780a3da5940e9e60f74ac8ee60/codex-rs/tui/src/subscription.rs#L10-L19),
+  and [regression cases](https://github.com/openai/codex/blob/f70810bcd210ed780a3da5940e9e60f74ac8ee60/codex-rs/tui/src/status/helpers.rs#L200-L221).
+  Explicit operator plan labels still win, and an unknown wire value remains
+  available in detail text without becoming a visible badge. Automated tests
+  cover the three mappings, normalization, override precedence, and unknown
+  values; this display change has not yet been exercised with a live Codex
+  account or desktop runtime.
 - The release workflow finds its draft by listing releases. GitHub's tag lookup
   returns only published releases, so the v0.7.2 run failed right after
   creating the draft and was completed by hand from the gated assets.
@@ -614,9 +626,11 @@ guessing.
   `chatgpt-account-id` is ignored; a body describing a different
   workspace is dropped rather than mislabelled.
 - **Per-model windows are only current right after ⟳.**
-- Wire `plan_type` values are not display names (`prolite` is shown as
-  ChatGPT Pro 5x, `team` as ChatGPT Business). Display names come from
-  the registry and must never be "corrected" from a wire value.
+- At v0.4.0, wire `plan_type` values were not treated as display names. The
+  operator registry label then rendered `prolite` as ChatGPT Pro 5x and `team`
+  as ChatGPT Business. v0.7.3 supersedes that policy for the reviewed Codex
+  values with the Pro 100 / Pro 200 / Pro 500 mapping while preserving explicit
+  registry overrides.
 
 ## [0.3.2] — 2026-08-06
 

@@ -73,20 +73,20 @@ Example data is available only with `--demo`.
 
 ## Install
 
-**Current release: [v0.7.2](https://github.com/chquandogong/qhud/releases/tag/v0.7.2).**
+**Current release: [v0.7.3](https://github.com/chquandogong/qhud/releases/tag/v0.7.3).**
 Both platform build/test jobs gate publication. Each archive has a SHA-256 file.
 
 | Download | Verify |
 | --- | --- |
-| [Windows x64 ZIP](https://github.com/chquandogong/qhud/releases/download/v0.7.2/qhud-v0.7.2-windows-x86_64.zip) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.7.2/qhud-v0.7.2-windows-x86_64.zip.sha256) |
-| [Linux x86_64 tarball](https://github.com/chquandogong/qhud/releases/download/v0.7.2/qhud-v0.7.2-linux-x86_64.tar.gz) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.7.2/qhud-v0.7.2-linux-x86_64.tar.gz.sha256) |
+| [Windows x64 ZIP](https://github.com/chquandogong/qhud/releases/download/v0.7.3/qhud-v0.7.3-windows-x86_64.zip) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.7.3/qhud-v0.7.3-windows-x86_64.zip.sha256) |
+| [Linux x86_64 tarball](https://github.com/chquandogong/qhud/releases/download/v0.7.3/qhud-v0.7.3-linux-x86_64.tar.gz) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.7.3/qhud-v0.7.3-linux-x86_64.tar.gz.sha256) |
 
-The downloads above are the **v0.7.2 binaries**. Besides keeping a quota row's
-reset countdown when a live pane reading carries none, v0.7.2 is the first
-release to package the dependency security patch and the redacted ambient
-diagnostics that landed on `main` after v0.7.1, and the first published through
-the protected-tag release workflow. Later `main` changes are tracked under
-[Unreleased](CHANGELOG.md) until a tagged release packages them.
+The downloads above are the **v0.7.3 binaries**. Codex rows now display the
+reviewed provider values `prolite`, `pro`, and `promax` as **Pro 100**,
+**Pro 200**, and **Pro 500**. Explicit operator labels still take precedence,
+and unknown values do not become visible badges. This release also packages
+the security, dependency-policy, SBOM, release-workflow, and translation work
+completed after v0.7.2. See the [v0.7.3 release notes](docs/05-ops/releases/v0.7.3.md).
 
 Archives published by the current release workflow also carry GitHub build
 provenance. With GitHub CLI, substitute the path of the archive you downloaded;
@@ -112,9 +112,9 @@ for prerequisites, source builds, and configuration.
 After downloading the archive and its SHA-256 file into the same directory:
 
 ```sh
-sha256sum -c qhud-v0.7.2-linux-x86_64.tar.gz.sha256
-tar -xzf qhud-v0.7.2-linux-x86_64.tar.gz
-install -Dm755 qhud-v0.7.2-linux-x86_64/qhud "$HOME/.local/bin/qhud"
+sha256sum -c qhud-v0.7.3-linux-x86_64.tar.gz.sha256
+tar -xzf qhud-v0.7.3-linux-x86_64.tar.gz
+install -Dm755 qhud-v0.7.3-linux-x86_64/qhud "$HOME/.local/bin/qhud"
 "$HOME/.local/bin/qhud"
 ```
 

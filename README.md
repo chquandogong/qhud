@@ -76,19 +76,19 @@ qhud는 여러 명령행 인터페이스에 흩어진 계정 할당량과 세션
 
 ## 설치
 
-**현재 릴리스: [v0.7.2](https://github.com/chquandogong/qhud/releases/tag/v0.7.2).**
+**현재 릴리스: [v0.7.3](https://github.com/chquandogong/qhud/releases/tag/v0.7.3).**
 두 플랫폼의 빌드/테스트 작업을 통과해야 공개합니다. 각 아카이브에는 SHA-256 파일이 있습니다.
 
 | 다운로드 | 검증 |
 | --- | --- |
-| [Windows x64 ZIP](https://github.com/chquandogong/qhud/releases/download/v0.7.2/qhud-v0.7.2-windows-x86_64.zip) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.7.2/qhud-v0.7.2-windows-x86_64.zip.sha256) |
-| [Linux x86_64 tarball](https://github.com/chquandogong/qhud/releases/download/v0.7.2/qhud-v0.7.2-linux-x86_64.tar.gz) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.7.2/qhud-v0.7.2-linux-x86_64.tar.gz.sha256) |
+| [Windows x64 ZIP](https://github.com/chquandogong/qhud/releases/download/v0.7.3/qhud-v0.7.3-windows-x86_64.zip) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.7.3/qhud-v0.7.3-windows-x86_64.zip.sha256) |
+| [Linux x86_64 tarball](https://github.com/chquandogong/qhud/releases/download/v0.7.3/qhud-v0.7.3-linux-x86_64.tar.gz) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.7.3/qhud-v0.7.3-linux-x86_64.tar.gz.sha256) |
 
-위 다운로드는 **v0.7.2 바이너리**입니다. v0.7.2는 실시간 패인 값에 리셋 시각이
-없어도 할당량 행의 리셋 카운트다운을 유지하며, v0.7.1 이후 `main`에 반영된 의존성
-보안 패치와 평상시 진단 로그의 비식별화를 처음으로 패키지에 담은 릴리스이자, 보호된
-태그 릴리스 워크플로로 처음 게시한 릴리스입니다. 이후 `main` 변경은 새 태그의 릴리스가
-패키지로 제공할 때까지 [미출시 변경 이력](docs/i18n/ko/CHANGELOG.md)에 기록합니다.
+위 다운로드는 **v0.7.3 바이너리**입니다. Codex 행은 검토된 공급자 값 `prolite`,
+`pro`, `promax`를 각각 **Pro 100**, **Pro 200**, **Pro 500**으로 표시합니다.
+운영자가 명시한 레이블은 계속 우선하며 알 수 없는 값은 화면 배지가 되지 않습니다.
+이 릴리스는 v0.7.2 이후 완료한 보안, 의존성 정책, SBOM, 릴리스 workflow, 번역 작업도
+패키지에 담습니다. [v0.7.3 릴리스 노트](docs/i18n/ko/docs/05-ops/releases/v0.7.3.md)를 참조하세요.
 
 현재 release workflow로 게시한 아카이브는 GitHub 빌드 출처 증명도 제공합니다. GitHub CLI에서 실제 다운로드한 아카이브 경로를 사용해 확인하세요. `.sha256` 파일이 아닌 아카이브 자체를 검증합니다.
 
@@ -107,9 +107,9 @@ ZIP을 풀고 버전 디렉터리 안의 `qhud.exe`를 실행합니다. Microsof
 아카이브와 SHA-256 파일을 같은 디렉터리에 다운로드한 뒤 실행합니다.
 
 ```sh
-sha256sum -c qhud-v0.7.2-linux-x86_64.tar.gz.sha256
-tar -xzf qhud-v0.7.2-linux-x86_64.tar.gz
-install -Dm755 qhud-v0.7.2-linux-x86_64/qhud "$HOME/.local/bin/qhud"
+sha256sum -c qhud-v0.7.3-linux-x86_64.tar.gz.sha256
+tar -xzf qhud-v0.7.3-linux-x86_64.tar.gz
+install -Dm755 qhud-v0.7.3-linux-x86_64/qhud "$HOME/.local/bin/qhud"
 "$HOME/.local/bin/qhud"
 ```
 

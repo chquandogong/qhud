@@ -1,6 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const metrics = require("../ui/system-metrics.js");
+const plans = require("../ui/plan-labels.js");
 
 test("unknown readings stay unknown; measured zero is a valid idle reading", () => {
   for (const value of [null, undefined, NaN, Infinity, -1, "0"]) {
@@ -79,4 +80,19 @@ test("browser fixtures match the real optional-GPU report contract", () => {
   assert.equal(supported.gpu.name, "Demo GPU");
   assert.equal(unsupported.gpu, null);
   assert.ok(unsupported.history.every((sample) => sample.gpu_pct === null));
+});
+
+test("Codex Pro wire values use the current product names", () => {
+  assert.equal(plans.codexPlanLabel("prolite"), "Pro 100");
+  assert.equal(plans.codexPlanLabel("pro"), "Pro 200");
+  assert.equal(plans.codexPlanLabel("promax"), "Pro 500");
+  assert.equal(plans.codexPlanLabel(" PRO "), "Pro 200");
+});
+
+test("Codex plan labels keep explicit overrides and hide unknown wire values", () => {
+  assert.equal(plans.codexPlanDisplay(" Research seat ", "pro"), " Research seat ");
+  assert.equal(plans.codexPlanDisplay("", "prolite"), "Pro 100");
+  assert.equal(plans.codexPlanDisplay(null, "Pro-Max"), null);
+  assert.equal(plans.codexPlanDisplay(null, "future_plan"), null);
+  assert.equal(plans.codexPlanDisplay(null, null), null);
 });

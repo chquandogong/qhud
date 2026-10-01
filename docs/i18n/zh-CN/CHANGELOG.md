@@ -17,6 +17,8 @@
 
 ## [未发布]
 
+## [0.7.3] — 2026-10-01
+
 <!-- qhud:anchor -->
 <a id="added"></a>
 
@@ -30,6 +32,14 @@
 
 ### 修复
 
+- 根据经过核对的 Codex 传输值显示当前订阅名称：`prolite` 显示为 **Pro 100**、
+  `pro` 显示为 **Pro 200**、`promax` 显示为 **Pro 500**；该映射遵循上游的
+  [传输枚举](https://github.com/openai/codex/blob/f70810bcd210ed780a3da5940e9e60f74ac8ee60/codex-rs/protocol/src/auth.rs#L73-L95)、
+  [显示映射](https://github.com/openai/codex/blob/f70810bcd210ed780a3da5940e9e60f74ac8ee60/codex-rs/tui/src/subscription.rs#L10-L19)和
+  [回归用例](https://github.com/openai/codex/blob/f70810bcd210ed780a3da5940e9e60f74ac8ee60/codex-rs/tui/src/status/helpers.rs#L200-L221)。
+  操作者显式设置的方案标签仍然优先；未知传输值保留在详情文本中，不会变成可见徽标。
+  自动化测试覆盖三项映射、规范化、override 优先级和未知值；此显示修改尚未使用真实
+  Codex 账户或桌面运行时验证。
 - release workflow 通过列出 release 查找草稿。GitHub 的标签查询只返回已发布的版本，
   因此 v0.7.2 的运行在创建草稿后立即失败，随后用通过门禁的资产手动完成。
 
@@ -377,7 +387,10 @@ GPU 计数器不受支持不代表机器没有 GPU。支持范围见
 - **每个提供商一个实时登录。** 三个提供商均只存储一个活动凭据；`codex login` 会撤销先前令牌，因此搁置保存的凭据文件返回 401。无法通过 CLI 凭据路径同时显示同一提供商的两个账户。
 - **Codex 不会将令牌的作用域重新设为另一个工作区。** `chatgpt-account-id` 会被忽略；描述其他工作区的响应体会被丢弃，而非错误标注。
 - **按模型划分的窗口仅在刚执行 ⟳ 后才是最新的。**
-- 传输中的 `plan_type` 值不是显示名称（`prolite` 显示为 ChatGPT Pro 5x，`team` 显示为 ChatGPT Business）。显示名称来自注册表，绝不能根据传输值对其进行“纠正”。
+- 在 v0.4.0 当时，传输中的 `plan_type` 值不被视为显示名称。当时的操作者注册表标签将
+  `prolite` 显示为 ChatGPT Pro 5x，将 `team` 显示为 ChatGPT Business。v0.7.3 在保留
+  显式注册表 override 的同时，对经过核对的 Codex 值采用 Pro 100 / Pro 200 / Pro 500
+  映射，从而取代该策略。
 
 ## [0.3.2] — 2026-08-06
 
