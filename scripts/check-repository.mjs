@@ -7,6 +7,33 @@ import { fileURLToPath } from "node:url";
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const errors = [];
+const options = parseArguments(process.argv.slice(2));
+
+function parseArguments(argumentsList) {
+  const usage =
+    "Usage: node scripts/check-repository.mjs [--base <git-ref>]\n\n" +
+    "  --base <git-ref>  Also require that every English source document changed since\n" +
+    "                    <git-ref> changes together with its Korean and Simplified Chinese\n" +
+    "                    mirrors, unless a commit trailer acknowledges an English-only change:\n" +
+    "                    Translation-Exempt: <path> <reason>";
+  const parsed = { base: undefined };
+  for (let index = 0; index < argumentsList.length; index += 1) {
+    const argument = argumentsList[index];
+    if (argument === "--help" || argument === "-h") {
+      console.log(usage);
+      process.exit(0);
+    } else if (argument === "--base" && /^[^-]/.test(argumentsList[index + 1] ?? "")) {
+      parsed.base = argumentsList[index + 1];
+      index += 1;
+    } else if (/^--base=[^-]/.test(argument)) {
+      parsed.base = argument.slice("--base=".length);
+    } else {
+      console.error(`Unrecognized or incomplete argument: ${argument}\n\n${usage}`);
+      process.exit(2);
+    }
+  }
+  return parsed;
+}
 
 function repositoryPath(relativePath) {
   return path.join(repositoryRoot, ...relativePath.split("/"));
@@ -234,6 +261,202 @@ const englishDocs = sortedMarkdownFiles("docs");
 compareFileSets(englishDocs, sortedMarkdownFiles("docs/i18n/ko/docs"), "Korean docs");
 compareFileSets(englishDocs, sortedMarkdownFiles("docs/i18n/zh-CN/docs"), "Simplified Chinese docs");
 
+// Translation policy: CONTRIBUTING.md, "Documentation and translations".
+// Every English source below needs complete Korean and Simplified Chinese
+// mirrors. A root Markdown page outside these lists must be named a
+// canonical-language record, so a new page cannot silently skip the policy.
+const translationLanguages = ["ko", "zh-CN"];
+const mirroredRootDocuments = [
+  "CHANGELOG.md",
+  "CODE_OF_CONDUCT.md",
+  "CONTRIBUTING.md",
+  "SECURITY.md",
+  "SUPPORT.md",
+];
+// README.md is the Korean mirror; README.ko.md is its byte-identical copy.
+const readmeFamily = { source: "README.en.md", mirrors: ["README.md", "README.zh-CN.md"] };
+const canonicalLanguageRootDocuments = new Set(["AGENTS.md", "README.ko.md"]);
+const translationSets = [
+  readmeFamily,
+  ...mirroredRootDocuments.map((document) => ({
+    source: document,
+    mirrors: translationLanguages.map((language) => `docs/i18n/${language}/${document}`),
+  })),
+  ...englishDocs.map((document) => ({
+    source: `docs/${document}`,
+    mirrors: translationLanguages.map((language) => `docs/i18n/${language}/docs/${document}`),
+  })),
+];
+
+{
+  const classified = new Set([
+    ...mirroredRootDocuments,
+    readmeFamily.source,
+    ...readmeFamily.mirrors,
+    ...canonicalLanguageRootDocuments,
+  ]);
+  for (const entry of fs.readdirSync(repositoryRoot, { withFileTypes: true })) {
+    if (entry.isFile() && entry.name.endsWith(".md") && !classified.has(entry.name)) {
+      errors.push(
+        `${entry.name} is neither a mirrored document nor a canonical-language record; ` +
+          "classify it in scripts/check-repository.mjs and CONTRIBUTING.md.",
+      );
+    }
+  }
+  for (const language of translationLanguages) {
+    const mirrorRoot = `docs/i18n/${language}`;
+    const present = fs
+      .readdirSync(repositoryPath(mirrorRoot), { withFileTypes: true })
+      .filter((entry) => entry.isFile() && entry.name.endsWith(".md"))
+      .map((entry) => entry.name)
+      .sort();
+    compareFileSets(mirroredRootDocuments, present, `${mirrorRoot}/`);
+  }
+}
+
+// Facts that must survive translation unchanged. Prose may differ; these are
+// compared mechanically between every English source and each mirror.
+const languageSwitcherPattern = /<!-- qhud:languages -->[\s\S]*?<!-- \/qhud:languages -->/g;
+// Translated headings carry their English anchor in an <a id> element.
+const anchorPattern = /<!-- qhud:anchor -->\s*<a id="[^"]*"><\/a>/g;
+const fencedBlockPattern = /^([ \t]*)(`{3,}|~{3,})[^\n]*\n[\s\S]*?^\1\2[ \t]*$/gm;
+
+function comparableFacts(text) {
+  const body = text.replace(languageSwitcherPattern, "").replace(anchorPattern, "");
+  const prose = body.replace(fencedBlockPattern, "");
+  const all = (pattern, input) => [...input.matchAll(pattern)].map((match) => match[0]).sort();
+  return [
+    [
+      "requirement, decision, risk and assumption IDs",
+      all(/\b(?:FR|NFR|D|CV)-\d+\b|\b[RA]\d{1,2}\b/g, prose),
+    ],
+    ["dates", all(/\b\d{4}-\d{2}-\d{2}\b/g, body)],
+    ["release versions", [...new Set(all(/\bv?\d+\.\d+\.\d+\b/g, body))]],
+    [
+      "fenced code blocks",
+      all(fencedBlockPattern, body).map((block) =>
+        block
+          .split("\n")
+          .map((line) => line.trim())
+          .join("\n"),
+      ),
+    ],
+    ["table rows", [String((prose.match(/^[ \t]*\|.*\|[ \t]*$/gm) ?? []).length)]],
+    ["headings", [String((prose.match(/^#{1,6}[ \t]/gm) ?? []).length)]],
+  ];
+}
+
+function multisetDifference(left, right) {
+  const remaining = new Map();
+  for (const item of right) {
+    remaining.set(item, (remaining.get(item) ?? 0) + 1);
+  }
+  const difference = [];
+  for (const item of left) {
+    if (remaining.get(item)) {
+      remaining.set(item, remaining.get(item) - 1);
+    } else {
+      difference.push(item);
+    }
+  }
+  return difference;
+}
+
+function describeFacts(items) {
+  const shown = items.slice(0, 5).map((item) => JSON.stringify(item.split("\n")[0].slice(0, 60)));
+  return shown.join(", ") + (items.length > shown.length ? `, and ${items.length - shown.length} more` : "");
+}
+
+let comparedMirrors = 0;
+for (const { source, mirrors } of translationSets) {
+  if (!fs.existsSync(repositoryPath(source))) {
+    continue;
+  }
+  const sourceFacts = comparableFacts(read(source));
+  for (const mirror of mirrors) {
+    if (!fs.existsSync(repositoryPath(mirror))) {
+      continue;
+    }
+    comparedMirrors += 1;
+    const mirrorFacts = comparableFacts(read(mirror));
+    sourceFacts.forEach(([kind, expected], index) => {
+      const actual = mirrorFacts[index][1];
+      if (kind === "table rows" || kind === "headings") {
+        if (expected[0] !== actual[0]) {
+          errors.push(`${mirror} has ${actual[0]} ${kind}; ${source} has ${expected[0]}.`);
+        }
+        return;
+      }
+      const missing = multisetDifference(expected, actual);
+      const extra = multisetDifference(actual, expected);
+      if (missing.length > 0 || extra.length > 0) {
+        errors.push(
+          `${mirror} ${kind} differ from ${source}` +
+            (missing.length > 0 ? `; missing ${describeFacts(missing)}` : "") +
+            (extra.length > 0 ? `; extra ${describeFacts(extra)}` : "") +
+            ".",
+        );
+      }
+    });
+  }
+}
+
+// Pull-request signal: an English source changed since the base must change
+// with both mirrors, or carry an explicit English-only acknowledgement.
+let translationSummary = "";
+if (options.base) {
+  const git = (gitArguments) =>
+    spawnSync("git", gitArguments, {
+      cwd: repositoryRoot,
+      encoding: "utf8",
+      maxBuffer: 64 * 1024 * 1024,
+    });
+  const diff = git(["diff", "--name-only", "--no-renames", "--diff-filter=d", "-z", `${options.base}...HEAD`]);
+  const log = git(["log", "--format=%B%x00", `${options.base}..HEAD`]);
+  if (diff.status !== 0 || log.status !== 0) {
+    errors.push(
+      `Could not compare HEAD with ${options.base}: ` +
+        `${(diff.stderr || log.stderr || "").trim() || "git failed"}`,
+    );
+  } else {
+    const changed = new Set(diff.stdout.split("\0").filter(Boolean));
+    const exemptions = new Map();
+    for (const match of log.stdout.matchAll(/^Translation-Exempt:[ \t]*(\S+)[ \t]+(\S.*)$/gm)) {
+      exemptions.set(match[1], match[2].trim());
+    }
+    const annotate = process.env.GITHUB_ACTIONS === "true";
+    let carried = 0;
+    let acknowledged = 0;
+    for (const { source, mirrors } of translationSets) {
+      if (!changed.has(source)) {
+        continue;
+      }
+      const unchanged = mirrors.filter((mirror) => !changed.has(mirror));
+      if (unchanged.length === 0) {
+        carried += 1;
+      } else if (exemptions.has(source)) {
+        acknowledged += 1;
+        console.log(
+          `${annotate ? `::notice file=${source}::` : "Note: "}${source} changed without ` +
+            `${unchanged.join(" and ")}; acknowledged as English-only: ${exemptions.get(source)}`,
+        );
+      } else {
+        const message =
+          `${source} changed since ${options.base} without ${unchanged.join(" and ")}. ` +
+          "Update the translation, or acknowledge an English-only change with the commit trailer " +
+          `"Translation-Exempt: ${source} <reason>".`;
+        errors.push(message);
+        if (annotate) {
+          console.log(`::error file=${source}::${message}`);
+        }
+      }
+    }
+    translationSummary =
+      ` Since ${options.base}, ${carried} changed English source(s) carry both translations` +
+      ` and ${acknowledged} are acknowledged as English-only.`;
+  }
+}
+
 {
   const files = repositoryMarkdownFiles();
   const extractors = [
@@ -307,5 +530,6 @@ if (errors.length > 0) {
 
 console.log(
   `Repository integrity check passed for qhud ${cargoVersion}: versions, release metadata, install examples, ` +
-    `${englishDocs.length} mirrored docs files, and local Markdown links are consistent.`,
+    `${englishDocs.length} mirrored docs files, translation facts in ${comparedMirrors} mirrors, ` +
+    `and local Markdown links are consistent.${translationSummary}`,
 );

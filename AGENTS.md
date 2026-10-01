@@ -87,7 +87,13 @@ English source documents live at the repository root and under `docs/`.
 Maintain complete Korean and Simplified Chinese mirrors under
 `docs/i18n/ko/` and `docs/i18n/zh-CN/`. Preserve commands, identifiers, dates,
 requirement and decision IDs, and table rows across translations. Keep
-`README.md` and `README.ko.md` identical.
+`README.md` and `README.ko.md` identical. `CONTRIBUTING.md` defines which
+documents are mirrored (this file is canonical English and has no mirror) and
+the reviewer checklist. Before a documentation PR, run
+`node scripts/check-repository.mjs --base origin/main`. Acknowledge a genuinely
+English-only change, such as a typo fix, with a
+`Translation-Exempt: <path> <reason>` commit trailer; never use it for a change
+of meaning.
 
 Before finishing, inspect the final diff, run checks proportional to the change,
 and report what passed plus any real platform, network, or visual limit. Do not
