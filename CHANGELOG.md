@@ -28,6 +28,16 @@ All notable changes to qhud. Format: [Keep a Changelog](https://keepachangelog.c
   validated through its (draft) PR, giving one run per commit. Required check
   names are unchanged.
 
+### Security
+
+- Add a Rust dependency policy gate: `deny.toml` and the `Rust dependency
+  policy` CI job run cargo-deny over `Cargo.lock` for RustSec advisories,
+  licenses, and sources, with each accepted exception documented.
+- Update `rustls` to 0.23.45 in the locked dependency graph (with `aws-lc-rs`
+  1.18.1, `aws-lc-sys` 0.45.0, and `rustls-webpki` 0.103.15), addressing
+  RUSTSEC-2026-0285, where TLS 1.3 handshake messages were accepted across
+  encryption-level boundaries.
+
 ### Dependencies
 
 - Update `base64` to 0.23, `libloading` to 0.9, `reqwest` to 0.13.5 and `toml`

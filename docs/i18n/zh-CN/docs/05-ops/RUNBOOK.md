@@ -133,6 +133,27 @@ cp ~/.config/autostart/qhud.desktop ~/.local/share/applications/qhud.desktop
 升级 `src-tauri/Cargo.toml` 的 `rev`，运行 `cargo build`，修复编译器在 `view.rs`/`poll.rs` 指出的问题，重跑 TEST_PLAN 手工清单。
 
 <!-- qhud:anchor -->
+<a id="dependency-policy-exceptions"></a>
+
+## 依赖策略例外
+
+推送依赖或 `deny.toml` 的变更前，先在本地运行依赖门禁：
+
+```sh
+cargo install --locked cargo-deny@0.20.2
+cargo deny --locked check
+```
+
+检查失败时：
+
+1. **漏洞：** 通过范围明确、有意为之的 lockfile 变更升级受影响的 crate，例如 `cargo update -p <crate> --precise <fixed-version>`，然后重新运行 Rust 检查。只有在没有可用的修复版本时才忽略漏洞，并在条目中写明理由和跟踪 issue。
+2. **无人维护或不健全通告：** 优先升级或替换。如果 qhud 无法改变的上游技术栈固定了该 crate，则按通告 ID 各添加一个 `ignore` 条目，写明依赖路径和移除条件。
+3. **许可证或来源：** 不要为单个 crate 放宽全局允许列表。添加注明理由、仅作用于该 crate 的 `exceptions` 条目，或移除该依赖。
+4. 当 cargo-deny 报告某个已忽略的通告或已允许的许可证不再出现时，删除该条目。
+
+每当 Tauri、GTK 栈或 qmonster `rev` 变化时复查 `ignore` 列表，并保持 `deny.toml`、[仓库策略](REPOSITORY.md#rust-dependency-policy)及其翻译一致。升级 cargo-deny 本身时，在 `.github/workflows/ci.yml` 中同时修改 `CARGO_DENY_VERSION` 和 `CARGO_DENY_SHA256`；SHA-256 取自上游发布的 `.sha256` 文件，并与下载的归档核对。
+
+<!-- qhud:anchor -->
 <a id="release-procedure"></a>
 
 ## 发布流程

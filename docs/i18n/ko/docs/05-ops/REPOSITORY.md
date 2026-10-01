@@ -43,6 +43,21 @@ GitHub는 현재 squash 병합만 허용하며 자동 병합과 브랜치 갱신
 
 [Dependabot 설정](../../../../../.github/dependabot.yml)은 Cargo 업데이트를 매주 월요일 09:00(Asia/Seoul), GitHub Actions 업데이트를 매월 09:00에 요청합니다. 생태계당 열린 PR은 최대 5개이고 minor/patch 변경을 묶습니다. 마지막으로 확인한 GitHub 설정은 Dependabot 보안 업데이트, 비공개 취약점 신고, push 보호가 있는 비밀 검사, CodeQL 기본 설정을 켰습니다. 이 서버 설정은 `dependabot.yml`과 별개입니다. **2026-09-14**에 확인한 저장소 보안 경고 대기열은 비어 있었습니다(**0건**). 날짜가 있는 관찰값이며 지금도 경고가 없다는 보장은 아닙니다. 새 코드·의존성·비밀 검사 경고에서 영향 버전과 실제 도달 가능성을 확인하고, 노출된 인증 정보는 즉시 우선 처리하며, 가린 수정 내용과 검증을 PR에 기록합니다. 조율된 공개 전에는 취약점 재현 방법을 공개하지 마세요. [SECURITY.md](../../../../../SECURITY.md)를 따릅니다.
 
+<!-- qhud:anchor -->
+<a id="rust-dependency-policy"></a>
+
+## Rust 의존성 정책
+
+[`deny.toml`](../../../../../deny.toml)은 qhud의 Rust 의존성 정책을 정의합니다. CI 작업 **`Rust dependency policy`**는 cargo-deny 0.20.2로 `Cargo.lock`에 대해 `cargo deny --locked check`를 실행합니다. cargo-deny는 워크플로에 SHA-256이 고정된 상위 릴리스 압축 파일에서 설치합니다. cargo-audit은 권고만 검사하지만 cargo-deny는 한 도구로 RustSec 권고, 라이선스, 금지·중복 크레이트, 의존성 출처를 모두 검사하므로 cargo-deny를 선택했습니다. 의존성 검토는 계속 PR이 새로 들여오는 의존성을 검사하고, 이 게이트는 릴리스 품질 게이트를 포함한 모든 CI 실행에서 고정된 전체 그래프를 검사합니다.
+
+- **범위:** qhud가 배포하는 Linux x86_64와 Windows x86_64 대상, 기본 기능입니다. 다른 대상에서만 쓰는 크레이트는 범위 밖입니다.
+- **권고:** RustSec 취약점은 모두 검사를 실패시킵니다. 유지보수 중단(unmaintained)과 건전성 결함(unsound) 공지도 그래프의 모든 크레이트에서 실패로 처리하므로, 새 공지는 조용히 수용되지 않고 검토됩니다. 회수(yanked)된 버전은 경고만 냅니다. 수용한 권고는 `deny.toml`에 ID와 이유로 적습니다. **2026-10-01** 기준 수용 목록은 RUSTSEC-2024-0429(glib 0.18 건전성 결함, GHSA-wrw7-89jp-8q8g, [#13](https://github.com/chquandogong/qhud/issues/13)에서 추적), RUSTSEC-2024-0370(같은 GTK3 스택의 유지보수 중단 `proc-macro-error`), RUSTSEC-2025-0075, RUSTSEC-2025-0080, RUSTSEC-2025-0081, RUSTSEC-2025-0098, RUSTSEC-2025-0100(`tauri-utils` → `urlpattern` 경로의 유지보수 중단 `unic-*` 크레이트)입니다. 수용 항목 가운데 취약점은 없습니다.
+- **라이선스:** `deny.toml`에 나열한 허용적 라이선스(MIT, Apache-2.0, BSD-3-Clause, ISC, Zlib 등)는 모든 크레이트에 허용합니다. MPL-2.0은 수정하지 않은 간접 의존성 다섯 개, 즉 `cssparser`, `cssparser-macros`, `dtoa-short`, `selectors`, `option-ext`에만 허용합니다. 그 밖의 라이선스는 실패합니다.
+- **출처:** 허용 레지스트리는 crates.io뿐입니다. 허용 Git 출처는 `https://github.com/chquandogong/qmonster` 하나이며, Git 의존성은 `rev`로 고정해야 합니다.
+- **금지:** 중복 버전과 버전 없는 qmonster Git 요구 사항은 실패가 아닌 경고입니다. Tauri, GTK, windows-rs 그래프에는 qhud가 없앨 수 없는 중복이 있습니다.
+
+권고 데이터베이스는 실행 시 공개 RustSec 저장소에서 가져오며, 이 작업은 인증 정보나 제공자 접근을 쓰지 않습니다. 따라서 의존성을 바꾸지 않은 PR도 새로 공개된 권고 때문에 실패할 수 있으며, 이는 의도한 동작입니다. 범위가 좁은 lockfile 업그레이드로 고치고, 쓸 수 있는 업그레이드가 없을 때만 이유를 좁게 적은 `ignore` 항목을 추가합니다. [실행 지침서](RUNBOOK.md#dependency-policy-exceptions)를 참고하세요. 이 작업은 아직 일곱 필수 검사에 들지 않습니다. PR에서 통과한 뒤 정확한 컨텍스트 `Rust dependency policy`를 `main` 규칙 집합에 추가하고, 이 문서의 필수 검사 목록을 갱신합니다.
+
 ## PR, 이슈, 릴리스 게시
 
 PR 전에 기존 이슈를 검색하고 범위가 명확한 변경을 만듭니다. [PR 템플릿](../../../../../.github/PULL_REQUEST_TEMPLATE.md)은 관련 이슈 또는 생략 이유, 변경 후 동작, 실제 검증, 미검증 항목, 개인정보·보안 확인, 세 언어 문서 갱신을 요구합니다. 검토 대화를 해결하고 엄격 검사를 위해 브랜치를 갱신한 뒤 일곱 상태가 모두 통과했을 때 squash로 병합합니다. 자동 병합도 이 게이트를 우회하지 않습니다. 일반 버그, 기능 제안, 지원 질문은 버전과 환경을 받는 세 [이슈 양식](../../../../../.github/ISSUE_TEMPLATE/)을 사용합니다. 빈 이슈는 막혀 있고 선택 화면은 문서와 비공개 보안 신고를 연결합니다. Issues는 켜져 있으며 Wiki, Projects, Discussions는 꺼져 있습니다. 글을 올리기 전에 인증 정보, 계정 데이터, 로컬 경로, 화면을 가리세요. 공개 이슈는 재현 가능성, 지원 버전, 플랫폼, qhud와 상위 제공자 중 어느 쪽 문제인지로 분류합니다. 채널 선택은 [SUPPORT.md](../../../../../SUPPORT.md)를 따릅니다.

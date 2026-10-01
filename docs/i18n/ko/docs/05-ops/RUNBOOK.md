@@ -133,6 +133,27 @@ cp ~/.config/autostart/qhud.desktop ~/.local/share/applications/qhud.desktop
 `src-tauri/Cargo.toml`의 `rev`를 올리고 `cargo build`를 실행합니다. `view.rs`/`poll.rs`에서 컴파일러가 지적하는 문제를 수정하고 TEST_PLAN 수동 체크리스트를 다시 실행합니다.
 
 <!-- qhud:anchor -->
+<a id="dependency-policy-exceptions"></a>
+
+## 의존성 정책 예외
+
+의존성이나 `deny.toml`을 바꿨다면 push 전에 로컬에서 의존성 게이트를 실행합니다.
+
+```sh
+cargo install --locked cargo-deny@0.20.2
+cargo deny --locked check
+```
+
+검사가 실패하면 다음과 같이 처리합니다.
+
+1. **취약점:** 영향받는 크레이트를 범위가 좁은 의도적 lockfile 변경으로 업그레이드합니다. 예: `cargo update -p <crate> --precise <fixed-version>`. 그런 다음 Rust 검사를 다시 실행합니다. 쓸 수 있는 수정 버전이 없을 때만 취약점을 무시하며, 항목에 이유와 추적 이슈를 적습니다.
+2. **유지보수 중단 또는 건전성 결함 공지:** 업그레이드나 대체를 우선합니다. qhud가 바꿀 수 없는 상위 스택이 해당 크레이트를 고정한다면 권고 ID마다 `ignore` 항목 하나를 추가하고 의존성 경로와 제거 조건을 적습니다.
+3. **라이선스 또는 출처:** 크레이트 하나 때문에 전역 허용 목록을 넓히지 않습니다. 이유를 적은 크레이트 단위 `exceptions` 항목을 추가하거나 의존성을 제거합니다.
+4. 무시한 권고나 허용한 라이선스가 더 이상 발견되지 않는다고 cargo-deny가 보고하면 그 항목을 삭제합니다.
+
+Tauri, GTK 스택, qmonster `rev`가 바뀔 때마다 `ignore` 목록을 검토하고, `deny.toml`, [저장소 정책](REPOSITORY.md#rust-dependency-policy), 그 번역을 일치시킵니다. cargo-deny 자체를 갱신할 때는 `.github/workflows/ci.yml`의 `CARGO_DENY_VERSION`과 `CARGO_DENY_SHA256`을 함께 바꿉니다. SHA-256은 상위 릴리스의 `.sha256` 파일에서 가져오고, 내려받은 압축 파일과 대조해 확인합니다.
+
+<!-- qhud:anchor -->
 <a id="release-procedure"></a>
 
 ## 릴리스 절차

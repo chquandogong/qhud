@@ -1,0 +1,113 @@
+# cargo-deny policy for qhud's Rust dependency graph.
+#
+# Scope, rationale and the update procedure are documented in
+# docs/05-ops/REPOSITORY.md ("Rust dependency policy") and the
+# "Dependency policy exceptions" section of docs/05-ops/RUNBOOK.md. Every
+# exception below names its reason, the issue that tracks it when one exists,
+# and the condition for removing it. Run locally with:
+#
+#   cargo deny --locked check
+
+[graph]
+# qhud ships Linux x86_64 and Windows x86_64 builds only; dependencies used
+# exclusively by other targets (macOS, Android, iOS, wasm) are out of scope.
+targets = [
+    "x86_64-unknown-linux-gnu",
+    "x86_64-pc-windows-msvc",
+]
+all-features = false
+no-default-features = false
+
+[output]
+feature-depth = 1
+
+[advisories]
+# Vulnerability advisories always fail the check unless listed in `ignore`.
+# Unmaintained and unsound notices fail for every crate in the graph, not only
+# direct dependencies, so a new notice is reviewed instead of silently
+# accepted. Accepted notices are listed below with a reason.
+unmaintained = "all"
+unsound = "all"
+# Yanked versions are reported but do not fail the gate: a yank is not an
+# advisory, and Dependabot plus lockfile review handle routine upgrades.
+yanked = "warn"
+# Accepted advisories. Each entry is narrow (one advisory ID) and explains why
+# no upgrade can fix it today. cargo-deny warns when an ignored advisory no
+# longer matches the graph; remove the entry when that happens.
+ignore = [
+    # glib 0.18 VariantStrIter unsoundness (GHSA-wrw7-89jp-8q8g), fixed only in
+    # glib >= 0.20. glib 0.18 comes from the GTK3 0.18 stack that Tauri 2, wry,
+    # tao, muda and libappindicator require on Linux, so it cannot be upgraded
+    # independently. qhud does not call glib::VariantStrIter.
+    { id = "RUSTSEC-2024-0429", reason = "glib 0.18 is pinned by the Tauri 2 GTK3 stack; qhud does not use VariantStrIter; tracked in #13" },
+    # proc-macro-error is unmaintained (no vulnerability). It is a build-time
+    # proc-macro dependency of glib-macros 0.18 and leaves with the same GTK3
+    # stack migration.
+    { id = "RUSTSEC-2024-0370", reason = "build-time dependency of glib-macros 0.18 (Tauri 2 GTK3 stack); removed with the #13 migration" },
+    # The rust-unic crates are unmaintained (no vulnerability). They arrive
+    # through tauri-utils -> urlpattern 0.3 and have no replacement qhud can
+    # select; remove these entries when Tauri drops urlpattern 0.3.
+    { id = "RUSTSEC-2025-0075", reason = "unic-char-range via tauri-utils -> urlpattern; unmaintained, no known vulnerability" },
+    { id = "RUSTSEC-2025-0080", reason = "unic-common via tauri-utils -> urlpattern; unmaintained, no known vulnerability" },
+    { id = "RUSTSEC-2025-0081", reason = "unic-char-property via tauri-utils -> urlpattern; unmaintained, no known vulnerability" },
+    { id = "RUSTSEC-2025-0098", reason = "unic-ucd-version via tauri-utils -> urlpattern; unmaintained, no known vulnerability" },
+    { id = "RUSTSEC-2025-0100", reason = "unic-ucd-ident via tauri-utils -> urlpattern; unmaintained, no known vulnerability" },
+]
+
+[licenses]
+# Permissive licenses accepted for any crate. A crate whose license expression
+# cannot be satisfied by this list, or by an exception below, fails the check.
+allow = [
+    "0BSD",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-3-Clause",
+    "BSL-1.0",
+    "CC0-1.0",
+    "ISC",
+    "MIT",
+    "MIT-0",
+    "Unicode-3.0",
+    "Unlicense",
+    "Zlib",
+]
+confidence-threshold = 0.93
+# MPL-2.0 is file-level copyleft. It is accepted only for these unmodified
+# transitive crates, whose source is published on crates.io; qhud does not
+# vendor or modify MPL-licensed files.
+exceptions = [
+    # Servo CSS parsing used by tauri-utils -> dom_query.
+    { allow = ["MPL-2.0"], crate = "cssparser" },
+    { allow = ["MPL-2.0"], crate = "cssparser-macros" },
+    { allow = ["MPL-2.0"], crate = "dtoa-short" },
+    { allow = ["MPL-2.0"], crate = "selectors" },
+    # Used by dirs-sys (via tauri -> dirs and qmonster -> directories).
+    { allow = ["MPL-2.0"], crate = "option-ext" },
+]
+
+[licenses.private]
+ignore = false
+registries = []
+
+[bans]
+# Duplicate versions are reported, not fatal: the Tauri, GTK and windows-rs
+# graphs carry several duplicates qhud cannot resolve. Review the warnings
+# when changing dependencies.
+multiple-versions = "warn"
+# The only version-less requirement is the qmonster Git dependency, which is
+# pinned by `rev` (enforced in [sources]) and recorded in Cargo.lock;
+# cargo-deny counts it as a wildcard. Report wildcards without failing.
+wildcards = "warn"
+highlight = "all"
+workspace-default-features = "allow"
+external-default-features = "allow"
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+# Git dependencies must name an exact commit, never a branch or tag.
+required-git-spec = "rev"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+# qmonster is the only Git dependency; its revision is pinned in
+# src-tauri/Cargo.toml and recorded in Cargo.lock.
+allow-git = ["https://github.com/chquandogong/qmonster"]
