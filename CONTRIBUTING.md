@@ -102,13 +102,50 @@ repository root and under `docs/`. Complete Korean and Simplified Chinese
 mirrors live under `docs/i18n/ko/` and `docs/i18n/zh-CN/`, preserving the
 source-relative document paths.
 
-For a documentation change, update the matching translations. Preserve command
-syntax, API identifiers, dates, requirement/decision IDs, and complete table
-rows. Historical records describe their own date; do not silently rewrite an
-old observation as a current fact. Keep the MIT license text in its original form.
+### Which documents are mirrored
+
+- **Complete three-language mirrors.** `README.en.md` with its Korean
+  `README.md` and Chinese `README.zh-CN.md`; `CHANGELOG.md`,
+  `CODE_OF_CONDUCT.md`, `CONTRIBUTING.md`, `SECURITY.md`, and `SUPPORT.md`; and
+  every Markdown file under `docs/`, including dated research, decisions,
+  retrospectives, and release notes. Each mirror is a complete translation, not
+  a summary.
+- **One canonical language, no mirror.** `AGENTS.md` and
+  `.github/copilot-instructions.md` are English instructions for coding agents.
+  The PR template and issue forms carry all three languages inline. `LICENSE`
+  keeps its original English text. Source comments, commit messages, and
+  workflow files are English.
+- **Canonical record plus summaries.** No document uses this tier today. The
+  dated internal records (office hours, research notes, feasibility report,
+  alternatives, cross-validation log, and retrospective) are the only
+  candidates. Moving one requires a decision-log entry and a change to the
+  registry in `scripts/check-repository.mjs`; until then they remain complete
+  mirrors.
+
+The repository checker holds this registry and rejects a new root Markdown page
+that it does not classify.
+
+### Keep facts mechanically comparable
+
+For a documentation change, update both translations in the same pull request.
+Translate the prose, not the facts. For every mirror,
+`node scripts/check-repository.mjs` compares the following with the English
+source and fails on any difference:
+
+- requirement, decision, risk, and assumption IDs (`FR-`, `NFR-`, `D-`, `CV-`,
+  `R1`, and `A1` forms) outside code blocks;
+- `YYYY-MM-DD` dates and the set of release versions;
+- fenced code blocks, line by line after indentation is trimmed;
+- the number of table rows and of headings.
+
+Keep command syntax, API identifiers, and inline code unchanged, and keep every
+table row. Historical records describe their own date; do not silently rewrite
+an old observation as a current fact. Keep the MIT license text in its original
+form.
 
 For documentation-only changes, run `node scripts/check-repository.mjs` to
-check mirrored file sets, versions, release-note links, and local Markdown links.
+check mirrored file sets, translation facts, versions, release-note links, and
+local Markdown links.
 Keep the version named in downloads aligned with the latest published release;
 describe later `main` behavior as unreleased until a new binary is tagged.
 
@@ -117,6 +154,51 @@ Use existing or clearly labeled demo screenshots; do not present illustrative
 usage as a live account reading. The documentation index lists every page in
 [English](docs/README.md), [Korean](docs/i18n/ko/docs/README.md), and
 [Simplified Chinese](docs/i18n/zh-CN/docs/README.md).
+
+### Pull-request translation signal
+
+On a pull request, the `docs · release metadata` check also runs the checker
+with `--base origin/<base branch>`. It fails when the pull request changes an
+English source but not both of its mirrors. Run the same comparison before
+pushing:
+
+```sh
+node scripts/check-repository.mjs --base origin/main
+```
+
+When an English-only change is correct, such as a typo, broken-link, or
+formatting fix that the translations do not share, acknowledge it with a trailer
+in any commit message of the pull request. Name the path and a reason:
+
+```text
+Translation-Exempt: docs/GUIDE.md fix an English misspelling
+```
+
+The check then passes and reports the acknowledgement as a notice. Do not use the
+trailer for a change of meaning, an added or removed fact, or a version update;
+those need both translations. A translation-only fix needs no trailer.
+
+### Reviewer checklist
+
+Before approving a documentation change, check each language version for:
+
+1. **Meaning.** The mirror makes the same claims, conditions, limits, and
+   caveats as the English source, without additions, omissions, or softening. A
+   dated observation stays dated in every language.
+2. **Facts the checker cannot see.** Numbers and units in prose, product,
+   command, and setting names, and quoted UI labels match the source.
+3. **Links.** Relative links and anchors resolve from the translated file's own
+   directory. Translated headings keep the English anchor through
+   `<!-- qhud:anchor -->` and `<a id>`, and release-note language links stay
+   absolute and tag-pinned.
+4. **Privacy.** No version adds an email address, account or organization ID,
+   token, cookie, session text, local path, or unredacted diagnostic, and
+   screenshots are demo or redacted in every language.
+5. **Acknowledgements.** Each `Translation-Exempt` trailer names the right path
+   and describes a genuinely English-only change.
+
+The [repository operations guide](docs/05-ops/REPOSITORY.md#translation-maintenance)
+records how CI enforces this and what the first trial cost.
 
 ## Submit a pull request
 

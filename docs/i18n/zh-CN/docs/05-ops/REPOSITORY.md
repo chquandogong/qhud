@@ -35,7 +35,7 @@ GitHub 目前仅允许 squash 合并，提供自动合并及分支更新，并�
 6. `Analyze (javascript-typescript)`
 7. `Analyze (actions)`
 
-前三项由 [CI](../../../../../.github/workflows/ci.yml) 提供：Ubuntu 24.04 运行 Node 系统指标测试、Rust 格式检查、将警告当作错误的 Clippy、Rust 测试和 release 构建；Windows 2022 用限定范围的依赖补丁测试和构建，再检查 `Cargo.toml`/`Cargo.lock` 没有变化；完整性作业运行[仓库检查器](../../../../../scripts/check-repository.mjs)，核对版本、发布元数据、三种语言文档的文件对应关系及本地链接。CI 在推送到 `main`、PR，以及作为发布的可复用品质门禁时运行。自 2026-10-01 起（[#15](https://github.com/chquandogong/qhud/issues/15)），`codex/**` 分支只通过其 PR 验证，分支推送不再另起第二次运行：每个提交只有一次 CI 运行，以 PR 编号为键的并发组会取消被取代的运行。需要在评审前获得 CI 时，请创建草稿 PR。七项必需检查名称保持不变。未采用让 push 与 PR 事件共用基于分支的并发组的方案，因为最终保留哪个事件的运行取决于时序。[依赖审核](../../../../../.github/workflows/dependency-review.yml) 在 PR 新增中等或更高严重程度的依赖时失败。三个 Analyze 项来自 GitHub CodeQL 默认设置，而非仓库中追踪的 CodeQL 工作流；最后确认的设置在 PR 和每周扫描 Rust、JavaScript/TypeScript、Actions。改变必需检查名称或扫描语言前，应同时查看 CodeQL 配置和实际状态检查。
+前三项由 [CI](../../../../../.github/workflows/ci.yml) 提供：Ubuntu 24.04 运行 Node 系统指标测试、Rust 格式检查、将警告当作错误的 Clippy、Rust 测试和 release 构建；Windows 2022 用限定范围的依赖补丁测试和构建，再检查 `Cargo.toml`/`Cargo.lock` 没有变化；完整性作业运行[仓库检查器](../../../../../scripts/check-repository.mjs)，核对版本、发布元数据、三种语言文档的文件对应关系、翻译事实及本地链接。CI 在推送到 `main`、PR，以及作为发布的可复用品质门禁时运行。自 2026-10-01 起（[#15](https://github.com/chquandogong/qhud/issues/15)），`codex/**` 分支只通过其 PR 验证，分支推送不再另起第二次运行：每个提交只有一次 CI 运行，以 PR 编号为键的并发组会取消被取代的运行。需要在评审前获得 CI 时，请创建草稿 PR。七项必需检查名称保持不变。未采用让 push 与 PR 事件共用基于分支的并发组的方案，因为最终保留哪个事件的运行取决于时序。[依赖审核](../../../../../.github/workflows/dependency-review.yml) 在 PR 新增中等或更高严重程度的依赖时失败。三个 Analyze 项来自 GitHub CodeQL 默认设置，而非仓库中追踪的 CodeQL 工作流；最后确认的设置在 PR 和每周扫描 Rust、JavaScript/TypeScript、Actions。改变必需检查名称或扫描语言前，应同时查看 CodeQL 配置和实际状态检查。
 
 ## Actions、依赖维护与安全
 
@@ -48,6 +48,15 @@ GitHub 目前仅允许 squash 合并，提供自动合并及分支更新，并�
 创建 PR 前先搜索已有 issue，并使变更范围明确。[PR 模板](../../../../../.github/PULL_REQUEST_TEMPLATE.md)要求填写相关 issue 或无需 issue 的原因、变更后的行为、实际验证、未经验证的行为、隐私与安全检查，以及同步三种语言的文档。解决审核对话并为严格检查更新分支，七项状态全部通过后才能 squash 合并。自动合并同样不能绕过门禁。普通问题、功能建议和支持问题使用收集版本及环境的三个 [issue 表单](../../../../../.github/ISSUE_TEMPLATE/)；空白 issue 被禁用，选择页面链接文档和私密安全报告。Issues 已启用，Wiki、Projects、Discussions 已关闭。发布前对凭据、账户数据、本地路径和截图脱敏。根据可复现性、支持版本、平台，以及问题属于 qhud 还是上游服务商，对公开 issue 分类；渠道选择见 [SUPPORT.md](../../../../../SUPPORT.md)。
 
 [发布工作流](../../../../../.github/workflows/release.yml)由 `v*` 标签触发。预检只接受稳定的 `vX.Y.Z` 标签，并要求 Cargo 与 Tauri 版本匹配、对应版本的发布说明非空、CHANGELOG 有条目、标签提交已包含在 `origin/main`。它调用完整 CI 品质门禁，打包 Linux x86_64 和 Windows x86_64，用精确版本的 `cargo-cyclonedx` 从打标签的锁定源码树生成 CycloneDX SBOM，为这三个文件生成 SHA-256 文件和构建来源证明，再验证恰好六项资产及其校验和。发布经过 `release` 环境，先创建草稿。标签查询不返回草稿，因此通过列出 release 查找草稿。已公开的 release 不会被替换，也不会在重复草稿之间擅自选择；若现有草稿资产的字节不同，也不会覆盖。资产验证后才公开草稿。最后确认的 `release` 环境要求维护者作为审批人，并允许这个单人仓库自行批准。**发布不可变设置于 2026-09-14 启用，适用于之后的新 release；既有 `v0.7.1` 不会追溯改变，其 API `immutable` 值为 `false`。** 标签保护已经禁止修改 `v*` 引用。操作顺序见[运行手册](RUNBOOK.md#release-procedure)。
+
+<!-- qhud:anchor -->
+<a id="translation-maintenance"></a>
+
+## 翻译维护
+
+翻译策略和审阅者检查清单见 [CONTRIBUTING.md](../../CONTRIBUTING.md#documentation-and-translations)。`docs · release metadata` 作业分两步执行。每次运行都会比较每个英文源文档与其镜像之间的 ID、日期、发布版本、围栏代码块、表格行和标题。在 pull request 中，第二步以 `--base origin/<基准分支>` 运行检查器；若某个已修改的英文源文档没有对应的已修改镜像，则检查失败，除非该 pull request 某个提交中的 `Translation-Exempt: <path> <reason>` trailer 指明了该路径。两步都在现有的必需检查上下文中运行，因此规则集没有改变。
+
+首次试行于 **2026-10-01** 进行，对象是 v0.7.2 发布说明（`docs/05-ops/releases/v0.7.2.md` 及其两个镜像）。机械比较显示事实一致，并排阅读也未发现含义差异，因此没有修改译文。对同一文件仅做英文修改时，基准比较失败；用 trailer 指明该路径后通过。观察到的成本：在维护者工作站上，覆盖全部 62 个镜像并包含基准比较的完整检查用时不到两秒；并排阅读三个短文件用了几分钟；排除内嵌日期的锚点 ID 后，首次完整比较没有发现任何事实偏差。检查不判断含义，因此每种语言仍需要有人审读。
 
 ## GitHub 或工作流变化后的复核
 

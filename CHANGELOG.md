@@ -28,6 +28,24 @@ All notable changes to qhud. Format: [Keep a Changelog](https://keepachangelog.c
   validated through its (draft) PR, giving one run per commit. Required check
   names are unchanged.
 
+### Dependencies
+
+- Update `base64` to 0.23, `libloading` to 0.9, `reqwest` to 0.13.5 and `toml`
+  to 1.1.6, and pin `dtolnay/rust-toolchain` to its 2026-09-12 commit. The
+  Tauri 2.12 group and `sysinfo` 0.39 are held back: they raise the minimum Rust
+  version to 1.90 and 1.95.
+
+### Repository and documentation
+
+- Define the translation workflow. CONTRIBUTING now names the pages that need
+  complete Korean and Simplified Chinese mirrors and the records that keep one
+  canonical language, and gives a reviewer checklist for meaning, links, and
+  privacy. The repository checker compares IDs, dates, release versions, code
+  blocks, table rows, and headings between every English source and its mirrors.
+  On pull requests it fails when an English source changes without both
+  translations, unless a `Translation-Exempt` commit trailer acknowledges an
+  English-only change.
+
 ## [0.7.2] — 2026-10-01
 
 ### Fixed

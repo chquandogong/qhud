@@ -17,20 +17,45 @@
 
 ## [未发布]
 
+<!-- qhud:anchor -->
+<a id="added"></a>
+
 ### 新增
 
 - 发布附带从打标签的锁定源码树、针对所有目标平台生成的 CycloneDX 1.5 JSON SBOM，
   以及 SHA-256 配套文件和构建来源证明。上传前会移除并检查本地构建路径。
+
+<!-- qhud:anchor -->
+<a id="fixed"></a>
 
 ### 修复
 
 - release workflow 通过列出 release 查找草稿。GitHub 的标签查询只返回已发布的版本，
   因此 v0.7.2 的运行在创建草稿后立即失败，随后用通过门禁的资产手动完成。
 
+<!-- qhud:anchor -->
+<a id="changed"></a>
+
 ### 变更
 
 - `codex/**` 分支推送不再单独运行 CI；分支工作通过其（草稿）PR 验证，每个提交只运行一次。
   必需检查名称不变。
+
+<!-- qhud:anchor -->
+<a id="dependencies"></a>
+
+### 依赖
+
+- 将 `base64` 更新至 0.23、`libloading` 至 0.9、`reqwest` 至 0.13.5、`toml` 至 1.1.6，
+  并将 `dtolnay/rust-toolchain` 固定到 2026-09-12 的提交。Tauri 2.12 组与 `sysinfo` 0.39
+  会把最低 Rust 版本分别提高到 1.90 和 1.95，因此暂缓。
+
+<!-- qhud:anchor -->
+<a id="repository-and-documentation"></a>
+
+### 仓库与文档
+
+- 确立翻译流程。CONTRIBUTING 现列明需要完整韩语和简体中文镜像的文档及保持单一规范语言的记录，并给出针对含义、链接和隐私的审阅者检查清单。仓库检查器比较每个英文源文档与其镜像之间的 ID、日期、发布版本、代码块、表格行和标题。在 pull request 中，若英文源文档修改而两种译文未同步，检查失败，除非 `Translation-Exempt` 提交 trailer 确认这是仅英文的修改。
 
 ## [0.7.2] — 2026-10-01
 
