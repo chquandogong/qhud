@@ -11,8 +11,8 @@
 
 ## Automated gates
 
-CI runs on pushes to `main` and `codex/**`, and on pull requests. Ubuntu
-24.04 uses the canonical pinned Git dependency and runs:
+CI runs on pushes to `main` and on pull requests; open a draft PR to
+validate a `codex/**` branch. Ubuntu 24.04 uses the canonical pinned Git dependency and runs:
 
 ```bash
 cargo fmt --all --check

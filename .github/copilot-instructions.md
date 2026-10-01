@@ -20,6 +20,8 @@ before editing. Keep each change focused and preserve unrelated work.
   `cargo test --locked --all-targets`, and `cargo build --locked --release`.
 - Update the Korean and Simplified Chinese mirror for every user-facing English
   documentation change. Preserve commands, identifiers, dates, IDs, and tables.
+  Run `node scripts/check-repository.mjs --base origin/main`; `CONTRIBUTING.md`
+  defines the mirrored set and the `Translation-Exempt` trailer.
 - Pin third-party GitHub Actions to full commit SHAs, use minimal permissions,
   and give executable jobs a timeout.
 - Do not publish releases, change repository settings, or include live-provider

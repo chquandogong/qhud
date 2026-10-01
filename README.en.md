@@ -96,6 +96,10 @@ verify the archive itself, not its `.sha256` sidecar.
 gh attestation verify ./qhud-vX.Y.Z-linux-x86_64.tar.gz --repo chquandogong/qhud
 ```
 
+Releases after v0.7.2 also include a CycloneDX SBOM,
+`qhud-vX.Y.Z-sbom.cdx.json`, with a `.sha256` file and its own attestation.
+[Verify the SBOM →](docs/GUIDE.md)
+
 ### Windows
 
 Extract the ZIP and run `qhud.exe` inside its versioned directory. Microsoft

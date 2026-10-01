@@ -16,7 +16,7 @@
 
 ## 自动化门槛
 
-CI 在推送到 `main`、`codex/**` 及 pull request 时运行。Ubuntu 24.04 使用规范固定 Git 依赖，执行：
+CI 在推送到 `main` 及 pull request 时运行；`codex/**` 分支通过草稿 PR 验证。Ubuntu 24.04 使用规范固定 Git 依赖，执行：
 
 ```bash
 cargo fmt --all --check
