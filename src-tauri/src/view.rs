@@ -302,15 +302,14 @@ pub fn attach_usage_cache(
             .duration_since(UNIX_EPOCH)
             .unwrap_or_default()
             .as_secs();
-        let fill = |slot: &mut Option<Gauge>, w: Option<&crate::usage_cache::CachedWindow>| {
-            match slot {
+        let fill =
+            |slot: &mut Option<Gauge>, w: Option<&crate::usage_cache::CachedWindow>| match slot {
                 None => *slot = w.map(to_gauge),
                 Some(g) if g.reset_unix.is_none() => {
                     g.reset_unix = w.and_then(|w| w.reset_unix).filter(|&t| t > now);
                 }
                 Some(_) => {}
-            }
-        };
+            };
         fill(&mut row.h5, cache.five_hour.as_ref());
         fill(&mut row.d7, cache.seven_day.as_ref());
         return;
@@ -980,7 +979,10 @@ mod tests {
         // Seen live 2026-10-01: an idle codex pane carried weekly 0% with
         // no reset time, and the row rendered "0%" with no countdown even
         // though the last fetch knew the reset.
-        let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
         let snapshot = |reset: u64| crate::fetched_store::CodexFetched {
             fetched_at_ms: 1_786_000_000_000,
             workspaces: vec![WorkspaceUsage {
@@ -998,14 +1000,32 @@ mod tests {
 
         let mut p = payload_of(vec![pane("codex", "codex:1:review", None, Some(0))]);
         attach_fetched_codex(&mut p, Some(&snapshot(now + 86_400)));
-        let d7 = p.quotas.iter().find(|q| q.provider == "codex").unwrap().d7.clone().unwrap();
+        let d7 = p
+            .quotas
+            .iter()
+            .find(|q| q.provider == "codex")
+            .unwrap()
+            .d7
+            .clone()
+            .unwrap();
         assert_eq!(d7.pct, 0, "the pane's number still wins");
-        assert_eq!(d7.reset_unix, Some(now + 86_400), "only the missing reset is borrowed");
+        assert_eq!(
+            d7.reset_unix,
+            Some(now + 86_400),
+            "only the missing reset is borrowed"
+        );
 
         // A snapshot reset already in the past belongs to a closed window.
         let mut stale = payload_of(vec![pane("codex", "codex:1:review", None, Some(0))]);
         attach_fetched_codex(&mut stale, Some(&snapshot(now - 3_600)));
-        let d7 = stale.quotas.iter().find(|q| q.provider == "codex").unwrap().d7.clone().unwrap();
+        let d7 = stale
+            .quotas
+            .iter()
+            .find(|q| q.provider == "codex")
+            .unwrap()
+            .d7
+            .clone()
+            .unwrap();
         assert_eq!(d7.reset_unix, None);
     }
 
