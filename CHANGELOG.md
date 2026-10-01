@@ -10,6 +10,24 @@ All notable changes to qhud. Format: [Keep a Changelog](https://keepachangelog.c
 
 ## [Unreleased]
 
+### Added
+
+- Releases attach a CycloneDX 1.5 JSON SBOM generated from the tagged, locked
+  tree for every target platform, with a SHA-256 sidecar and a build-provenance
+  attestation. Local build paths are stripped and checked before upload.
+
+### Fixed
+
+- The release workflow finds its draft by listing releases. GitHub's tag lookup
+  returns only published releases, so the v0.7.2 run failed right after
+  creating the draft and was completed by hand from the gated assets.
+
+### Changed
+
+- CI no longer runs separately on `codex/**` branch pushes; branch work is
+  validated through its (draft) PR, giving one run per commit. Required check
+  names are unchanged.
+
 ### Dependencies
 
 - Update `base64` to 0.23, `libloading` to 0.9, `reqwest` to 0.13.5 and `toml`

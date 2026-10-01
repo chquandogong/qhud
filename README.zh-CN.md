@@ -94,6 +94,8 @@ qhud 将分散在各个命令行界面的账户配额和会话状态集中到小
 gh attestation verify ./qhud-vX.Y.Z-linux-x86_64.tar.gz --repo chquandogong/qhud
 ```
 
+v0.7.2 之后的发布还包含 CycloneDX SBOM `qhud-vX.Y.Z-sbom.cdx.json`、其 `.sha256` 文件及单独的来源证明。[验证 SBOM →](docs/i18n/zh-CN/docs/GUIDE.md)
+
 ### Windows
 
 解压 ZIP，运行版本目录内的 `qhud.exe`。需要 Microsoft Edge WebView2 Runtime。便携包不注册快捷方式或自动启动。前提、源码构建与配置见 [Windows 指南](docs/i18n/zh-CN/docs/05-ops/WINDOWS.md)。

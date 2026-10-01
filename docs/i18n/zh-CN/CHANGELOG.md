@@ -18,6 +18,30 @@
 ## [未发布]
 
 <!-- qhud:anchor -->
+<a id="added"></a>
+
+### 新增
+
+- 发布附带从打标签的锁定源码树、针对所有目标平台生成的 CycloneDX 1.5 JSON SBOM，
+  以及 SHA-256 配套文件和构建来源证明。上传前会移除并检查本地构建路径。
+
+<!-- qhud:anchor -->
+<a id="fixed"></a>
+
+### 修复
+
+- release workflow 通过列出 release 查找草稿。GitHub 的标签查询只返回已发布的版本，
+  因此 v0.7.2 的运行在创建草稿后立即失败，随后用通过门禁的资产手动完成。
+
+<!-- qhud:anchor -->
+<a id="changed"></a>
+
+### 变更
+
+- `codex/**` 分支推送不再单独运行 CI；分支工作通过其（草稿）PR 验证，每个提交只运行一次。
+  必需检查名称不变。
+
+<!-- qhud:anchor -->
 <a id="dependencies"></a>
 
 ### 依赖

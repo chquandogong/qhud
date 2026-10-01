@@ -196,7 +196,8 @@ manual checklist.
 1. Update README, CHANGELOG, platform instructions, and the English, Korean,
    and Chinese `docs/05-ops/releases/v<version>.md` notes. Align the Cargo
    package, Tauri config, and Cargo lock package versions.
-2. Push a `codex/` preparation branch and open a PR. Update it against `main`
+2. Push a `codex/` preparation branch and open a PR; a branch push alone does
+   not run CI, and a draft PR is enough to start it. Update it against `main`
    for strict checks, resolve review conversations, and wait for all seven
    required statuses (Ubuntu, Windows, docs/metadata, dependency review, and
    three CodeQL Analyze contexts). The current `main` ruleset requires a PR,
@@ -209,13 +210,16 @@ manual checklist.
    matching Cargo/Tauri versions, release notes, and a CHANGELOG entry.
 4. The tag-triggered Release workflow runs the full CI quality gate, then
    packages the quality-gated Linux x86_64 binary and Windows x86_64 binary
-   as a tarball and ZIP, with SHA-256 files and provenance attestations. It
-   verifies exactly four assets and both checksums before the `release`
-   environment gates publication. As last verified on 2026-09-14, that gate
+   as a tarball and ZIP, and generates a CycloneDX SBOM from the tagged,
+   locked tree with local paths removed. Each of the three gets a SHA-256 file
+   and a provenance attestation. It verifies exactly six assets and all three
+   checksums before the `release` environment gates publication. As last verified on 2026-09-14, that gate
    needs the maintainer's review and permits self-review. After approval,
    the publish job creates or resumes a **draft first**, checks draft assets
    byte-for-byte, uploads missing assets, and publishes only the complete
-   draft. It refuses to replace an already published release.
-5. Confirm the workflow succeeded, inspect the release notes and all four
+   draft. It finds a draft by listing releases, because GitHub's tag lookup
+   returns only published releases, and refuses to replace an already
+   published release or to choose between duplicate drafts for one tag.
+5. Confirm the workflow succeeded, inspect the release notes and all six
    downloadable assets, verify checksums and attestations, and record any
    desktop integration not exercised on a live supported platform.

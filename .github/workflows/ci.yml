@@ -1,8 +1,11 @@
 name: CI
 
+# Branch work is validated only through its pull request, so a codex/**
+# branch with an open PR gets one CI run per commit rather than a push run
+# and a PR run. Open a draft PR to obtain CI before review (issue #15).
 on:
   push:
-    branches: [main, "codex/**"]
+    branches: [main]
   pull_request:
   workflow_call:
 
