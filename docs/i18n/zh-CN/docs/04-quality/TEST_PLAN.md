@@ -119,6 +119,14 @@ node scripts/check-repository.mjs
 - 确认模型名称及重置倒计时可读。服务器缺少的模型限额保持缺失，不填零、不使用其他账户用量。
 - 验证后台 CLI 探测不弹控制台窗口。原生 Windows 终端标签页监控不在当前支持范围。
 
+2026-10-01，对已发布 v0.7.3 产物进行发布后 Windows 验证。下载的
+`qhud-v0.7.3-windows-x86_64.zip` 的 SHA-256 与
+`d6268bfd696e2a9c8b17d77a6590bfb11df18d73498e9d96f627998114183d4f`
+一致。解压后的可执行文件报告版本 0.7.3。真实 Codex 账户报告原始方案值 `pro` 时，
+小组件显示 **Pro 200**。About 显示 v0.7.3，Windows 原生 WebView2 小组件显示 CPU、
+内存、GPU、磁盘和网络指标。使用一张私有本地截图确认渲染结果，随后将其删除；
+未保留真实账户截图。
+
 安装后已验证本地 Windows v0.6.0 显示、账户邮箱、模型/重置行、显式 Codex 刷新以及实际 app-server 回退。安装可执行文件 SHA-256：`3D688DB2F90E6D4780C0F016CB0CED1572189AC83FC1658F73A6688D1477F9FF`。它标识本地 MSVC 构建，不是独立的 GitHub 发布产物。
 
 最终标签 `v0.6.0`（`cfdd850`）通过 [main CI](https://github.com/chquandogong/qhud/actions/runs/34127575130) 和 [Release](https://github.com/chquandogong/qhud/actions/runs/34127575141)。两份公开压缩包均已下载并匹配 SHA-256 文件。公开 Windows 可执行文件已安装，SHA-256 为 `1233E4E7D58B8E6A0C855D3B528C7810FFD99DA476509F9C19509A3B5F094917`。安装后的公开进程能响应并发出账户行。因 Windows 会话进入锁屏，最终合成器截图仍待确认；此前本地构建的视觉检查仍是直接像素证据。

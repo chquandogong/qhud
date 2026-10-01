@@ -17,6 +17,18 @@
 
 ## [未发布]
 
+<!-- qhud:anchor -->
+<a id="verification"></a>
+
+### 验证
+
+- 记录 2026-10-01 对已发布 v0.7.3 产物进行的发布后 Windows 原生验证。下载的
+  `qhud-v0.7.3-windows-x86_64.zip` 的 SHA-256 与
+  `d6268bfd696e2a9c8b17d77a6590bfb11df18d73498e9d96f627998114183d4f`
+  一致，可执行文件报告版本 0.7.3。使用真实 Codex 账户时，原始方案值 `pro` 显示为
+  **Pro 200**；About 显示 v0.7.3；Windows 原生 WebView2 小组件显示 CPU、内存、
+  GPU、磁盘和网络指标。检查了一张私有本地截图，随后将其删除；未保留真实账户图像。
+
 ## [0.7.3] — 2026-10-01
 
 <!-- qhud:anchor -->
@@ -38,8 +50,8 @@
   [显示映射](https://github.com/openai/codex/blob/f70810bcd210ed780a3da5940e9e60f74ac8ee60/codex-rs/tui/src/subscription.rs#L10-L19)和
   [回归用例](https://github.com/openai/codex/blob/f70810bcd210ed780a3da5940e9e60f74ac8ee60/codex-rs/tui/src/status/helpers.rs#L200-L221)。
   操作者显式设置的方案标签仍然优先；未知传输值保留在详情文本中，不会变成可见徽标。
-  自动化测试覆盖三项映射、规范化、override 优先级和未知值；此显示修改尚未使用真实
-  Codex 账户或桌面运行时验证。
+  自动化测试覆盖三项映射、规范化、override 优先级和未知值。v0.7.3 发布前尚未使用真实
+  Codex 账户或桌面运行时验证；发布后的 Windows 验证记录在上方未发布条目中。
 - release workflow 通过列出 release 查找草稿。GitHub 的标签查询只返回已发布的版本，
   因此 v0.7.2 的运行在创建草稿后立即失败，随后用通过门禁的资产手动完成。
 
