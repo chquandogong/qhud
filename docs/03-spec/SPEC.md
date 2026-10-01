@@ -101,7 +101,7 @@ pane-fed gauges always belong to the default account's row.
 
 | ID    | Requirement                                                                                                                                                                                                              | Status                         |
 | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------ |
-| FR-18 | Render and interaction failures are visible outside the webview through fixed, redacted event categories; account labels, IDs, paths, usage values, and exception text never enter ambient logs; every fetch path has a command-line twin | done (v0.4.0, privacy-hardened after v0.7.1) |
+| FR-18 | Render and interaction failures are visible outside the webview through fixed, redacted event categories; account labels, IDs, paths, usage values, and exception text never enter ambient logs; library errors are reduced to a fixed category allowlist; every fetch path has a command-line twin | done (v0.4.0, privacy-hardened after v0.7.1) |
 | FR-28 | Integer-meaning wire numbers are read for their meaning, no single optional field can fail a whole response, and a rejected body reports a redacted error category and position without echoing provider values              | done (v0.5.3, privacy-hardened after v0.7.1) |
 | FR-32 | A model-only reading survives a restart with each window's own percentage and reset; a model absent from the provider's current response is never synthesized as 0%                                                      | done (v0.6.0)                  |
 

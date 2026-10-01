@@ -17,6 +17,18 @@
 
 ## [未发布]
 
+<!-- qhud:anchor -->
+<a id="security"></a>
+
+### 安全
+
+- 将其余日常库错误归约为类型化类别允许列表（`timeout`、`network`、`authentication`、
+  `rate-limited`、`not-found`、`permission-denied`、`io`、`spawn`、`unavailable`、`protocol`、
+  `parse`、`configuration`、`platform`）。HTTP 客户端、进程启动、托盘、链接打开、用量存储、
+  注册表及 qmonster 错误不再把可能含有 URL、路径或 tmux/herdr 输出的上游原文复制到 stderr
+  或 ⟳ 错误中。qmonster 启动诊断以后端、阶段、类别和窗格数量的形式恢复；持续无法连接的多路复用器
+  只在结果变化时汇总。显式 JSON 转储命令保持不变（#16）。
+
 ## [0.7.2] — 2026-10-01
 
 <!-- qhud:anchor -->

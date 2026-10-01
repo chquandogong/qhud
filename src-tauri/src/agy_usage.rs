@@ -238,7 +238,12 @@ Get-NetTCPConnection -State Listen -ErrorAction Stop |
     let output = tokio::time::timeout(std::time::Duration::from_secs(10), command.output())
         .await
         .map_err(|_| "Windows agy port discovery timed out".to_string())?
-        .map_err(|e| format!("Windows agy port discovery could not start PowerShell: {e}"))?;
+        .map_err(|e| {
+            crate::diag::failure(
+                "Windows agy port discovery PowerShell start",
+                crate::diag::spawn(&e),
+            )
+        })?;
     if !output.status.success() {
         return Err("Windows could not read agy listening ports with Get-NetTCPConnection".into());
     }
@@ -270,7 +275,7 @@ pub async fn fetch(now_ms: u64) -> Result<CachedUsage, String> {
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(5))
         .build()
-        .map_err(|e| format!("client build failed: {e}"))?;
+        .map_err(|e| crate::diag::failure("HTTP client build", crate::diag::reqwest(&e)))?;
     let mut last = String::new();
     for port in ports {
         let url = format!("http://127.0.0.1:{port}{RPC_PATH}");
@@ -289,7 +294,9 @@ pub async fn fetch(now_ms: u64) -> Result<CachedUsage, String> {
                 }
                 last = format!("port {port}: body did not parse");
             }
-            Err(e) => last = format!("port {port}: {e}"),
+            // The port is a local integer; the reqwest text (which embeds
+            // the URL) is reduced to its category.
+            Err(e) => last = format!("port {port}: request failed ({})", crate::diag::reqwest(&e)),
         }
     }
     Err(if last.is_empty() {

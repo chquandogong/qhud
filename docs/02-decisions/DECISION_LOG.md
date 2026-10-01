@@ -510,3 +510,11 @@ Format: context → options → decision → rationale → residual risk.
 - **Evidence**: email, token, path, account, and workspace canaries are rejected
   or absent in formatter tests. Repository checks, Linux/Windows CI, CodeQL, and
   an independent log-flow review are required gates for the complete change.
+- **Extension (unreleased, #16)**: library errors from the HTTP client,
+  process start, tray, opener, file I/O, JSON, and qmonster mux and
+  configuration paths are reduced to one fixed category allowlist
+  (`src-tauri/src/diag.rs`) behind a `'static` context. qmonster startup
+  diagnosis returns as backend, stage, category, and pane counts; a mux that
+  stays unreachable is reported once per changed outcome. Canary tests cover
+  email, token-like text, POSIX and Windows paths, account and workspace IDs,
+  and pane labels.

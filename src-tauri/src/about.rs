@@ -38,7 +38,8 @@ fn link_target(target: &str) -> Result<&'static str, String> {
 pub fn open_about_link(app: tauri::AppHandle, target: String) -> Result<(), String> {
     app.opener()
         .open_url(link_target(&target)?, None::<&str>)
-        .map_err(|e| e.to_string())
+        // The opener's error text can name the handler binary or URL.
+        .map_err(|_| crate::diag::failure("open About link", crate::diag::ErrorKind::Platform))
 }
 
 #[cfg(test)]

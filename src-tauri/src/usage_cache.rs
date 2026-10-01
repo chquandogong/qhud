@@ -312,22 +312,8 @@ fn parse_utilization(json: &str, fetched_at_ms: u64) -> Option<CachedUsage> {
 /// can quote the unexpected JSON value, and provider bodies carry account UUIDs
 /// and emails, so the raw error text must never reach stderr or the UI.
 pub fn parse_utilization_detailed(json: &str, fetched_at_ms: u64) -> Result<CachedUsage, String> {
-    let util: Utilization = serde_json::from_str(json).map_err(redacted_json_error)?;
+    let util: Utilization = serde_json::from_str(json).map_err(|e| crate::diag::json(&e))?;
     Ok(build(util, fetched_at_ms, None))
-}
-
-fn redacted_json_error(error: serde_json::Error) -> String {
-    let category = match error.classify() {
-        serde_json::error::Category::Io => "I/O error",
-        serde_json::error::Category::Syntax => "JSON syntax error",
-        serde_json::error::Category::Data => "schema mismatch",
-        serde_json::error::Category::Eof => "incomplete JSON",
-    };
-    format!(
-        "{category} at line {}, column {}",
-        error.line(),
-        error.column()
-    )
 }
 
 fn build(util: Utilization, fetched_at_ms: u64, account_id: Option<String>) -> CachedUsage {

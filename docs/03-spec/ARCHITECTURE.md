@@ -392,8 +392,12 @@ one command and prove that rendering or interaction stages ran: strip and label
 completion, pointer and selection delivery, zoom changes, and frontend-error
 presence. The Rust boundary accepts only typed enums, bounded integers, and
 booleans, so account labels, workspace and pane IDs, paths, usage values, and
-exception text cannot enter logs. These events still do not prove paint, which
-is why the frame guard exists.
+exception text cannot enter logs. Library failures follow the same rule:
+`src-tauri/src/diag.rs` reduces HTTP client, process, file, tray, JSON, and
+qmonster errors to a fixed category allowlist behind a `'static` context, so an
+upstream `Display` string, URL, path, response fragment, or pane label never
+reaches stderr or a UI error. These events still do not prove paint, which is
+why the frame guard exists.
 
 A one-second ticker re-renders countdowns and marks the footer stale if no
 payload has arrived for eight seconds, so a stopped backend says so instead of

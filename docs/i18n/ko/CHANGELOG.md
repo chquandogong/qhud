@@ -16,6 +16,19 @@ qhud의 모든 주요 변경 사항을 기록합니다. 형식: [Keep a Changelo
 
 ## [미출시]
 
+<!-- qhud:anchor -->
+<a id="security"></a>
+
+### 보안
+
+- 남아 있던 평상시 라이브러리 오류를 형식화된 범주 허용 목록(`timeout`, `network`,
+  `authentication`, `rate-limited`, `not-found`, `permission-denied`, `io`, `spawn`,
+  `unavailable`, `protocol`, `parse`, `configuration`, `platform`)으로 축소했습니다. HTTP
+  클라이언트, 프로세스 시작, 트레이, 링크 열기, 사용량 저장소, 레지스트리, qmonster 오류는 URL,
+  경로, tmux/herdr 출력을 담을 수 있는 상위 원문을 더 이상 stderr나 ⟳ 오류에 복사하지 않습니다.
+  qmonster 시작 진단은 백엔드, 단계, 범주, 창 개수로 다시 제공되며, 계속 연결되지 않는
+  멀티플렉서는 결과가 바뀔 때만 요약합니다. 명시적 JSON dump 명령은 바뀌지 않았습니다(#16).
+
 ## [0.7.2] — 2026-10-01
 
 <!-- qhud:anchor -->

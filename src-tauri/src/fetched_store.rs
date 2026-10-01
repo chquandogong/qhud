@@ -68,9 +68,11 @@ pub fn load_from(path: &std::path::Path) -> FetchedStore {
 
 pub fn save_to(path: &std::path::Path, store: &FetchedStore) -> Result<(), String> {
     if let Some(dir) = path.parent() {
-        std::fs::create_dir_all(dir).map_err(|e| format!("create store directory: {e}"))?;
+        std::fs::create_dir_all(dir)
+            .map_err(|e| crate::diag::failure("create store directory", crate::diag::io(&e)))?;
     }
-    let json = serde_json::to_string_pretty(store).map_err(|e| format!("serialize: {e}"))?;
+    let json = serde_json::to_string_pretty(store)
+        .map_err(|e| format!("serialize store: {}", crate::diag::json(&e)))?;
     // Same-directory temp + rename, so the 2 s poll loop can never read
     // a torn file (rename within one filesystem is atomic to readers).
     let name = path
@@ -78,8 +80,10 @@ pub fn save_to(path: &std::path::Path, store: &FetchedStore) -> Result<(), Strin
         .and_then(|n| n.to_str())
         .unwrap_or("fetched-usage.json");
     let tmp = path.with_file_name(format!("{name}.tmp.{}", std::process::id()));
-    std::fs::write(&tmp, json).map_err(|e| format!("write store: {e}"))?;
-    std::fs::rename(&tmp, path).map_err(|e| format!("rename into place: {e}"))
+    std::fs::write(&tmp, json)
+        .map_err(|e| crate::diag::failure("write store", crate::diag::io(&e)))?;
+    std::fs::rename(&tmp, path)
+        .map_err(|e| crate::diag::failure("rename store into place", crate::diag::io(&e)))
 }
 
 pub fn load() -> FetchedStore {

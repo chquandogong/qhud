@@ -10,6 +10,18 @@ All notable changes to qhud. Format: [Keep a Changelog](https://keepachangelog.c
 
 ## [Unreleased]
 
+### Security
+
+- Reduce the remaining ambient library errors to a typed category allowlist
+  (`timeout`, `network`, `authentication`, `rate-limited`, `not-found`,
+  `permission-denied`, `io`, `spawn`, `unavailable`, `protocol`, `parse`,
+  `configuration`, `platform`). HTTP client, process start, tray, opener,
+  usage-store, registry, and qmonster errors no longer copy upstream text, which
+  can embed a URL, path, or tmux/herdr output, into stderr or a ⟳ error. qmonster
+  startup diagnosis returns as backend, stage, category, and pane-count lines,
+  and a mux that stays unreachable is summarized only when the outcome changes.
+  Explicit JSON dump commands are unchanged (#16).
+
 ## [0.7.2] — 2026-10-01
 
 ### Fixed

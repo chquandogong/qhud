@@ -158,7 +158,7 @@ pub fn forget(existing_json: &str, provider: &str, key: &str) -> Result<String, 
         serde_json::json!({})
     } else {
         serde_json::from_str(existing_json)
-            .map_err(|e| format!("registry file is not valid JSON: {e}"))?
+            .map_err(|e| format!("registry file is not valid JSON: {}", crate::diag::json(&e)))?
     };
     if !doc.is_object() {
         return Err("registry file is not a JSON object".into());
@@ -175,7 +175,8 @@ pub fn forget(existing_json: &str, provider: &str, key: &str) -> Result<String, 
     if !arr.iter().any(|v| v.as_str() == Some(entry.as_str())) {
         arr.push(serde_json::Value::String(entry));
     }
-    serde_json::to_string_pretty(&doc).map_err(|e| e.to_string())
+    serde_json::to_string_pretty(&doc)
+        .map_err(|e| format!("registry serialize failed: {}", crate::diag::json(&e)))
 }
 
 fn path() -> Option<std::path::PathBuf> {
@@ -197,14 +198,17 @@ pub fn load() -> Registry {
 pub fn forget_and_save(provider: &str, key: &str) -> Result<(), String> {
     let p = path().ok_or("qhud configuration directory is unavailable")?;
     if let Some(dir) = p.parent() {
-        std::fs::create_dir_all(dir)
-            .map_err(|e| format!("cannot create qhud configuration directory: {e}"))?;
+        std::fs::create_dir_all(dir).map_err(|e| {
+            crate::diag::failure("create qhud configuration directory", crate::diag::io(&e))
+        })?;
     }
     let existing = std::fs::read_to_string(&p).unwrap_or_default();
     let next = forget(&existing, provider, key)?;
     let tmp = p.with_extension("json.tmp");
-    std::fs::write(&tmp, next).map_err(|e| format!("write failed: {e}"))?;
-    std::fs::rename(&tmp, &p).map_err(|e| format!("rename failed: {e}"))
+    std::fs::write(&tmp, next)
+        .map_err(|e| crate::diag::failure("registry write", crate::diag::io(&e)))?;
+    std::fs::rename(&tmp, &p)
+        .map_err(|e| crate::diag::failure("registry rename", crate::diag::io(&e)))
 }
 
 #[cfg(test)]

@@ -442,7 +442,7 @@ pub async fn fetch_via_app_server() -> Result<WorkspaceUsage, String> {
         .stderr(std::process::Stdio::null())
         .kill_on_drop(true)
         .spawn()
-        .map_err(|e| format!("codex app-server spawn failed: {e}"))?;
+        .map_err(|e| crate::diag::failure("codex app-server spawn", crate::diag::spawn(&e)))?;
 
     let mut stdin = child.stdin.take().ok_or("no stdin handle")?;
     let stdout = child.stdout.take().ok_or("no stdout handle")?;
@@ -458,7 +458,7 @@ pub async fn fetch_via_app_server() -> Result<WorkspaceUsage, String> {
     stdin
         .write_all(handshake.as_bytes())
         .await
-        .map_err(|e| format!("app-server write failed: {e}"))?;
+        .map_err(|e| crate::diag::failure("app-server write", crate::diag::io(&e)))?;
     // Keep stdin open: the server exits on EOF, possibly before answering.
 
     let read = async {
@@ -629,7 +629,7 @@ async fn get(
     let resp = req
         .send()
         .await
-        .map_err(|e| format!("request failed: {e}"))?;
+        .map_err(|e| crate::diag::failure("Codex request", crate::diag::reqwest(&e)))?;
     let status = resp.status();
     if status == reqwest::StatusCode::UNAUTHORIZED {
         // Deliberately NOT refreshing: Codex refresh tokens are single-use
@@ -637,9 +637,15 @@ async fn get(
         return Err("Codex token rejected (401) — run `codex login`".into());
     }
     if !status.is_success() {
-        return Err(format!("Codex usage returned HTTP {}", status.as_u16()));
+        let code = status.as_u16();
+        return Err(format!(
+            "Codex usage returned HTTP {code} ({})",
+            crate::diag::http_status(code)
+        ));
     }
-    resp.text().await.map_err(|e| format!("read failed: {e}"))
+    resp.text()
+        .await
+        .map_err(|e| crate::diag::failure("Codex response read", crate::diag::reqwest(&e)))
 }
 
 /// Fetches usage for every workspace the signed-in Codex login owns.
@@ -654,7 +660,7 @@ pub async fn fetch_all_workspaces() -> Result<Vec<WorkspaceUsage>, String> {
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(10))
         .build()
-        .map_err(|e| format!("client build failed: {e}"))?;
+        .map_err(|e| crate::diag::failure("HTTP client build", crate::diag::reqwest(&e)))?;
 
     eprintln!("qhud: codex credentials found: {}", creds.len());
     let mut out = Vec::new();

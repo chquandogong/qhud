@@ -23,10 +23,14 @@ const USAGE_URL: &str = "https://api.anthropic.com/api/oauth/usage";
 /// Reads only `claudeAiOauth.accessToken`. The refresh token sitting beside it
 /// is never read, so it cannot be spent or leaked.
 fn read_token_at(cred: &std::path::Path) -> Result<String, String> {
-    let body = std::fs::read_to_string(cred)
-        .map_err(|_| "Claude credentials unavailable — run `claude` and sign in".to_string())?;
-    let v: serde_json::Value =
-        serde_json::from_str(&body).map_err(|e| format!("credentials are not valid JSON: {e}"))?;
+    let body = std::fs::read_to_string(cred).map_err(|e| {
+        format!(
+            "Claude credentials unavailable ({}) — run `claude` and sign in",
+            crate::diag::io(&e)
+        )
+    })?;
+    let v: serde_json::Value = serde_json::from_str(&body)
+        .map_err(|e| format!("credentials are not valid JSON: {}", crate::diag::json(&e)))?;
     v.get("claudeAiOauth")
         .and_then(|o| o.get("accessToken"))
         .and_then(|t| t.as_str())
@@ -141,7 +145,7 @@ pub async fn fetch_from(cred: &std::path::Path, now_ms: u64) -> Result<CachedUsa
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(10))
         .build()
-        .map_err(|e| format!("client build failed: {e}"))?;
+        .map_err(|e| crate::diag::failure("HTTP client build", crate::diag::reqwest(&e)))?;
     let resp = client
         .get(USAGE_URL)
         .bearer_auth(&token)
@@ -150,7 +154,7 @@ pub async fn fetch_from(cred: &std::path::Path, now_ms: u64) -> Result<CachedUsa
         .header("accept", "application/json")
         .send()
         .await
-        .map_err(|e| format!("request failed: {e}"))?;
+        .map_err(|e| crate::diag::failure("usage request", crate::diag::reqwest(&e)))?;
 
     let status = resp.status();
     if status == reqwest::StatusCode::UNAUTHORIZED {
@@ -164,9 +168,16 @@ pub async fn fetch_from(cred: &std::path::Path, now_ms: u64) -> Result<CachedUsa
         return Err("rate limited (429)".into());
     }
     if !status.is_success() {
-        return Err(format!("usage endpoint returned HTTP {}", status.as_u16()));
+        let code = status.as_u16();
+        return Err(format!(
+            "usage endpoint returned HTTP {code} ({})",
+            crate::diag::http_status(code)
+        ));
     }
-    let body = resp.text().await.map_err(|e| format!("read failed: {e}"))?;
+    let body = resp
+        .text()
+        .await
+        .map_err(|e| crate::diag::failure("usage response read", crate::diag::reqwest(&e)))?;
     // The body carries account uuid and email — never log it. The env-gated
     // diagnostic reports only field presence, for diagnosing shape drift:
     // QHUD_EXTRA_DIAG=1 qhud --claude-usage
@@ -183,6 +194,34 @@ pub async fn fetch_from(cred: &std::path::Path, now_ms: u64) -> Result<CachedUsa
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn credential_errors_name_a_category_not_the_path_or_token() {
+        let missing = std::path::Path::new("/nonexistent/person@example.com/.credentials.json");
+        let err = super::read_token_at(missing).expect_err("the file does not exist");
+        assert!(err.contains("(not-found)"), "got {err}");
+        assert!(!err.contains("person@example.com"), "path leaked: {err}");
+        assert!(!err.contains("/nonexistent"), "path leaked: {err}");
+
+        let dir = std::env::temp_dir().join(format!("qhud-cred-canary-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let cred = dir.join(".credentials.json");
+        // Truncated mid-object: serde reports EOF, never the token text.
+        std::fs::write(
+            &cred,
+            r#"{"claudeAiOauth":{"accessToken":"sk-ant-oat01-CANARYTOKEN","email":"person@example.com""#,
+        )
+        .unwrap();
+        let err = super::read_token_at(&cred).expect_err("truncated JSON is rejected");
+        std::fs::remove_dir_all(&dir).ok();
+        assert!(
+            err.starts_with("credentials are not valid JSON: "),
+            "got {err}"
+        );
+        assert!(!err.contains("CANARYTOKEN"), "token leaked: {err}");
+        assert!(!err.contains('@'), "email leaked: {err}");
+        assert!(!err.contains("qhud-cred-canary"), "path leaked: {err}");
+    }
+
     #[test]
     fn user_agent_is_claude_code_shaped() {
         // Wrong or absent UA earns a 429 with no Retry-After, so the shape

@@ -72,6 +72,23 @@ cargo build --release --locked # binary at target/release/qhud
   to a viewable image. A `framestall:` breadcrumb means the built-in
   watchdog caught a frozen frame clock and is healing (jiggle →
   re-exec).
+- **Reading a failure line.** Normal stderr and the ⟳ error tooltip never
+  copy a library error's own text: reqwest, process, tray, file, JSON, and
+  qmonster errors can embed a URL, path, response fragment, or tmux/herdr
+  output. A failure is a fixed qhud context plus one category in parentheses:
+  `timeout`, `network`, `authentication`, `rate-limited`, `not-found`, `permission-denied`, `io`, `spawn`, `unavailable`, `protocol`, `parse`, `configuration`, or `platform`. An HTTP status code or a JSON line and column may appear beside
+  it. qmonster startup lines name only the backend with a count or category:
+  `live via herdr (8 panes)`, `herdr source lost (unavailable)`,
+  `failed to read qmonster config (configuration); using defaults`,
+  `tmux startup notice: control-mode attach failed, polling this session`, and,
+  only when the outcome changes while no mux answers,
+  `no live mux source (2 tried: herdr=observe spawn, tmux=observe unavailable)`.
+  `spawn` means the mux client could not start or its command exchange broke;
+  `unavailable` means it ran but reported no usable server. To see a tool's own
+  message, run that tool directly (for example `tmux list-sessions`) and keep
+  its output private. Explicit JSON commands (`--dump`, `--claude-usage`,
+  `--codex-usage`, `--agy-usage`, `--codex-appserver`) still print their full
+  payloads on stdout; redact those before sharing.
 - **Fetch paths without clicking** (a keep-below widget does not receive
   synthesized pointer input, D-010):
   `qhud --refresh-all`, `qhud --refresh-claude` and `qhud --fetch-codex`
