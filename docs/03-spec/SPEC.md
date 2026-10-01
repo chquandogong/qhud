@@ -69,6 +69,7 @@ is the mapping every other document should follow.
 | FR-37 | Sample local system counters every 2 s and retain at most 30 points (~60 s); pause while hidden/minimized and reset rate baselines after resume or a long gap                    | done (v0.7.0)                                   |
 | FR-38 | Unsupported, warming-up or failed counters remain absent/gapped rather than becoming zero; a valid idle reading remains zero                                                     | done (v0.7.0; Intel Linux GPU added v0.7.1)     |
 | FR-39 | Selecting the qhud name opens an accessible About dialog whose version comes from the build and whose external links are restricted to the declared homepage and repository      | done (v0.7.0)                                   |
+| FR-40 | Codex plan badges map reviewed wire values `prolite`, `pro`, and `promax` to Pro 100, Pro 200, and Pro 500; account/workspace overrides win and unknown values remain detail-only | done                                            |
 
 ### Whose numbers these are
 
@@ -269,13 +270,18 @@ combined payload.
   CLI's own on-disk copy; `fetched` is qhud's last explicit refresh. Anything
   but `pane` must render its age, and an absent origin means the row makes no
   claim at all.
+- **Plan display names use a reviewed presentation mapping.** The raw
+  `plan_type` remains unchanged in the payload. For Codex, `prolite`, `pro`, and
+  `promax` display as Pro 100, Pro 200, and Pro 500. Explicit `plans` and
+  `workspace_plans` registry values take precedence; unknown wire values remain
+  available only in details and tooltips.
 - **Money is minor units** plus a currency and an exponent, so no float money
   round-trips.
 
 ## Verification
 
 Automated gates cover format, lint with warnings as errors, Rust tests, the
-Node system-metrics tests and release builds. The v0.7.1 tree passed 127 Rust
+Node frontend-helper tests and release builds. The v0.7.1 tree passed 127 Rust
 tests and 6 Node tests locally on Ubuntu; dated evidence stays in TEST_PLAN.
 
 Interaction claims have a protocol (D-010): synthetic X11 input alone is

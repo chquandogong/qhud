@@ -84,6 +84,8 @@ sibling checkout.
   disk/network filtering, adapter selection and platform GPU parsers.
   `tests/system-metrics.test.cjs` covers
   null-versus-zero formatting, fixed history slots and adaptive rate scales.
+  It also asserts the exact Codex plan badge strings Pro 100, Pro 200 and
+  Pro 500, explicit-override precedence, and suppression of unknown wire values.
 - About tests reject every link target except the named author and repository
   destinations; the version itself comes from Cargo build metadata.
 

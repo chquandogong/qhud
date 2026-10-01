@@ -16,6 +16,8 @@ qhud의 모든 주요 변경 사항을 기록합니다. 형식: [Keep a Changelo
 
 ## [미출시]
 
+## [0.7.3] — 2026-10-01
+
 <!-- qhud:anchor -->
 <a id="added"></a>
 
@@ -29,6 +31,15 @@ qhud의 모든 주요 변경 사항을 기록합니다. 형식: [Keep a Changelo
 
 ### 수정
 
+- 검토된 Codex wire 값에서 현재 구독 이름을 표시합니다. `prolite`는 **Pro 100**,
+  `pro`는 **Pro 200**, `promax`는 **Pro 500**으로 표시하며, upstream의
+  [wire enum](https://github.com/openai/codex/blob/f70810bcd210ed780a3da5940e9e60f74ac8ee60/codex-rs/protocol/src/auth.rs#L73-L95),
+  [표시 매핑](https://github.com/openai/codex/blob/f70810bcd210ed780a3da5940e9e60f74ac8ee60/codex-rs/tui/src/subscription.rs#L10-L19),
+  [회귀 사례](https://github.com/openai/codex/blob/f70810bcd210ed780a3da5940e9e60f74ac8ee60/codex-rs/tui/src/status/helpers.rs#L200-L221)을 따릅니다.
+  운영자가 명시한 요금제 레이블은 계속 우선하며, 알 수 없는 wire 값은 상세 텍스트에
+  남기되 화면 배지로 만들지 않습니다. 자동 테스트는 세 매핑, 정규화, override 우선순위,
+  알 수 없는 값을 다룹니다. 이 표시 변경은 아직 실제 Codex 계정이나 데스크톱 실행 환경에서
+  검증하지 않았습니다.
 - release workflow가 릴리스 목록에서 초안을 찾습니다. GitHub의 태그 조회는 공개된 릴리스만
   반환하므로 v0.7.2 실행은 초안을 만든 직후 실패했고, 검사를 통과한 자산으로 수동 완료했습니다.
 
@@ -388,7 +399,10 @@ NVML을 계속 사용합니다. Ubuntu 24.04에서 Intel Arc(Meteor Lake, i915)�
 - **공급자별 활성 로그인 하나.** 세 공급자 모두 활성 자격 증명 하나를 저장한다. `codex login`은 이전 토큰을 취소하므로 보관된 자격 증명 파일은 401을 반환한다. CLI 자격 증명 경로로 같은 공급자의 계정 두 개를 동시에 표시할 수 없다.
 - **Codex는 토큰 범위를 다른 작업공간으로 바꾸지 않는다.** `chatgpt-account-id`는 무시된다. 다른 작업공간을 설명하는 본문은 잘못된 레이블을 붙이지 않고 버린다.
 - **모델별 기간은 ⟳ 직후에만 최신이다.**
-- 전송 `plan_type` 값은 표시 이름이 아니다(`prolite`는 ChatGPT Pro 5x, `team`은 ChatGPT Business로 표시). 표시 이름은 레지스트리에서 가져오며 전송 값으로 “정정”해서는 안 된다.
+- v0.4.0 당시 전송 `plan_type` 값은 표시 이름으로 취급하지 않았습니다. 당시 운영자 레지스트리
+  레이블은 `prolite`를 ChatGPT Pro 5x, `team`을 ChatGPT Business로 표시했습니다. v0.7.3은
+  명시적 레지스트리 override를 유지하면서 검토된 Codex 값에 Pro 100 / Pro 200 / Pro 500
+  매핑을 적용해 그 정책을 대체합니다.
 
 ## [0.3.2] — 2026-08-06
 

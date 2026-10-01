@@ -23,20 +23,20 @@
 | Windows x64 | 解压 ZIP，运行解压目录内的 `qhud.exe`。 | Microsoft Edge WebView2 Runtime。见 [Windows 设置](05-ops/WINDOWS.md)。 |
 | Linux x86_64 | 解压 tarball，安装版本目录内的二进制。 | GTK/WebKitGTK；参考系统为 Ubuntu 24.04。见 [Linux 运维](05-ops/RUNBOOK.md)。 |
 
-Linux v0.7.2 下载两个文件后：
+Linux v0.7.3 下载两个文件后：
 
 ```sh
-sha256sum -c qhud-v0.7.2-linux-x86_64.tar.gz.sha256
-tar -xzf qhud-v0.7.2-linux-x86_64.tar.gz
-install -Dm755 qhud-v0.7.2-linux-x86_64/qhud "$HOME/.local/bin/qhud"
+sha256sum -c qhud-v0.7.3-linux-x86_64.tar.gz.sha256
+tar -xzf qhud-v0.7.3-linux-x86_64.tar.gz
+install -Dm755 qhud-v0.7.3-linux-x86_64/qhud "$HOME/.local/bin/qhud"
 "$HOME/.local/bin/qhud"
 ```
 
 Windows 下载后，将显示的摘要与 `.sha256` 文件比较：
 
 ```powershell
-Get-FileHash -Algorithm SHA256 .\qhud-v0.7.2-windows-x86_64.zip
-Get-Content .\qhud-v0.7.2-windows-x86_64.zip.sha256
+Get-FileHash -Algorithm SHA256 .\qhud-v0.7.3-windows-x86_64.zip
+Get-Content .\qhud-v0.7.3-windows-x86_64.zip.sha256
 ```
 
 当前 release workflow 发布的压缩包还带 GitHub 构建来源证明。安装 GitHub CLI，将文件名替换为实际下载文件，验证压缩包本身而非 `.sha256` 配套文件：
@@ -169,18 +169,23 @@ qhud 将配置保存在源码仓库外：
   "labels": {
     "codex:YOUR_ACCOUNT_ID": "work@example.com"
   },
+  "plans": {
+    "codex:YOUR_ACCOUNT_ID": "Pro 200"
+  },
   "workspace_names": {
-    "YOUR_ACCOUNT_ID": "Work"
+    "YOUR_OTHER_WORKSPACE_ID": "Work"
   },
   "workspace_plans": {
-    "YOUR_ACCOUNT_ID": "My workspace plan"
+    "YOUR_OTHER_WORKSPACE_ID": "Pro 500"
   },
   "claude_config_dirs": ["~/claude-personal"],
   "codex_homes": ["~/.codex-personal"]
 }
 ```
 
-Codex 会自动显示本地 `auth.json` ID 令牌中的邮箱。这只是尽力读取的显示信息；邮箱缺失或格式错误时回退到账户/工作区 ID。新电脑上的普通邮箱显示不再需要单独的标签文件。匹配的 `labels` 条目仍优先于邮箱，两者均不改变用于区分用量的账户/工作区身份。套餐标签应由操作者提供，不要根据传输枚举猜测。
+Codex 会自动显示本地 `auth.json` ID 令牌中的邮箱。这只是尽力读取的显示信息；邮箱缺失或格式错误时回退到账户/工作区 ID。新电脑上的普通邮箱显示不再需要单独的标签文件。匹配的 `labels` 条目仍优先于邮箱，两者均不改变用于区分用量的账户/工作区身份。
+
+对于 Codex 套餐标签，qhud 对三个已审查的传输值采用当前上游状态名称：`prolite` 显示为 **Pro 100**，`pro` 显示为 **Pro 200**，`promax` 显示为 **Pro 500**。显式 `plans` 条目覆盖账户标签，`workspace_plans` 覆盖匹配的工作区标签。未知传输值只保留在展开详情和工具提示中，不会成为可见套餐标签。
 
 <!-- qhud:anchor -->
 <a id="more-than-one-account"></a>

@@ -12,9 +12,10 @@
 
 qhud 全部文档均提供三种语言，涵盖首次安装、架构、决策和发布历史。
 
-最新下载是 v0.7.1。`main` 还包含之后未发布的安全与仓库维护修改；源码状态见
-[更新日志](../CHANGELOG.md)，已发布二进制包见
-[v0.7.1 发布说明](05-ops/releases/v0.7.1.md)。早期研究和带日期的实机验证保留当时的范围。
+最新下载是 v0.7.3。该版本自动显示经过核对的 Codex Pro 100、Pro 200 与 Pro 500
+方案名称，并打包 v0.7.2 之后完成的安全、依赖、release workflow 与翻译治理工作。
+准确范围与验证限制见 [v0.7.3 发布说明](05-ops/releases/v0.7.3.md)。早期研究和带日期的
+实机验证保留当时的范围。
 
 <!-- qhud:anchor -->
 <a id="start-using-qhud"></a>
@@ -69,6 +70,7 @@ qhud 全部文档均提供三种语言，涵盖首次安装、架构、决策和
 | [v0.7.0 发布说明](05-ops/releases/v0.7.0.md) | 低调的系统用量历史、条件 GPU 测量与 About 信息。 |
 | [v0.7.1 发布说明](05-ops/releases/v0.7.1.md) | 通过空闲驻留计数器在 Linux 上测量 Intel GPU。 |
 | [v0.7.2 发布说明](05-ops/releases/v0.7.2.md) | 窗格读数缺少重置时间时保留倒计时；首个包含 v0.7.1 之后安全工作的版本。 |
+| [v0.7.3 发布说明](05-ops/releases/v0.7.3.md) | 自动显示 Pro 100/200/500 方案名称，并包含 v0.7.2 之后的安全、依赖、release workflow 与翻译工作。 |
 
 <!-- qhud:anchor -->
 <a id="languages-and-source-fidelity"></a>

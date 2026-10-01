@@ -20,20 +20,20 @@ contains a versioned directory and comes with a separate SHA-256 file.
 | Windows x64 | Extract the ZIP; run `qhud.exe` inside the extracted directory. | Microsoft Edge WebView2 Runtime. See [Windows setup](05-ops/WINDOWS.md). |
 | Linux x86_64 | Extract the tarball; install the binary inside its versioned directory. | GTK/WebKitGTK; Ubuntu 24.04 is the reference system. See [Linux operations](05-ops/RUNBOOK.md). |
 
-For Linux v0.7.2, after downloading both files:
+For Linux v0.7.3, after downloading both files:
 
 ```sh
-sha256sum -c qhud-v0.7.2-linux-x86_64.tar.gz.sha256
-tar -xzf qhud-v0.7.2-linux-x86_64.tar.gz
-install -Dm755 qhud-v0.7.2-linux-x86_64/qhud "$HOME/.local/bin/qhud"
+sha256sum -c qhud-v0.7.3-linux-x86_64.tar.gz.sha256
+tar -xzf qhud-v0.7.3-linux-x86_64.tar.gz
+install -Dm755 qhud-v0.7.3-linux-x86_64/qhud "$HOME/.local/bin/qhud"
 "$HOME/.local/bin/qhud"
 ```
 
 For a Windows download, compare the displayed digest with the `.sha256` file:
 
 ```powershell
-Get-FileHash -Algorithm SHA256 .\qhud-v0.7.2-windows-x86_64.zip
-Get-Content .\qhud-v0.7.2-windows-x86_64.zip.sha256
+Get-FileHash -Algorithm SHA256 .\qhud-v0.7.3-windows-x86_64.zip
+Get-Content .\qhud-v0.7.3-windows-x86_64.zip.sha256
 ```
 
 Archives published by the current release workflow also carry GitHub build
@@ -194,11 +194,14 @@ than discarding other entries.
   "labels": {
     "codex:YOUR_ACCOUNT_ID": "work@example.com"
   },
+  "plans": {
+    "codex:YOUR_ACCOUNT_ID": "Pro 200"
+  },
   "workspace_names": {
-    "YOUR_ACCOUNT_ID": "Work"
+    "YOUR_OTHER_WORKSPACE_ID": "Work"
   },
   "workspace_plans": {
-    "YOUR_ACCOUNT_ID": "My workspace plan"
+    "YOUR_OTHER_WORKSPACE_ID": "Pro 500"
   },
   "claude_config_dirs": ["~/claude-personal"],
   "codex_homes": ["~/.codex-personal"]
@@ -210,7 +213,13 @@ This is a best-effort display hint: missing or malformed email data falls back
 to the account/workspace ID. No separate label file is needed for ordinary email
 display on a new computer. A matching `labels` entry still takes precedence over
 the email, and neither changes the account/workspace identity used for usage.
-Keep plan labels operator-supplied rather than guessing them from wire enums.
+
+For Codex plan badges, qhud follows the current upstream status names for three
+reviewed wire values: `prolite` becomes **Pro 100**, `pro` becomes **Pro 200**,
+and `promax` becomes **Pro 500**. An explicit `plans` entry overrides the
+account badge, and `workspace_plans` overrides the matching workspace badge.
+Unknown wire values remain available in expanded details and tooltips but do not
+become visible plan badges.
 
 ## More than one account
 

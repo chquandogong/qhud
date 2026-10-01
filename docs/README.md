@@ -10,11 +10,12 @@
 qhud's complete documentation is available in all three languages, from first
 installation to architecture, decisions, and release history.
 
-The latest download is v0.7.1. `main` also contains later, unreleased security
-and repository-maintenance changes; read the [changelog](../CHANGELOG.md) for
-the source state and the [release notes](05-ops/releases/v0.7.1.md) for the
-published binary. Earlier research and dated field checks keep their original
-scope.
+The latest download is v0.7.3. It displays the reviewed Codex Pro 100, Pro 200,
+and Pro 500 plan names automatically and packages the security, dependency,
+release-workflow, and translation-governance work completed after v0.7.2. Read
+the [v0.7.3 release notes](05-ops/releases/v0.7.3.md) for the exact scope and
+verification limits. Earlier research and dated field checks keep their
+original scope.
 
 ## Start using qhud
 
@@ -62,6 +63,7 @@ product behavior. Start with the specification and dashboard for the current sta
 | [v0.7.0 release notes](05-ops/releases/v0.7.0.md) | Subtle system usage history, conditional GPU measurement, and About. |
 | [v0.7.1 release notes](05-ops/releases/v0.7.1.md) | Intel GPU measurement on Linux through idle-residency counters. |
 | [v0.7.2 release notes](05-ops/releases/v0.7.2.md) | Reset countdown kept when a pane reading has none; first release with the post-v0.7.1 security work. |
+| [v0.7.3 release notes](05-ops/releases/v0.7.3.md) | Automatic Pro 100/200/500 plan names and the security, dependency, release-workflow, and translation work after v0.7.2. |
 
 ## Languages and source fidelity
 
