@@ -156,6 +156,15 @@ implementation (synthetic-input evidence in DECISION_LOG D-008).
 - Verify that background CLI probes do not open console windows. Native
   Windows terminal-tab monitoring is outside the current supported scope.
 
+2026-10-01, post-publication Windows verification of the published v0.7.3
+asset: the downloaded `qhud-v0.7.3-windows-x86_64.zip` matched SHA-256
+`d6268bfd696e2a9c8b17d77a6590bfb11df18d73498e9d96f627998114183d4f`.
+The extracted executable reported version 0.7.3. With a live Codex account
+reporting the raw plan value `pro`, the widget displayed **Pro 200**. About
+displayed v0.7.3, and the native WebView2 widget displayed CPU, memory, GPU,
+disk and network metrics. A private local screenshot was inspected to confirm
+the rendered result and then deleted; no live-account screenshot is retained.
+
 Local Windows v0.6.0 display, account email, per-model/reset rows, explicit
 Codex refresh and the actual app-server fallback were verified after install.
 Installed executable SHA-256:

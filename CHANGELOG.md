@@ -10,6 +10,18 @@ All notable changes to qhud. Format: [Keep a Changelog](https://keepachangelog.c
 
 ## [Unreleased]
 
+### Verification
+
+- Record the 2026-10-01 post-publication native Windows verification of the
+  published v0.7.3 asset. The downloaded
+  `qhud-v0.7.3-windows-x86_64.zip` matched SHA-256
+  `d6268bfd696e2a9c8b17d77a6590bfb11df18d73498e9d96f627998114183d4f`,
+  and its executable reported version 0.7.3. With a live Codex account, the
+  raw plan value `pro` rendered as **Pro 200**; About displayed v0.7.3; and
+  CPU, memory, GPU, disk and network metrics rendered in the native WebView2
+  widget. A private local screenshot was inspected and then deleted; no
+  live-account image is retained.
+
 ## [0.7.3] — 2026-10-01
 
 ### Added
@@ -28,8 +40,9 @@ All notable changes to qhud. Format: [Keep a Changelog](https://keepachangelog.c
   Explicit operator plan labels still win, and an unknown wire value remains
   available in detail text without becoming a visible badge. Automated tests
   cover the three mappings, normalization, override precedence, and unknown
-  values; this display change has not yet been exercised with a live Codex
-  account or desktop runtime.
+  values. No live Codex-account or desktop-runtime pass had been performed
+  before v0.7.3 was published; the post-publication Windows pass is recorded
+  under Unreleased above.
 - The release workflow finds its draft by listing releases. GitHub's tag lookup
   returns only published releases, so the v0.7.2 run failed right after
   creating the draft and was completed by hand from the gated assets.
