@@ -17,6 +17,15 @@
 
 ## [未发布]
 
+<!-- qhud:anchor -->
+<a id="dependencies"></a>
+
+### 依赖
+
+- 将 `base64` 更新至 0.23、`libloading` 至 0.9、`reqwest` 至 0.13.5、`toml` 至 1.1.6，
+  并将 `dtolnay/rust-toolchain` 固定到 2026-09-12 的提交。Tauri 2.12 组与 `sysinfo` 0.39
+  会把最低 Rust 版本分别提高到 1.90 和 1.95，因此暂缓。
+
 ## [0.7.2] — 2026-10-01
 
 <!-- qhud:anchor -->
