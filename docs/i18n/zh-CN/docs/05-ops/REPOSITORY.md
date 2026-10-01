@@ -35,7 +35,7 @@ GitHub 目前仅允许 squash 合并，提供自动合并及分支更新，并�
 6. `Analyze (javascript-typescript)`
 7. `Analyze (actions)`
 
-前三项由 [CI](../../../../../.github/workflows/ci.yml) 提供：Ubuntu 24.04 运行 Node 系统指标测试、Rust 格式检查、将警告当作错误的 Clippy、Rust 测试和 release 构建；Windows 2022 用限定范围的依赖补丁测试和构建，再检查 `Cargo.toml`/`Cargo.lock` 没有变化；完整性作业运行[仓库检查器](../../../../../scripts/check-repository.mjs)，核对版本、发布元数据、三种语言文档的文件对应关系及本地链接。CI 在推送到 `main` 和 `codex/**`、PR，以及作为发布的可复用品质门禁时运行。[依赖审核](../../../../../.github/workflows/dependency-review.yml) 在 PR 新增中等或更高严重程度的依赖时失败。三个 Analyze 项来自 GitHub CodeQL 默认设置，而非仓库中追踪的 CodeQL 工作流；最后确认的设置在 PR 和每周扫描 Rust、JavaScript/TypeScript、Actions。改变必需检查名称或扫描语言前，应同时查看 CodeQL 配置和实际状态检查。
+前三项由 [CI](../../../../../.github/workflows/ci.yml) 提供：Ubuntu 24.04 运行 Node 系统指标测试、Rust 格式检查、将警告当作错误的 Clippy、Rust 测试和 release 构建；Windows 2022 用限定范围的依赖补丁测试和构建，再检查 `Cargo.toml`/`Cargo.lock` 没有变化；完整性作业运行[仓库检查器](../../../../../scripts/check-repository.mjs)，核对版本、发布元数据、三种语言文档的文件对应关系及本地链接。CI 在推送到 `main`、PR，以及作为发布的可复用品质门禁时运行。自 2026-10-01 起（[#15](https://github.com/chquandogong/qhud/issues/15)），`codex/**` 分支只通过其 PR 验证，分支推送不再另起第二次运行：每个提交只有一次 CI 运行，以 PR 编号为键的并发组会取消被取代的运行。需要在评审前获得 CI 时，请创建草稿 PR。七项必需检查名称保持不变。未采用让 push 与 PR 事件共用基于分支的并发组的方案，因为最终保留哪个事件的运行取决于时序。[依赖审核](../../../../../.github/workflows/dependency-review.yml) 在 PR 新增中等或更高严重程度的依赖时失败。三个 Analyze 项来自 GitHub CodeQL 默认设置，而非仓库中追踪的 CodeQL 工作流；最后确认的设置在 PR 和每周扫描 Rust、JavaScript/TypeScript、Actions。改变必需检查名称或扫描语言前，应同时查看 CodeQL 配置和实际状态检查。
 
 ## Actions、依赖维护与安全
 

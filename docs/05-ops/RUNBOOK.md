@@ -196,7 +196,8 @@ manual checklist.
 1. Update README, CHANGELOG, platform instructions, and the English, Korean,
    and Chinese `docs/05-ops/releases/v<version>.md` notes. Align the Cargo
    package, Tauri config, and Cargo lock package versions.
-2. Push a `codex/` preparation branch and open a PR. Update it against `main`
+2. Push a `codex/` preparation branch and open a PR; a branch push alone does
+   not run CI, and a draft PR is enough to start it. Update it against `main`
    for strict checks, resolve review conversations, and wait for all seven
    required statuses (Ubuntu, Windows, docs/metadata, dependency review, and
    three CodeQL Analyze contexts). The current `main` ruleset requires a PR,
