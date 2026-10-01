@@ -10,6 +10,15 @@ All notable changes to qhud. Format: [Keep a Changelog](https://keepachangelog.c
 
 ## [Unreleased]
 
+## [0.7.2] — 2026-10-01
+
+### Fixed
+
+- A quota row fed by a pane reading that carries no reset time now borrows the
+  reset from the stored usage snapshot, while that reset is still ahead. An idle
+  Codex pane reporting weekly 0% with no countdown had hidden the reset the last
+  fetch already knew. The pane's percentage still wins.
+
 ### Security
 
 - Patch `quinn-proto` to 0.11.17 in the locked dependency graph, addressing
