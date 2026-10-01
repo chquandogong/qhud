@@ -16,6 +16,15 @@ qhud의 모든 주요 변경 사항을 기록합니다. 형식: [Keep a Changelo
 
 ## [미출시]
 
+<!-- qhud:anchor -->
+<a id="dependencies"></a>
+
+### 의존성
+
+- `base64`를 0.23, `libloading`을 0.9, `reqwest`를 0.13.5, `toml`을 1.1.6으로
+  갱신하고 `dtolnay/rust-toolchain`을 2026-09-12 커밋에 고정했습니다. Tauri 2.12
+  묶음과 `sysinfo` 0.39는 최소 Rust 버전을 각각 1.90과 1.95로 올리므로 보류했습니다.
+
 ## [0.7.2] — 2026-10-01
 
 <!-- qhud:anchor -->
