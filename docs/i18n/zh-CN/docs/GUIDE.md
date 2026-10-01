@@ -51,6 +51,13 @@ gh attestation verify .\qhud-vX.Y.Z-windows-x86_64.zip --repo chquandogong/qhud
 
 校验和用于发现相对配套文件的传输损坏或替换；证明用于确认 GitHub Actions 为本仓库构建了该压缩包。启用证明前创建的发布无法通过此验证。
 
+v0.7.2 之后的发布还附带 CycloneDX 1.5 JSON 软件物料清单（SBOM）`qhud-vX.Y.Z-sbom.cdx.json`，并有独立的 `.sha256` 配套文件和构建来源证明。release workflow 基于打标签的源码及其锁定的 `Cargo.lock`、针对所有目标平台生成该清单，因此涵盖 Linux 与 Windows 构建的 Rust crate；前端是 qhud 自有的 HTML、CSS 和 JavaScript，没有第三方包。发布前会移除本地构建路径。请验证 SBOM 文件本身（Windows 上按上文用 `Get-FileHash` 与配套文件比对）：
+
+```sh
+sha256sum -c qhud-vX.Y.Z-sbom.cdx.json.sha256
+gh attestation verify ./qhud-vX.Y.Z-sbom.cdx.json --repo chquandogong/qhud
+```
+
 使用各供应商自身 CLI 登录。qhud 读取现有账户信息，不替代供应商登录流程。启动 qhud 后按 ⟳ 获取用量。便携包不注册快捷方式或自动启动。
 
 <!-- qhud:anchor -->

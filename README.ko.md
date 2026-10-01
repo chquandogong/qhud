@@ -96,6 +96,8 @@ qhud는 여러 명령행 인터페이스에 흩어진 계정 할당량과 세션
 gh attestation verify ./qhud-vX.Y.Z-linux-x86_64.tar.gz --repo chquandogong/qhud
 ```
 
+v0.7.2 이후 릴리스에는 CycloneDX SBOM `qhud-vX.Y.Z-sbom.cdx.json`과 `.sha256` 파일, 별도의 출처 증명도 포함됩니다. [SBOM 검증 →](docs/i18n/ko/docs/GUIDE.md)
+
 ### Windows
 
 ZIP을 풀고 버전 디렉터리 안의 `qhud.exe`를 실행합니다. Microsoft Edge WebView2 Runtime이 필요합니다. 포터블 패키지는 바로가기나 자동 시작을 등록하지 않습니다. 사전 요구사항, 소스 빌드, 설정은 [Windows 가이드](docs/i18n/ko/docs/05-ops/WINDOWS.md)를 참조하세요.
