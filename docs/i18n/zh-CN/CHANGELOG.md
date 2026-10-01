@@ -17,6 +17,13 @@
 
 ## [未发布]
 
+<!-- qhud:anchor -->
+<a id="repository-and-documentation"></a>
+
+### 仓库与文档
+
+- 确立翻译流程。CONTRIBUTING 现列明需要完整韩语和简体中文镜像的文档及保持单一规范语言的记录，并给出针对含义、链接和隐私的审阅者检查清单。仓库检查器比较每个英文源文档与其镜像之间的 ID、日期、发布版本、代码块、表格行和标题。在 pull request 中，若英文源文档修改而两种译文未同步，检查失败，除非 `Translation-Exempt` 提交 trailer 确认这是仅英文的修改。
+
 ## [0.7.2] — 2026-10-01
 
 <!-- qhud:anchor -->
