@@ -9,7 +9,7 @@
 
 # 项目看板 — qhud
 
-> 状态：v0.7.1 已发布，之后的 `main` 修改未发布 · 更新：2026-09-15 · 负责人：chquandogong
+> 状态：v0.7.2 已发布 · 更新：2026-10-01 · 负责人：chquandogong
 > 公开项目快照。Git 历史、带标签发布及 workflow 运行是权威记录；下方带日期观察保留其原始验证范围。
 
 <!-- qhud:anchor -->
@@ -19,14 +19,14 @@
 
 | 项目 | 值 |
 | --- | --- |
-| 当前版本 | [v0.7.1](https://github.com/chquandogong/qhud/releases/tag/v0.7.1)：增加 Linux Intel GPU 测量，补全 [v0.7.0](https://github.com/chquandogong/qhud/releases/tag/v0.7.0) 引入的条件 GPU 支持。提供 Linux x86_64 tarball 和 Windows x86_64 ZIP。 |
-| 发布后源码 | 2026-09-15 查询到 GitHub `main` 为 [c00bcd7](https://github.com/chquandogong/qhud/commit/c00bcd71c8d13cf99ffeed37c66c819c032f96ee)。v0.7.1 标签之后，[#1](https://github.com/chquandogong/qhud/pull/1)加入仓库/发布治理，[#7](https://github.com/chquandogong/qhud/pull/7)修复 `quinn-proto`，[#14](https://github.com/chquandogong/qhud/pull/14)脱敏日常诊断。这些提交不包含在 v0.7.1 压缩包内。 |
+| 当前版本 | [v0.7.2](https://github.com/chquandogong/qhud/releases/tag/v0.7.2)：窗格读数缺少重置时间时，配额行保留快照中的重置倒计时；首个打包 v0.7.1 之后安全工作的版本。提供 Linux x86_64 tarball 和 Windows x86_64 ZIP。 |
+| 发布后源码 | v0.7.2 打包了 v0.7.1 标签之后的全部代码修改：[#1](https://github.com/chquandogong/qhud/pull/1) 仓库/发布治理、[#7](https://github.com/chquandogong/qhud/pull/7) `quinn-proto` 补丁、[#14](https://github.com/chquandogong/qhud/pull/14) 日常诊断脱敏，以及重置倒计时修复。此前于 2026-09-15 查询到 GitHub `main` 为 [c00bcd7](https://github.com/chquandogong/qhud/commit/c00bcd71c8d13cf99ffeed37c66c819c032f96ee)，这些提交当时不在 v0.7.1 压缩包内。 |
 | 标签后自动检查 | `c00bcd7` 的 [main CI](https://github.com/chquandogong/qhud/actions/runs/34823834972) 与 [CodeQL](https://github.com/chquandogong/qhud/actions/runs/34823834684) 均于 2026-09-14 成功。CI 包含 Linux/Windows 构建、Node/Rust 测试及文档完整性；单独的依赖审查作业为 PR 设置门禁。CodeQL 分析 Rust、JavaScript/TypeScript 和 Actions。这是源码验证，不是新二进制包或实机桌面验证。 |
 | 流水线依赖 | qmonster @ `6a21c44`；Linux 使用规范 Git 依赖，Windows 使用命令级补丁并恢复 lockfile。 |
 | 支持平台 | Ubuntu 24.04 / GNOME 与原生 Windows x64 / WebView2。原生 Windows 终端标签页观测仍在支持范围之外。 |
-| 当前运行证据 | **Ubuntu 2026-09-11，v0.7.1：**测量 Intel Arc（Meteor Lake、`i915`、gt0+gt1）。`--system-dump` 报告 24.8%，同一区间独立 rc6 空闲驻留计算也是 24.8%；运行中小组件显示 CPU、内存、GPU、磁盘和网络历史。v0.7.1 只修改 Linux GPU 采样器，因此该补丁未重新执行 Windows 实机验证。 |
+| 当前运行证据 | **Ubuntu 2026-10-01，v0.7.2 源码树：**构建后安装到 `~/.local/bin` 并在实际 GNOME 会话中重启。在空闲 Codex 窗格报告每周 0% 且无重置时间的情况下，`--dump` 带有当天 Codex 获取结果中的重置时间，小组件在 v0.7.1 只显示 `0%`、没有倒计时的位置显示 `7D 6% · 6d 20h`。Windows 共用该合并代码，未在实机上重新验证。此前证据：**Ubuntu 2026-09-11，v0.7.1：**测量 Intel Arc（Meteor Lake、`i915`、gt0+gt1）。`--system-dump` 报告 24.8%，同一区间独立 rc6 空闲驻留计算也是 24.8%；运行中小组件显示 CPU、内存、GPU、磁盘和网络历史。v0.7.1 只修改 Linux GPU 采样器，因此该补丁未重新执行 Windows 实机验证。 |
 | 较早跨平台证据 | **公开 v0.6.0 Linux 产物，Ubuntu 2026-09-07：**校验和匹配；GNOME/Wayland 层状态、像素活性、八个 herdr 窗格及三个供应商刷新均通过。**Windows v0.6.0：**原生显示、账户邮箱、重置时间、Codex 刷新及 app-server 回退通过。准确环境和哈希见 TEST_PLAN。 |
-| 质量证据 | **v0.7.1 Ubuntu 本地，2026-09-11：**格式无误、clippy `-D warnings` 无误、127/127 项 Rust 测试、6/6 项 Node 测试、release 构建 2 m 08 s。较早 v0.6.0 Ubuntu 与 Windows CI 通过 98/98 项 Rust 测试及 release 构建：[CI 34117359064](https://github.com/chquandogong/qhud/actions/runs/34117359064)。 |
+| 质量证据 | **v0.7.2 Ubuntu 本地，2026-10-01：**格式无误、clippy `-D warnings` 无误、129/129 项 Rust 测试、6/6 项 Node 测试、`--locked` release 构建 2 m 00 s。此前证据：**v0.7.1 Ubuntu 本地，2026-09-11：**格式无误、clippy `-D warnings` 无误、127/127 项 Rust 测试、6/6 项 Node 测试、release 构建 2 m 08 s。较早 v0.6.0 Ubuntu 与 Windows CI 通过 98/98 项 Rust 测试及 release 构建：[CI 34117359064](https://github.com/chquandogong/qhud/actions/runs/34117359064)。 |
 | 输入验证原则 | Linux 交互声明需要合成器路径注入或人工操作；仅 XTEST 不予采信（D-010）。 |
 | 帧守卫现场证据 | Journal 区间 2026-08-26 → 09-07：28 次冻结、28 次重新映射恢复、0 次重新执行、0 次操作者可见事故（D-017）。更早的终端附着实例 stderr 未进入 journal，因此无法重算其数字。 |
 | 待扩展现场证据 | 系统指标的直接 v0.7.1 证据来自一台 Intel/i915 Linux 主机。AMD、NVIDIA、WDDM、普通 tmux 服务器、真实第二组织行及若干桌面生命周期检查仍需更广现场证据。无硬件证据时，以自动化覆盖为门槛。 |

@@ -10,6 +10,8 @@ All notable changes to qhud. Format: [Keep a Changelog](https://keepachangelog.c
 
 ## [Unreleased]
 
+## [0.7.2] — 2026-10-01
+
 ### Fixed
 
 - A quota row fed by a pane reading that carries no reset time now borrows the
@@ -154,7 +156,7 @@ edits are stale comments, and the binaries do what v0.6.0's do.
   single-platform premise, the "never persists" claim and a relative
   "verified today" date are corrected; six assumptions are new, including the
   frame guard's premise that the footer clock repaints every second, and the
-  inverse assumption that provider wire formats are _not_ stable.
+  inverse assumption that provider wire formats are *not* stable.
 - Stale comments corrected in `view.rs`, `main.rs`, `demo.rs`,
   `usage_cache.rs` and `codex_usage.rs`: the payload's `source` gained
   `"local"` in v0.6.0 and the doc comment still listed two values; a

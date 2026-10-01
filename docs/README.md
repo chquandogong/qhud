@@ -61,6 +61,7 @@ product behavior. Start with the specification and dashboard for the current sta
 | [v0.6.2 release notes](05-ops/releases/v0.6.2.md) | Automatic Codex email display from local login data. |
 | [v0.7.0 release notes](05-ops/releases/v0.7.0.md) | Subtle system usage history, conditional GPU measurement, and About. |
 | [v0.7.1 release notes](05-ops/releases/v0.7.1.md) | Intel GPU measurement on Linux through idle-residency counters. |
+| [v0.7.2 release notes](05-ops/releases/v0.7.2.md) | Reset countdown kept when a pane reading has none; first release with the post-v0.7.1 security work. |
 
 ## Languages and source fidelity
 
