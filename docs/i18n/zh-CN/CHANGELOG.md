@@ -17,6 +17,17 @@
 
 ## [未发布]
 
+<!-- qhud:anchor -->
+<a id="security"></a>
+
+### 安全
+
+- 新增 Rust 依赖策略门禁：`deny.toml` 和 `Rust dependency policy` CI 作业使用 cargo-deny
+  针对 `Cargo.lock` 检查 RustSec 通告、许可证和来源，每项已接受的例外都写明理由。
+- 将锁定依赖图中的 `rustls` 更新至 0.23.45（同时更新 `aws-lc-rs` 1.18.1、`aws-lc-sys`
+  0.45.0 和 `rustls-webpki` 0.103.15），修复 TLS 1.3 握手消息跨加密级别边界被接受的
+  RUSTSEC-2026-0285。
+
 ## [0.7.2] — 2026-10-01
 
 <!-- qhud:anchor -->
@@ -28,7 +39,7 @@
   一个空闲的 Codex 窗格报告每周 0% 却没有重置时间，遮住了上次获取早已得知的重置时间。百分比仍以窗格读数为准。
 
 <!-- qhud:anchor -->
-<a id="security"></a>
+<a id="security-1"></a>
 
 ### 安全
 

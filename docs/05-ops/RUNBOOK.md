@@ -191,6 +191,24 @@ Bump the `rev` in `src-tauri/Cargo.toml`, `cargo build`, fix whatever
 the compiler surfaces in `view.rs`/`poll.rs`, re-run the TEST_PLAN
 manual checklist.
 
+## Dependency policy exceptions
+
+Run the dependency gate locally before pushing a dependency or `deny.toml` change:
+
+```sh
+cargo install --locked cargo-deny@0.20.2
+cargo deny --locked check
+```
+
+When the check fails:
+
+1. **Vulnerability:** upgrade the affected crate in a focused, intentional lockfile change, for example `cargo update -p <crate> --precise <fixed-version>`, then rerun the Rust checks. Ignore a vulnerability only when no fixed version can be used, and give the entry a reason and a tracking issue.
+2. **Unmaintained or unsound notice:** prefer an upgrade or a replacement. If an upstream stack that qhud cannot change pins the crate, add one `ignore` entry per advisory ID with its dependency path and removal condition.
+3. **License or source:** do not widen the global allow list for one crate. Add a crate-scoped `exceptions` entry with its reason, or remove the dependency.
+4. When cargo-deny reports that an ignored advisory or an allowed license is no longer encountered, delete that entry.
+
+Review the `ignore` list whenever Tauri, the GTK stack, or the qmonster `rev` changes, and keep `deny.toml`, [the repository policy](REPOSITORY.md#rust-dependency-policy), and their translations in agreement. To update cargo-deny itself, change `CARGO_DENY_VERSION` and `CARGO_DENY_SHA256` together in `.github/workflows/ci.yml`; take the SHA-256 from the upstream release's `.sha256` file and confirm it against the downloaded archive.
+
 ## Release procedure
 
 1. Update README, CHANGELOG, platform instructions, and the English, Korean,

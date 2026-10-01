@@ -16,6 +16,18 @@ qhud의 모든 주요 변경 사항을 기록합니다. 형식: [Keep a Changelo
 
 ## [미출시]
 
+<!-- qhud:anchor -->
+<a id="security"></a>
+
+### 보안
+
+- Rust 의존성 정책 게이트를 추가했습니다. `deny.toml`과 `Rust dependency policy` CI 작업이
+  `Cargo.lock`에 대해 cargo-deny로 RustSec 권고, 라이선스, 출처를 검사하며, 수용한 예외마다
+  이유를 문서화합니다.
+- 고정된 의존성 그래프의 `rustls`를 0.23.45로 갱신하여(`aws-lc-rs` 1.18.1, `aws-lc-sys`
+  0.45.0, `rustls-webpki` 0.103.15 포함) TLS 1.3 핸드셰이크 메시지를 암호화 수준 경계를 넘어
+  받아들이던 RUSTSEC-2026-0285를 해결했습니다.
+
 ## [0.7.2] — 2026-10-01
 
 <!-- qhud:anchor -->
@@ -29,7 +41,7 @@ qhud의 모든 주요 변경 사항을 기록합니다. 형식: [Keep a Changelo
   우선합니다.
 
 <!-- qhud:anchor -->
-<a id="security"></a>
+<a id="security-1"></a>
 
 ### 보안
 
