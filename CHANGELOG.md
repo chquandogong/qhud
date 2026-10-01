@@ -10,6 +10,13 @@ All notable changes to qhud. Format: [Keep a Changelog](https://keepachangelog.c
 
 ## [Unreleased]
 
+### Fixed
+
+- A quota row fed by a pane reading that carries no reset time now borrows the
+  reset from the stored usage snapshot, while that reset is still ahead. An idle
+  Codex pane reporting weekly 0% with no countdown had hidden the reset the last
+  fetch already knew. The pane's percentage still wins.
+
 ### Security
 
 - Patch `quinn-proto` to 0.11.17 in the locked dependency graph, addressing
@@ -147,7 +154,7 @@ edits are stale comments, and the binaries do what v0.6.0's do.
   single-platform premise, the "never persists" claim and a relative
   "verified today" date are corrected; six assumptions are new, including the
   frame guard's premise that the footer clock repaints every second, and the
-  inverse assumption that provider wire formats are *not* stable.
+  inverse assumption that provider wire formats are _not_ stable.
 - Stale comments corrected in `view.rs`, `main.rs`, `demo.rs`,
   `usage_cache.rs` and `codex_usage.rs`: the payload's `source` gained
   `"local"` in v0.6.0 and the doc comment still listed two values; a
