@@ -77,17 +77,16 @@ qhud 将分散在各个命令行界面的账户配额和会话状态集中到小
 
 ## 安装
 
-**当前版本：[v0.7.3](https://github.com/chquandogong/qhud/releases/tag/v0.7.3)。** 两平台构建/测试均为发布门槛，每份压缩包都有 SHA-256 文件。
+**当前版本：[v0.7.4](https://github.com/chquandogong/qhud/releases/tag/v0.7.4)。** 两平台构建/测试均为发布门槛，每份压缩包都有 SHA-256 文件。
 
 | 下载 | 校验 |
 | --- | --- |
-| [Windows x64 ZIP](https://github.com/chquandogong/qhud/releases/download/v0.7.3/qhud-v0.7.3-windows-x86_64.zip) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.7.3/qhud-v0.7.3-windows-x86_64.zip.sha256) |
-| [Linux x86_64 tarball](https://github.com/chquandogong/qhud/releases/download/v0.7.3/qhud-v0.7.3-linux-x86_64.tar.gz) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.7.3/qhud-v0.7.3-linux-x86_64.tar.gz.sha256) |
+| [Windows x64 ZIP](https://github.com/chquandogong/qhud/releases/download/v0.7.4/qhud-v0.7.4-windows-x86_64.zip) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.7.4/qhud-v0.7.4-windows-x86_64.zip.sha256) |
+| [Linux x86_64 tarball](https://github.com/chquandogong/qhud/releases/download/v0.7.4/qhud-v0.7.4-linux-x86_64.tar.gz) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.7.4/qhud-v0.7.4-linux-x86_64.tar.gz.sha256) |
 
-上面的下载是 **v0.7.3 二进制包**。Codex 行现在把经过核对的供应商值 `prolite`、
-`pro`、`promax` 分别显示为 **Pro 100**、**Pro 200**、**Pro 500**。操作者显式设置的
-标签仍然优先，未知值不会成为可见徽标。该版本还打包了 v0.7.2 之后完成的安全、依赖策略、
-SBOM、release workflow 与翻译工作。详见 [v0.7.3 发布说明](docs/i18n/zh-CN/docs/05-ops/releases/v0.7.3.md)。
+上面的下载是 **v0.7.4 二进制包**。窄窗口中系统条不再把磁盘速率画到网络标签上。
+该版本更新至 Tauri 2.12.1 与 `sysinfo` 0.38.4，从源码构建现需 Rust 1.90。
+详见 [v0.7.4 发布说明](docs/i18n/zh-CN/docs/05-ops/releases/v0.7.4.md)。
 
 当前 release workflow 发布的压缩包还带 GitHub 构建来源证明。使用 GitHub CLI 时，将文件名替换为实际下载的压缩包路径；验证压缩包本身，而非其 `.sha256` 配套文件。
 
@@ -106,9 +105,9 @@ v0.7.2 之后的发布还包含 CycloneDX SBOM `qhud-vX.Y.Z-sbom.cdx.json`、其
 将压缩包及 SHA-256 文件下载到同一目录后：
 
 ```sh
-sha256sum -c qhud-v0.7.3-linux-x86_64.tar.gz.sha256
-tar -xzf qhud-v0.7.3-linux-x86_64.tar.gz
-install -Dm755 qhud-v0.7.3-linux-x86_64/qhud "$HOME/.local/bin/qhud"
+sha256sum -c qhud-v0.7.4-linux-x86_64.tar.gz.sha256
+tar -xzf qhud-v0.7.4-linux-x86_64.tar.gz
+install -Dm755 qhud-v0.7.4-linux-x86_64/qhud "$HOME/.local/bin/qhud"
 "$HOME/.local/bin/qhud"
 ```
 

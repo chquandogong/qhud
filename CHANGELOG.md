@@ -10,6 +10,8 @@ All notable changes to qhud. Format: [Keep a Changelog](https://keepachangelog.c
 
 ## [Unreleased]
 
+## [0.7.4] — 2026-10-02
+
 ### Fixed
 
 - In a narrow window the system strip no longer draws the DISK rates over the

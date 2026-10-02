@@ -20,20 +20,20 @@ contains a versioned directory and comes with a separate SHA-256 file.
 | Windows x64 | Extract the ZIP; run `qhud.exe` inside the extracted directory. | Microsoft Edge WebView2 Runtime. See [Windows setup](05-ops/WINDOWS.md). |
 | Linux x86_64 | Extract the tarball; install the binary inside its versioned directory. | GTK/WebKitGTK; Ubuntu 24.04 is the reference system. See [Linux operations](05-ops/RUNBOOK.md). |
 
-For Linux v0.7.3, after downloading both files:
+For Linux v0.7.4, after downloading both files:
 
 ```sh
-sha256sum -c qhud-v0.7.3-linux-x86_64.tar.gz.sha256
-tar -xzf qhud-v0.7.3-linux-x86_64.tar.gz
-install -Dm755 qhud-v0.7.3-linux-x86_64/qhud "$HOME/.local/bin/qhud"
+sha256sum -c qhud-v0.7.4-linux-x86_64.tar.gz.sha256
+tar -xzf qhud-v0.7.4-linux-x86_64.tar.gz
+install -Dm755 qhud-v0.7.4-linux-x86_64/qhud "$HOME/.local/bin/qhud"
 "$HOME/.local/bin/qhud"
 ```
 
 For a Windows download, compare the displayed digest with the `.sha256` file:
 
 ```powershell
-Get-FileHash -Algorithm SHA256 .\qhud-v0.7.3-windows-x86_64.zip
-Get-Content .\qhud-v0.7.3-windows-x86_64.zip.sha256
+Get-FileHash -Algorithm SHA256 .\qhud-v0.7.4-windows-x86_64.zip
+Get-Content .\qhud-v0.7.4-windows-x86_64.zip.sha256
 ```
 
 Archives published by the current release workflow also carry GitHub build
