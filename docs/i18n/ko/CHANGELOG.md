@@ -17,6 +17,24 @@ qhud의 모든 주요 변경 사항을 기록합니다. 형식: [Keep a Changelo
 ## [미출시]
 
 <!-- qhud:anchor -->
+<a id="fixed"></a>
+
+### 수정
+
+- 좁은 창에서 시스템 표시줄의 DISK 속도가 NET 레이블 위에 겹쳐 그려지지 않습니다.
+  WebKitGTK는 표시줄의 작은 고정폭 글자를 브라우저보다 크게 렌더링하므로 반 줄짜리
+  속도 칸이 넘쳤습니다. CSS 폭 320픽셀 미만에서는 각 속도가 한 줄을 차지하고, 그래도
+  들어가지 않는 값은 자기 칸 안에서 잘립니다.
+
+<!-- qhud:anchor -->
+<a id="documentation"></a>
+
+### 문서
+
+- README 스크린샷을 기본 확대 비율의 데모 모드 네이티브 Linux 화면(간결, 펼침,
+  About)으로 교체했습니다. Xvfb에서 합성 데이터로 렌더링했습니다.
+
+<!-- qhud:anchor -->
 <a id="dependencies"></a>
 
 ### 의존성
@@ -53,7 +71,7 @@ qhud의 모든 주요 변경 사항을 기록합니다. 형식: [Keep a Changelo
   SHA-256 파일, 빌드 출처 증명과 함께 첨부합니다. 업로드 전에 로컬 빌드 경로를 제거하고 확인합니다.
 
 <!-- qhud:anchor -->
-<a id="fixed"></a>
+<a id="fixed-1"></a>
 
 ### 수정
 
@@ -115,7 +133,7 @@ qhud의 모든 주요 변경 사항을 기록합니다. 형식: [Keep a Changelo
 ## [0.7.2] — 2026-10-01
 
 <!-- qhud:anchor -->
-<a id="fixed-1"></a>
+<a id="fixed-2"></a>
 
 ### 수정
 
@@ -209,7 +227,7 @@ NVML을 계속 사용합니다. Ubuntu 24.04에서 Intel Arc(Meteor Lake, i915)�
 - 이메일은 로컬에서 표시용으로만 읽으며 네트워크 요청, 자격 증명 쓰기, OAuth refresh grant를 수행하지 않습니다.
 
 <!-- qhud:anchor -->
-<a id="documentation"></a>
+<a id="documentation-1"></a>
 
 ### 문서
 
@@ -262,7 +280,7 @@ NVML을 계속 사용합니다. Ubuntu 24.04에서 Intel Arc(Meteor Lake, i915)�
 - 스크롤 가능한 계정 사용량과 전체 이름을 줄바꿈하는 모델 레이블. 게이지 툴팁과 펼친 모델 상세 정보에 정확한 초기화 날짜와 시간을 표시한다.
 
 <!-- qhud:anchor -->
-<a id="fixed-3"></a>
+<a id="fixed-4"></a>
 
 ### 수정
 
@@ -285,7 +303,7 @@ NVML을 계속 사용합니다. Ubuntu 24.04에서 Intel Arc(Meteor Lake, i915)�
 사용량 엔드포인트가 숫자 하나의 표기 방식을 바꾸었다. qhud는 이틀 동안 본문 전체를 읽지 못했다.
 
 <!-- qhud:anchor -->
-<a id="fixed-4"></a>
+<a id="fixed-5"></a>
 
 ### 수정
 
@@ -310,7 +328,7 @@ NVML을 계속 사용합니다. Ubuntu 24.04에서 Intel Arc(Meteor Lake, i915)�
 ## [0.5.2] — 2026-08-17
 
 <!-- qhud:anchor -->
-<a id="fixed-5"></a>
+<a id="fixed-6"></a>
 
 ### 수정
 
@@ -328,7 +346,7 @@ NVML을 계속 사용합니다. Ubuntu 24.04에서 Intel Arc(Meteor Lake, i915)�
 “선택이 안 됨” — 새 입력 추적 로그로 실제 원인 세 가지를 순서대로 벗겨 냈고, 마지막에는 멈춘 렌더러에 도달했다.
 
 <!-- qhud:anchor -->
-<a id="fixed-6"></a>
+<a id="fixed-7"></a>
 
 ### 수정
 
@@ -376,7 +394,7 @@ NVML을 계속 사용합니다. Ubuntu 24.04에서 Intel Arc(Meteor Lake, i915)�
 - app-server 자식을 위해 tokio에 `process`/`io-util`/`time`을 추가했다.
 
 <!-- qhud:anchor -->
-<a id="fixed-7"></a>
+<a id="fixed-8"></a>
 
 ### 수정
 
@@ -390,7 +408,7 @@ NVML을 계속 사용합니다. Ubuntu 24.04에서 Intel Arc(Meteor Lake, i915)�
 신뢰할 수 있는 할당량: 이제 숫자가 공급자 자체 화면과 일치하며, 일치할 수 없는 곳에서는 위젯이 추측 대신 그 사실을 밝힌다.
 
 <!-- qhud:anchor -->
-<a id="fixed-8"></a>
+<a id="fixed-9"></a>
 
 ### 수정
 
@@ -433,7 +451,7 @@ NVML을 계속 사용합니다. Ubuntu 24.04에서 Intel Arc(Meteor Lake, i915)�
 ## [0.3.2] — 2026-08-06
 
 <!-- qhud:anchor -->
-<a id="fixed-9"></a>
+<a id="fixed-10"></a>
 
 ### 수정
 
@@ -458,7 +476,7 @@ NVML을 계속 사용합니다. Ubuntu 24.04에서 Intel Arc(Meteor Lake, i915)�
 - **단일 인스턴스 가드**: qhud를 두 번 실행해도 두 번째 위젯이 겹치지 않는다(tauri-plugin-single-instance).
 
 <!-- qhud:anchor -->
-<a id="fixed-10"></a>
+<a id="fixed-11"></a>
 
 ### 수정
 
@@ -478,7 +496,7 @@ NVML을 계속 사용합니다. Ubuntu 24.04에서 Intel Arc(Meteor Lake, i915)�
 ## [0.1.4] — 2026-08-06
 
 <!-- qhud:anchor -->
-<a id="fixed-11"></a>
+<a id="fixed-12"></a>
 
 ### 수정
 
@@ -501,7 +519,7 @@ NVML을 계속 사용합니다. Ubuntu 24.04에서 Intel Arc(Meteor Lake, i915)�
 ## [0.1.3] — 2026-08-06
 
 <!-- qhud:anchor -->
-<a id="fixed-12"></a>
+<a id="fixed-13"></a>
 
 ### 수정
 
@@ -510,7 +528,7 @@ NVML을 계속 사용합니다. Ubuntu 24.04에서 Intel Arc(Meteor Lake, i915)�
 ## [0.1.2] — 2026-08-05
 
 <!-- qhud:anchor -->
-<a id="fixed-13"></a>
+<a id="fixed-14"></a>
 
 ### 수정
 
@@ -528,7 +546,7 @@ NVML을 계속 사용합니다. Ubuntu 24.04에서 Intel Arc(Meteor Lake, i915)�
 ## [0.1.1] — 2026-08-05
 
 <!-- qhud:anchor -->
-<a id="fixed-14"></a>
+<a id="fixed-15"></a>
 
 ### 수정
 

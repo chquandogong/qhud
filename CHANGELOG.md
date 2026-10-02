@@ -10,6 +10,19 @@ All notable changes to qhud. Format: [Keep a Changelog](https://keepachangelog.c
 
 ## [Unreleased]
 
+### Fixed
+
+- In a narrow window the system strip no longer draws the DISK rates over the
+  NET label. WebKitGTK renders the strip's small mono text larger than a browser
+  does, so a half-row rate cell overflowed. Below 320 CSS pixels each rate takes
+  its own row, and a value that still does not fit is clipped inside its cell.
+
+### Documentation
+
+- Replace the README screenshots with native Linux captures in demo mode at the
+  default zoom (compact, expanded and About), rendered under Xvfb with synthetic
+  data.
+
 ### Dependencies
 
 - Update Tauri to 2.12.1 (with tauri-build 2.7.1 and the window-state, opener

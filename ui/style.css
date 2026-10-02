@@ -1041,6 +1041,12 @@ body {
   .system-grid.has-gpu .system-cell:not(.system-throughput) {
     grid-column: span 2;
   }
+  /* A value that still does not fit is clipped inside its own cell rather
+     than drawn over the neighbouring one. */
+  .system-value {
+    min-width: 0;
+    overflow: hidden;
+  }
   .system-label {
     line-height: 13px;
   }
@@ -1055,6 +1061,14 @@ body {
   .system-chart {
     grid-column: 1 / -1;
     height: 16px;
+  }
+}
+/* Narrower still, half a row cannot hold "R 1.1M/s W 1.7M/s" once WebKitGTK
+   enlarges the small mono text (it ran into the NET label), so each rate
+   takes a full row. */
+@media (max-width: 319px) {
+  .system-grid .system-throughput {
+    grid-column: 1 / -1;
   }
 }
 @media (max-height: 360px) {
