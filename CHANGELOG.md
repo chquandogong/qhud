@@ -12,6 +12,8 @@ All notable changes to qhud. Format: [Keep a Changelog](https://keepachangelog.c
 
 ### Dependencies
 
+- Update `sysinfo` to 0.38.4, the newest release that builds on the declared
+  Rust 1.90; 0.39 requires Rust 1.95.
 - Update Tauri to 2.12.1 (with tauri-build 2.7.1 and the window-state, opener
   and single-instance plugins) and raise the declared minimum Rust version from
   1.88 to 1.90, which Tauri 2.12 requires. The locked graph had already needed
