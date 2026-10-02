@@ -48,12 +48,13 @@ qhud 将分散在各个命令行界面的账户配额和会话状态集中到小
 
 <table>
   <tr>
-    <td align="center"><img src="docs/assets/widget-compact.png" width="330" alt="v0.7.1 演示：供应商用量、会话卡片与底部系统条"><br><sub>紧凑的会话概览</sub></td>
-    <td align="center"><img src="docs/assets/widget-expanded.png" width="330" alt="v0.7.1 演示：展开的会话及冲突详情与底部系统条"><br><sub>需要时展开详情</sub></td>
+    <td align="center"><img src="docs/assets/widget-compact.png" width="260" alt="演示模式下的原生 Linux 构建：供应商用量、会话卡片与底部系统条"><br><sub>紧凑的会话概览</sub></td>
+    <td align="center"><img src="docs/assets/widget-expanded.png" width="260" alt="演示模式下的原生 Linux 构建：展开的会话及冲突详情"><br><sub>需要时展开详情</sub></td>
+    <td align="center"><img src="docs/assets/widget-about.png" width="260" alt="原生 Linux 构建的 About 对话框：版本、作者、主页与 GitHub 链接"><br><sub>About</sub></td>
   </tr>
 </table>
 
-*截图使用仅在浏览器中运行的演示夹具呈现 v0.7.1 前端。供应商、会话和系统数值均为示例，不是实时账户或原生桌面应用的截图。About 对话框见[用户指南](docs/i18n/zh-CN/docs/GUIDE.md)。实际账户行和可显示的模型窗口取决于供应商、登录和平台。*
+*截图为 v0.7.3 之后 `main` 的原生 Linux 构建在 `--demo` 模式、默认缩放下的画面（600×880 窗口，于 Ubuntu 24.04 的 Xvfb 中由 WebKitGTK 渲染）。供应商、会话和系统数值均为合成数据，不含任何实时账户。实际账户行和可显示的模型窗口取决于供应商、登录和平台。*
 
 <!-- qhud:anchor -->
 <a id="platform-support"></a>

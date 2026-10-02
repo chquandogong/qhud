@@ -48,12 +48,13 @@ qhud는 여러 명령행 인터페이스에 흩어진 계정 할당량과 세션
 
 <table>
   <tr>
-    <td align="center"><img src="docs/assets/widget-compact.png" width="330" alt="v0.7.1 데모: 공급자 사용량, 세션 타일, 하단 시스템 표시줄"><br><sub>간결한 세션 개요</sub></td>
-    <td align="center"><img src="docs/assets/widget-expanded.png" width="330" alt="v0.7.1 데모: 펼친 세션과 충돌 상세 정보, 하단 시스템 표시줄"><br><sub>필요할 때 펼치는 상세 정보</sub></td>
+    <td align="center"><img src="docs/assets/widget-compact.png" width="260" alt="데모 모드의 네이티브 Linux 빌드: 공급자 사용량, 세션 타일, 하단 시스템 표시줄"><br><sub>간결한 세션 개요</sub></td>
+    <td align="center"><img src="docs/assets/widget-expanded.png" width="260" alt="데모 모드의 네이티브 Linux 빌드: 펼친 세션과 충돌 상세 정보"><br><sub>필요할 때 펼치는 상세 정보</sub></td>
+    <td align="center"><img src="docs/assets/widget-about.png" width="260" alt="네이티브 Linux 빌드의 About 대화상자: 버전, 제작자, 홈페이지와 GitHub 링크"><br><sub>About</sub></td>
   </tr>
 </table>
 
-*스크린샷은 v0.7.1의 프런트엔드를 브라우저 전용 데모 픽스처로 렌더링한 모습입니다. 공급자·세션·시스템 수치는 모두 예시 값이며, 실제 계정이나 데스크톱 실행 화면을 캡처한 것은 아닙니다. About 대화상자는 [사용자 가이드](docs/i18n/ko/docs/GUIDE.md)에 설명합니다. 실제 계정 배치와 표시 가능한 모델별 기간은 공급자, 로그인, 플랫폼에 따라 달라집니다.*
+*스크린샷은 v0.7.3 이후 `main`의 네이티브 Linux 빌드를 `--demo` 모드, 기본 확대 비율로 실행한 화면입니다(600×880 창, Ubuntu 24.04의 Xvfb에서 WebKitGTK로 렌더링). 공급자·세션·시스템 수치는 모두 합성 값이며 실제 계정은 나오지 않습니다. 실제 계정 배치와 표시 가능한 모델별 기간은 공급자, 로그인, 플랫폼에 따라 달라집니다.*
 
 <!-- qhud:anchor -->
 <a id="platform-support"></a>
