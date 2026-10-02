@@ -17,6 +17,19 @@ qhud의 모든 주요 변경 사항을 기록합니다. 형식: [Keep a Changelo
 ## [미출시]
 
 <!-- qhud:anchor -->
+<a id="dependencies"></a>
+
+### 의존성
+
+- Tauri를 2.12.1(tauri-build 2.7.1, window-state·opener·single-instance 플러그인 포함)로
+  갱신하고, Tauri 2.12가 요구하는 대로 선언된 최소 Rust 버전을 1.88에서 1.90으로
+  올렸습니다. 고정된 의존성 그래프는 이미 `notify-rust` 때문에 1.89를 요구했으므로
+  1.88은 더 이상 정확하지 않았습니다. 새 `Rust minimum version` CI 작업이 선언된
+  버전을 검사합니다. Tauri 2.12는 `urlpattern` 0.3도 제거하므로 `deny.toml`의
+  `unic-*` 권고 예외 다섯 개를 삭제했습니다.
+- `Rust dependency policy`가 이제 `main`의 필수 상태 검사입니다.
+
+<!-- qhud:anchor -->
 <a id="verification"></a>
 
 ### 검증
@@ -84,7 +97,7 @@ qhud의 모든 주요 변경 사항을 기록합니다. 형식: [Keep a Changelo
   멀티플렉서는 결과가 바뀔 때만 요약합니다. 명시적 JSON dump 명령은 바뀌지 않았습니다(#16).
 
 <!-- qhud:anchor -->
-<a id="dependencies"></a>
+<a id="dependencies-1"></a>
 
 ### 의존성
 

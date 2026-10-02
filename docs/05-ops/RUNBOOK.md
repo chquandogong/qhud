@@ -235,9 +235,9 @@ Review the `ignore` list whenever Tauri, the GTK stack, or the qmonster `rev` ch
    package, Tauri config, and Cargo lock package versions.
 2. Push a `codex/` preparation branch and open a PR; a branch push alone does
    not run CI, and a draft PR is enough to start it. Update it against `main`
-   for strict checks, resolve review conversations, and wait for all seven
-   required statuses (Ubuntu, Windows, docs/metadata, dependency review, and
-   three CodeQL Analyze contexts). The current `main` ruleset requires a PR,
+   for strict checks, resolve review conversations, and wait for all eight
+   required statuses (Ubuntu, Windows, docs/metadata, dependency review, the
+   Rust dependency policy, and three CodeQL Analyze contexts). The current `main` ruleset requires a PR,
    linear history, and squash merge; it requires zero approving reviews for
    the sole maintainer. Windows CI uses `scripts/Build-Windows.ps1 -Test` and
    verifies manifest/lock restoration; do not run Cargo concurrently there.

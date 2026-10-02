@@ -24,7 +24,7 @@ replacing the executable. Settings and provider login files remain separate.
 ## Build from source
 
 - Git for Windows, with `git.exe` on PATH.
-- Rust 1.88 or later and the `x86_64-pc-windows-msvc` toolchain.
+- Rust 1.90 or later and the `x86_64-pc-windows-msvc` toolchain.
 - Visual Studio Build Tools with **Desktop development with C++** and the Windows SDK.
 - Microsoft Edge WebView2 Runtime.
 

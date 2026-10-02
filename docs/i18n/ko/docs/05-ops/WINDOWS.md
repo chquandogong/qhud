@@ -26,7 +26,7 @@ ZIP은 휴대용 배포판입니다. 설치 프로그램, 로그인 자동 시�
 ## 소스 빌드
 
 - Git for Windows, PATH에 `git.exe` 필요.
-- Rust 1.88 이상과 `x86_64-pc-windows-msvc` 툴체인.
+- Rust 1.90 이상과 `x86_64-pc-windows-msvc` 툴체인.
 - **Desktop development with C++** 및 Windows SDK가 설치된 Visual Studio Build Tools.
 - Microsoft Edge WebView2 Runtime.
 

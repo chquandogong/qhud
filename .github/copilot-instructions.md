@@ -5,7 +5,7 @@ before editing. Keep each change focused and preserve unrelated work.
 
 - qhud is a Tauri 2 desktop app. Its frontend is plain HTML, CSS, and JavaScript;
   there is no npm dependency install step. The Rust workspace requires Rust
-  1.88 or newer, and JavaScript tests use Node.js 22.
+  1.90 or newer, and JavaScript tests use Node.js 22.
 - Never expose real credentials, tokens, cookies, provider configuration, email
   addresses, account or organization IDs, session content, or local paths. Use
   synthetic fixtures. Treat provider authentication and cache files as read-only.

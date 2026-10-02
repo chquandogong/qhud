@@ -40,7 +40,7 @@ qhud를 더 명확하고 신뢰할 수 있게 만드는 데 참여해 주셔서 
 
 ## 빌드 및 검사
 
-저장소는 Rust 1.88 이상을 선언하며 CI는 stable Rust를 사용합니다. 앱 빌드는 일반 HTML/CSS/JavaScript를 사용하므로 Node.js나 npm이 필요하지 않습니다. Node.js 22는 별도의 프런트엔드 시스템 지표 회귀 테스트에만 사용합니다. qmonster는 `src-tauri/Cargo.toml`의 리비전으로 고정되어 있습니다.
+저장소는 Rust 1.90 이상을 선언하며 CI는 stable Rust로 빌드하고, `Rust minimum version` 작업이 선언된 버전을 검사합니다. 앱 빌드는 일반 HTML/CSS/JavaScript를 사용하므로 Node.js나 npm이 필요하지 않습니다. Node.js 22는 별도의 프런트엔드 시스템 지표 회귀 테스트에만 사용합니다. qmonster는 `src-tauri/Cargo.toml`의 리비전으로 고정되어 있습니다.
 
 개발 플랫폼과 관계없이 다음 검사를 실행합니다.
 
