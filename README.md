@@ -52,9 +52,14 @@ qhud는 여러 명령행 인터페이스에 흩어진 계정 할당량과 세션
     <td align="center"><img src="docs/assets/widget-expanded.png" width="260" alt="데모 모드의 네이티브 Linux 빌드: 펼친 세션과 충돌 상세 정보"><br><sub>필요할 때 펼치는 상세 정보</sub></td>
     <td align="center"><img src="docs/assets/widget-about.png" width="260" alt="네이티브 Linux 빌드의 About 대화상자: 버전, 제작자, 홈페이지와 GitHub 링크"><br><sub>About</sub></td>
   </tr>
+  <tr>
+    <td align="center"><img src="docs/assets/widget-windows-compact.png" width="260" alt="격리한 데모 모드로 Windows에서 네이티브 실행한 공개 qhud v0.7.4: 공급자 사용량, 세션 타일, 하단 시스템 표시줄"><br><sub>Windows · 간결한 세션 개요</sub></td>
+    <td align="center"><img src="docs/assets/widget-windows-expanded.png" width="260" alt="격리한 데모 모드로 Windows에서 네이티브 실행한 공개 qhud v0.7.4: 펼친 세션 상세 정보"><br><sub>Windows · 펼친 상세 정보</sub></td>
+    <td align="center"><img src="docs/assets/widget-windows-about.png" width="260" alt="Windows에서 네이티브 실행한 공개 qhud v0.7.4의 About 대화상자: 버전, 제작자, 홈페이지와 GitHub 링크"><br><sub>Windows · About</sub></td>
+  </tr>
 </table>
 
-*스크린샷은 v0.7.3 이후 `main`의 네이티브 Linux 빌드를 `--demo` 모드, 기본 확대 비율로 실행한 화면입니다(600×880 창, Ubuntu 24.04의 Xvfb에서 WebKitGTK로 렌더링). 공급자·세션·시스템 수치는 모두 합성 값이며 실제 계정은 나오지 않습니다. 실제 계정 배치와 표시 가능한 모델별 기간은 공급자, 로그인, 플랫폼에 따라 달라집니다.*
+*첫 번째 행은 v0.7.3 이후 `main`의 네이티브 Linux 빌드를 `--demo`, 기본 확대 비율로 실행한 화면입니다(600×880 창, Ubuntu 24.04의 Xvfb에서 WebKitGTK로 렌더링). 두 번째 행은 공개된 v0.7.4 Windows WebView2 빌드를 새로운 기본 확대 비율 프로필에서 실행하고 Windows Graphics Capture로 394×522 크기로 캡처한 화면입니다. 두 실행 모두 합성 값을 사용했고, Windows 실행은 새로 만든 격리된 공급자·설정 홈도 사용했습니다. 어느 행에도 실제 계정은 나오지 않습니다. 실제 계정 배치와 표시 가능한 모델별 기간은 공급자, 로그인, 플랫폼에 따라 달라집니다.*
 
 <!-- qhud:anchor -->
 <a id="platform-support"></a>

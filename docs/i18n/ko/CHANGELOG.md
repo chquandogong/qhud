@@ -16,6 +16,23 @@ qhud의 모든 주요 변경 사항을 기록합니다. 형식: [Keep a Changelo
 
 ## [미출시]
 
+<!-- qhud:anchor -->
+<a id="documentation-and-verification"></a>
+
+### 문서 및 검증
+
+- 공개된 v0.7.4 WebView2 빌드의 네이티브 Windows 화면을 README에 추가했습니다.
+  간결, 펼침, About 화면은 394×522 크기입니다. Windows Graphics Capture로 합성
+  값을 쓰는 격리된 `--demo` 실행을 기록했으며, 새로 만든 격리된 공급자·설정 홈과
+  새로운 기본 확대 비율 프로필을 사용했습니다. 실제 계정 데이터는 나오지 않습니다.
+- 2026-10-02 게시 후 Windows 검증을 기록했습니다. 내려받은
+  `qhud-v0.7.4-windows-x86_64.zip`의 SHA-256은
+  `d1c5bcbd7177075fcf00d48cd1d9a2239f8415f97b3ec945eaeeaa59a3a098cf`와
+  일치했고, 실행 파일과 About 대화상자는 v0.7.4를 보고했습니다. 기본 확대 비율의
+  네이티브 WebView2 시스템 표시줄은 검증한 일반 394픽셀 및 좁은 361픽셀 창 너비에서
+  겹치지 않았고, About은 홈페이지와 GitHub 링크를 표시했습니다. 이 합성 시각 검증은
+  실제 공급자 계정을 사용하지 않았습니다.
+
 ## [0.7.4] — 2026-10-02
 
 <!-- qhud:anchor -->

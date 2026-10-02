@@ -6,8 +6,8 @@
 
 # TEST_PLAN
 
-> Status: v0.7.1 automated and Linux system-metrics evidence recorded; desktop
-> gaps remain · Date: 2026-09-14 · Owner: chquandogong
+> Status: v0.7.4 post-publication Windows visual evidence recorded; desktop
+> gaps remain · Date: 2026-10-02 · Owner: chquandogong
 
 ## Automated gates
 
@@ -155,6 +155,19 @@ implementation (synthetic-input evidence in DECISION_LOG D-008).
   limits remain absent; no zero-filled values or another account's usage.
 - Verify that background CLI probes do not open console windows. Native
   Windows terminal-tab monitoring is outside the current supported scope.
+
+2026-10-02, post-publication Windows visual verification of the published
+v0.7.4 asset: the downloaded `qhud-v0.7.4-windows-x86_64.zip` matched SHA-256
+`d1c5bcbd7177075fcf00d48cd1d9a2239f8415f97b3ec945eaeeaa59a3a098cf`,
+and the extracted executable reported version 0.7.4. The native WebView2 build
+ran in isolated `--demo` mode with synthetic values, fresh, isolated provider
+and configuration homes, and a fresh 100% zoom profile. At default zoom the
+CPU/MEM/GPU/DISK/NET strip did not overlap at the verified 394-pixel normal and
+361-pixel narrow window widths. Three retained 394×522 images—compact,
+expanded, and About—were recorded with Windows Graphics Capture; About showed
+v0.7.4 plus the homepage and GitHub links. No live account was used. This pass
+did not verify link activation, move/resize persistence, tray, `--peek`,
+refresh, or background CLI behavior.
 
 2026-10-01, post-publication Windows verification of the published v0.7.3
 asset: the downloaded `qhud-v0.7.3-windows-x86_64.zip` matched SHA-256
