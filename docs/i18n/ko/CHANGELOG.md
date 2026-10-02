@@ -16,6 +16,8 @@ qhud의 모든 주요 변경 사항을 기록합니다. 형식: [Keep a Changelo
 
 ## [미출시]
 
+## [0.7.4] — 2026-10-02
+
 <!-- qhud:anchor -->
 <a id="fixed"></a>
 
