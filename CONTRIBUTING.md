@@ -40,7 +40,8 @@ revision; inspect and redact those outputs before sharing.
 
 ## Build and check
 
-The repository declares Rust 1.88 or later; CI uses stable Rust. The application
+The repository declares Rust 1.90 or later; CI builds on stable Rust, and the
+`Rust minimum version` job checks the declared version. The application
 build uses plain HTML/CSS/JavaScript and needs neither Node.js nor npm. Node.js
 22 is used only for the standalone frontend system-metrics regression test.
 qhud pins qmonster to the revision in `src-tauri/Cargo.toml`.

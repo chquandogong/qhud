@@ -10,6 +10,17 @@ All notable changes to qhud. Format: [Keep a Changelog](https://keepachangelog.c
 
 ## [Unreleased]
 
+### Dependencies
+
+- Update Tauri to 2.12.1 (with tauri-build 2.7.1 and the window-state, opener
+  and single-instance plugins) and raise the declared minimum Rust version from
+  1.88 to 1.90, which Tauri 2.12 requires. The locked graph had already needed
+  1.89 through `notify-rust`, so 1.88 was no longer accurate. A new
+  `Rust minimum version` CI job checks the declared version. Tauri 2.12 also
+  drops `urlpattern` 0.3, so the five `unic-*` advisory exceptions are removed
+  from `deny.toml`.
+- `Rust dependency policy` is now a required status check on `main`.
+
 ### Verification
 
 - Record the 2026-10-01 post-publication native Windows verification of the

@@ -33,7 +33,7 @@ override this file.
 ## Build and validation
 
 The frontend is plain HTML, CSS, and JavaScript and has no npm install step.
-Rust 1.88 or newer and Node.js 22 are required.
+Rust 1.90 or newer and Node.js 22 are required.
 
 For frontend-only changes, run:
 

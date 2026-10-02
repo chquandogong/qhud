@@ -2,7 +2,7 @@
 name = "qhud"
 version = "0.7.3"
 edition = "2024"
-rust-version = "1.88"
+rust-version = "1.90"
 license = "MIT"
 description = "Ambient desktop HUD for AI CLI sessions — a glanceable, always-on-desktop second frontend for qmonster"
 repository = "https://github.com/chquandogong/qhud"

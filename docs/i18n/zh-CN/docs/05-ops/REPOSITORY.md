@@ -13,7 +13,7 @@
 | 项目 | 单人私有 | 团队私有 | 公开 qhud（当前） |
 | --- | --- | --- | --- |
 | 可见性与反馈渠道 | 仅让所有者看到源码和运营 issue。使用内部 issue 清单和私密安全报告渠道。 | 只授予所需的最小仓库权限；使用内部 issue 和私密安全报告渠道。 | 源码和普通 issue 公开。接受英语、韩语或中文的具体 issue 与 PR；疑似漏洞进入私密报告渠道。 |
-| 修改 `main` | 保留 PR、七项状态检查、解决审核对话、线性历史和 squash 合并。必需批准数为零时，单独维护者可在检查通过后合并。 | 保留 PR 和检查；要求至少一次独立批准，考虑代码所有者审核和对最后一次 push 的批准，并指定独立发布审批人。 | 生效规则要求 PR、七项严格检查、解决审核对话、线性历史与 squash 合并。只有一名维护者期间，批准数为零，但检查仍不可跳过。 |
+| 修改 `main` | 保留 PR、八项状态检查、解决审核对话、线性历史和 squash 合并。必需批准数为零时，单独维护者可在检查通过后合并。 | 保留 PR 和检查；要求至少一次独立批准，考虑代码所有者审核和对最后一次 push 的批准，并指定独立发布审批人。 | 生效规则要求 PR、七项严格检查、解决审核对话、线性历史与 squash 合并。只有一名维护者期间，批准数为零，但检查仍不可跳过。 |
 | 发布 | 限制标签创建与发布权限为所有者；分享前检查说明和产物。 | 标签及发布权限只交给指定维护者，并要求独立发布批准。 | 保护 `v*` 标签，只通过质量门禁和 `release` 环境发布。发布前检查 release 草稿，发布后检查六项资产（两个压缩包、SBOM 及各自校验和）与来源证明。 |
 | 安全与警报 | 确认仓库套餐可用的 GitHub 安全功能；私下处理警报，不把真实密钥复制进测试。 | 指定警报分类与修复负责人，对安全 PR 进行独立审核。 | 保持私密漏洞报告、依赖与代码扫描、密钥扫描和 push 保护；不要在公开 issue 中披露新警报的利用细节。 |
 
@@ -25,7 +25,7 @@
 
 GitHub 目前仅允许 squash 合并，提供自动合并及分支更新，并在合并后删除 PR 的源分支。[CODEOWNERS](../../../../../.github/CODEOWNERS) 为全部变更以及 `.github/`、`scripts/`、`src-tauri/` 指定 `@chquandogong`。该文件明确所有者，但当前规则集未将代码所有者批准设为强制条件。
 
-七项必需状态检查的准确名称如下：
+八项必需状态检查的准确名称如下：
 
 1. `fmt · clippy · test · build`
 2. `Windows MSVC · test · build`
@@ -34,6 +34,7 @@ GitHub 目前仅允许 squash 合并，提供自动合并及分支更新，并�
 5. `Analyze (rust)`
 6. `Analyze (javascript-typescript)`
 7. `Analyze (actions)`
+8. `Rust dependency policy`
 
 前三项由 [CI](../../../../../.github/workflows/ci.yml) 提供：Ubuntu 24.04 运行 Node 系统指标测试、Rust 格式检查、将警告当作错误的 Clippy、Rust 测试和 release 构建；Windows 2022 用限定范围的依赖补丁测试和构建，再检查 `Cargo.toml`/`Cargo.lock` 没有变化；完整性作业运行[仓库检查器](../../../../../scripts/check-repository.mjs)，核对版本、发布元数据、三种语言文档的文件对应关系、翻译事实及本地链接。CI 在推送到 `main`、PR，以及作为发布的可复用品质门禁时运行。自 2026-10-01 起（[#15](https://github.com/chquandogong/qhud/issues/15)），`codex/**` 分支只通过其 PR 验证，分支推送不再另起第二次运行：每个提交只有一次 CI 运行，以 PR 编号为键的并发组会取消被取代的运行。需要在评审前获得 CI 时，请创建草稿 PR。七项必需检查名称保持不变。未采用让 push 与 PR 事件共用基于分支的并发组的方案，因为最终保留哪个事件的运行取决于时序。[依赖审核](../../../../../.github/workflows/dependency-review.yml) 在 PR 新增中等或更高严重程度的依赖时失败。三个 Analyze 项来自 GitHub CodeQL 默认设置，而非仓库中追踪的 CodeQL 工作流；最后确认的设置在 PR 和每周扫描 Rust、JavaScript/TypeScript、Actions。改变必需检查名称或扫描语言前，应同时查看 CodeQL 配置和实际状态检查。
 
@@ -51,12 +52,12 @@ GitHub 目前仅允许 squash 合并，提供自动合并及分支更新，并�
 [`deny.toml`](../../../../../deny.toml) 定义 qhud 的 Rust 依赖策略。CI 作业 **`Rust dependency policy`** 使用 cargo-deny 0.20.2 针对 `Cargo.lock` 运行 `cargo deny --locked check`；cargo-deny 从上游发布归档安装，其 SHA-256 固定在工作流中。cargo-audit 只检查安全通告，而 cargo-deny 一个工具即可覆盖 RustSec 通告、许可证、禁用或重复的 crate 以及依赖来源，因此选用 cargo-deny。依赖审核仍检查 PR 新引入的依赖；本门禁则在每次 CI 运行（包括发布品质门禁）中检查完整的锁定依赖图。
 
 - **范围：** qhud 发布的 Linux x86_64 与 Windows x86_64 目标，使用默认 feature。仅被其他目标使用的 crate 不在范围内。
-- **通告：** 任何 RustSec 漏洞都会使检查失败。无人维护（unmaintained）和不健全（unsound）通告同样对依赖图中的所有 crate 判为失败，使新通告必须经过审查，而不是被默默接受。被撤回（yanked）的版本只产生警告。已接受的通告在 `deny.toml` 中按 ID 列出并注明理由。截至 **2026-10-01**，它们是 RUSTSEC-2024-0429（glib 0.18 不健全，GHSA-wrw7-89jp-8q8g，在 [#13](https://github.com/chquandogong/qhud/issues/13) 中跟踪）、RUSTSEC-2024-0370（同一 GTK3 栈中无人维护的 `proc-macro-error`），以及 RUSTSEC-2025-0075、RUSTSEC-2025-0080、RUSTSEC-2025-0081、RUSTSEC-2025-0098 和 RUSTSEC-2025-0100（经 `tauri-utils` → `urlpattern` 引入的无人维护 `unic-*` crate）。已接受条目中没有漏洞。
+- **通告：** 任何 RustSec 漏洞都会使检查失败。无人维护（unmaintained）和不健全（unsound）通告同样对依赖图中的所有 crate 判为失败，使新通告必须经过审查，而不是被默默接受。被撤回（yanked）的版本只产生警告。已接受的通告在 `deny.toml` 中按 ID 列出并注明理由。截至 **2026-10-01**，它们是 RUSTSEC-2024-0429（glib 0.18 不健全，GHSA-wrw7-89jp-8q8g，在 [#13](https://github.com/chquandogong/qhud/issues/13) 中跟踪）、RUSTSEC-2024-0370（同一 GTK3 栈中无人维护的 `proc-macro-error`），以及 RUSTSEC-2025-0075、RUSTSEC-2025-0080、RUSTSEC-2025-0081、RUSTSEC-2025-0098 和 RUSTSEC-2025-0100（经 `tauri-utils` → `urlpattern` 引入的无人维护 `unic-*` crate）。已接受条目中没有漏洞。**2026-10-02** 的 Tauri 2.12 更新移除了 `urlpattern` 0.3 及全部 `unic-*` crate，因此删除了这五个条目；仅保留 RUSTSEC-2024-0429 和 RUSTSEC-2024-0370。
 - **许可证：** `deny.toml` 中列出的宽松许可证（包括 MIT、Apache-2.0、BSD-3-Clause、ISC 和 Zlib）允许用于任何 crate。MPL-2.0 仅允许用于五个指名且未修改的间接依赖：`cssparser`、`cssparser-macros`、`dtoa-short`、`selectors` 和 `option-ext`。其他许可证均判为失败。
 - **来源：** 唯一允许的 registry 是 crates.io。唯一允许的 Git 来源是 `https://github.com/chquandogong/qmonster`，且 Git 依赖必须用 `rev` 固定。
 - **禁用：** 重复版本以及没有版本号的 qmonster Git 依赖要求只产生警告，不判为失败；Tauri、GTK 和 windows-rs 依赖图中存在 qhud 无法消除的重复。
 
-通告数据库在运行时从公开的 RustSec 仓库获取；该作业不使用凭据，也不访问服务商。因此，新发布的通告可能让未改动依赖的 PR 失败，这是预期行为。请通过范围明确的 lockfile 升级修复；只有在没有可用升级时，才添加理由明确且范围狭窄的 `ignore` 条目，见[运行手册](RUNBOOK.md#dependency-policy-exceptions)。该作业目前尚不属于七项必需检查。它在 PR 上通过后，将确切的检查上下文 `Rust dependency policy` 加入 `main` 规则集，再更新本文档中的必需检查列表。
+通告数据库在运行时从公开的 RustSec 仓库获取；该作业不使用凭据，也不访问服务商。因此，新发布的通告可能让未改动依赖的 PR 失败，这是预期行为。请通过范围明确的 lockfile 升级修复；只有在没有可用升级时，才添加理由明确且范围狭窄的 `ignore` 条目，见[运行手册](RUNBOOK.md#dependency-policy-exceptions)。自 **2026-10-02** 起，它是 `main` 规则集中的第八项必需检查。
 
 ## PR、issue 与发布
 

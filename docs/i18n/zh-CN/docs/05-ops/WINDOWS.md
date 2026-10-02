@@ -26,7 +26,7 @@ ZIP 为便携包，不自动注册安装程序、登录自启动或快捷方式�
 ## 从源码构建
 
 - Git for Windows，`git.exe` 必须在 PATH 中。
-- Rust 1.88 或更高版本及 `x86_64-pc-windows-msvc` 工具链。
+- Rust 1.90 或更高版本及 `x86_64-pc-windows-msvc` 工具链。
 - Visual Studio Build Tools，包含 **Desktop development with C++** 和 Windows SDK。
 - Microsoft Edge WebView2 Runtime。
 

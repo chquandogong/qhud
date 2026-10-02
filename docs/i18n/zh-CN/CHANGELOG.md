@@ -18,6 +18,17 @@
 ## [未发布]
 
 <!-- qhud:anchor -->
+<a id="dependencies"></a>
+
+### 依赖
+
+- 将 Tauri 更新至 2.12.1（含 tauri-build 2.7.1 及 window-state、opener、single-instance 插件），
+  并按 Tauri 2.12 的要求将声明的最低 Rust 版本从 1.88 提高到 1.90。锁定的依赖图此前已因
+  `notify-rust` 需要 1.89，因此 1.88 已不准确。新的 `Rust minimum version` CI 作业会检查所声明的版本。
+  Tauri 2.12 还移除了 `urlpattern` 0.3，因此从 `deny.toml` 删除了五个 `unic-*` 通告例外。
+- `Rust dependency policy` 现在是 `main` 的必需状态检查。
+
+<!-- qhud:anchor -->
 <a id="verification"></a>
 
 ### 验证
@@ -81,7 +92,7 @@
   只在结果变化时汇总。显式 JSON 转储命令保持不变（#16）。
 
 <!-- qhud:anchor -->
-<a id="dependencies"></a>
+<a id="dependencies-1"></a>
 
 ### 依赖
 

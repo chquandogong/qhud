@@ -106,7 +106,7 @@ if ($CargoCommand) {
         }
     }
     if (-not $CargoExe) {
-        throw 'Rust 1.88+ with the Windows MSVC toolchain is required. See docs/05-ops/WINDOWS.md.'
+        throw 'Rust 1.90+ with the Windows MSVC toolchain is required. See docs/05-ops/WINDOWS.md.'
     }
 }
 
