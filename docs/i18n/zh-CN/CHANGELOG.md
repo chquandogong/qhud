@@ -17,6 +17,21 @@
 
 ## [未发布]
 
+<!-- qhud:anchor -->
+<a id="documentation-and-verification"></a>
+
+### 文档与验证
+
+- 在 README 中加入已发布 v0.7.4 WebView2 构建的原生 Windows 画面：紧凑、展开与
+  About，尺寸均为 394×522。Windows Graphics Capture 记录了使用合成数值的隔离
+  `--demo` 运行，采用全新的供应商/配置主目录和全新默认缩放配置；画面中没有实时账户数据。
+- 记录 2026-10-02 发布后的 Windows 检查。下载的
+  `qhud-v0.7.4-windows-x86_64.zip` 的 SHA-256 与
+  `d1c5bcbd7177075fcf00d48cd1d9a2239f8415f97b3ec945eaeeaa59a3a098cf`
+  一致，可执行文件和 About 对话框均报告 v0.7.4。原生 WebView2 系统条在默认缩放下经
+  验证的普通 394 像素和窄 361 像素窗口宽度中均无重叠；About 显示主页和 GitHub 链接。
+  此合成视觉检查未使用实时供应商账户。
+
 ## [0.7.4] — 2026-10-02
 
 <!-- qhud:anchor -->

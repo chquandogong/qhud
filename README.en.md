@@ -49,13 +49,20 @@ backend and a lightweight webview. No Node.js or npm is required to build it.
     <td align="center"><img src="docs/assets/widget-expanded.png" width="260" alt="Native Linux build in demo mode with an expanded session and its conflict details"><br><sub>Details when you need them</sub></td>
     <td align="center"><img src="docs/assets/widget-about.png" width="260" alt="Native Linux build showing the About dialog with version, author, homepage and GitHub links"><br><sub>About</sub></td>
   </tr>
+  <tr>
+    <td align="center"><img src="docs/assets/widget-windows-compact.png" width="260" alt="Published qhud v0.7.4 running natively on Windows in isolated demo mode: provider usage, session tiles and the bottom system strip"><br><sub>Windows · Compact session overview</sub></td>
+    <td align="center"><img src="docs/assets/widget-windows-expanded.png" width="260" alt="Published qhud v0.7.4 running natively on Windows in isolated demo mode with an expanded session"><br><sub>Windows · Expanded detail</sub></td>
+    <td align="center"><img src="docs/assets/widget-windows-about.png" width="260" alt="Published qhud v0.7.4 running natively on Windows with the About dialog showing its version, author, homepage and GitHub links"><br><sub>Windows · About</sub></td>
+  </tr>
 </table>
 
-*These screenshots are the native Linux build of `main` after v0.7.3 in `--demo` mode at the
-default zoom (600×880 window, rendered with WebKitGTK under Xvfb on Ubuntu 24.04).
-Provider, session and system values are synthetic; no live account appears. The
-actual account layout and available model windows depend on the provider, login,
-and platform.*
+*The first row is the native Linux build of `main` after v0.7.3 in `--demo` at
+the default zoom (600×880 window, rendered with WebKitGTK under Xvfb on Ubuntu
+24.04). The second row is the published v0.7.4 Windows WebView2 build captured
+at 394×522 with Windows Graphics Capture and a fresh default-zoom profile. Both
+runs use synthetic values; the Windows run also used fresh, isolated
+provider/config homes. Neither row contains a live account. The actual account
+layout and available model windows depend on the provider, login, and platform.*
 
 ## Platform support
 

@@ -52,9 +52,14 @@ qhud 将分散在各个命令行界面的账户配额和会话状态集中到小
     <td align="center"><img src="docs/assets/widget-expanded.png" width="260" alt="演示模式下的原生 Linux 构建：展开的会话及冲突详情"><br><sub>需要时展开详情</sub></td>
     <td align="center"><img src="docs/assets/widget-about.png" width="260" alt="原生 Linux 构建的 About 对话框：版本、作者、主页与 GitHub 链接"><br><sub>About</sub></td>
   </tr>
+  <tr>
+    <td align="center"><img src="docs/assets/widget-windows-compact.png" width="260" alt="已发布的 qhud v0.7.4 在隔离演示模式下于 Windows 原生运行：供应商用量、会话卡片与底部系统条"><br><sub>Windows · 紧凑的会话概览</sub></td>
+    <td align="center"><img src="docs/assets/widget-windows-expanded.png" width="260" alt="已发布的 qhud v0.7.4 在隔离演示模式下于 Windows 原生运行并展开会话详情"><br><sub>Windows · 展开详情</sub></td>
+    <td align="center"><img src="docs/assets/widget-windows-about.png" width="260" alt="已发布的 qhud v0.7.4 在 Windows 原生运行，About 对话框显示版本、作者、主页与 GitHub 链接"><br><sub>Windows · About</sub></td>
+  </tr>
 </table>
 
-*截图为 v0.7.3 之后 `main` 的原生 Linux 构建在 `--demo` 模式、默认缩放下的画面（600×880 窗口，于 Ubuntu 24.04 的 Xvfb 中由 WebKitGTK 渲染）。供应商、会话和系统数值均为合成数据，不含任何实时账户。实际账户行和可显示的模型窗口取决于供应商、登录和平台。*
+*第一行为 v0.7.3 之后 `main` 的原生 Linux 构建在 `--demo`、默认缩放下的画面（600×880 窗口，于 Ubuntu 24.04 的 Xvfb 中由 WebKitGTK 渲染）。第二行为已发布的 v0.7.4 Windows WebView2 构建，在全新默认缩放配置中运行并通过 Windows Graphics Capture 以 394×522 捕获。两次运行都使用合成数值，Windows 运行还使用了全新、隔离的供应商/配置主目录；两行均不含实时账户。实际账户行和可显示的模型窗口取决于供应商、登录和平台。*
 
 <!-- qhud:anchor -->
 <a id="platform-support"></a>

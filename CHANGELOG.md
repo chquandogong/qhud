@@ -10,6 +10,21 @@ All notable changes to qhud. Format: [Keep a Changelog](https://keepachangelog.c
 
 ## [Unreleased]
 
+### Documentation and verification
+
+- Add native Windows captures of the published v0.7.4 WebView2 build to the
+  README: compact, expanded, and About at 394×522. Windows Graphics Capture
+  recorded an isolated `--demo` run with synthetic values, fresh, isolated
+  provider and configuration homes, and a fresh default-zoom profile; no live
+  account data appears.
+- Record the 2026-10-02 post-publication Windows check. The downloaded
+  `qhud-v0.7.4-windows-x86_64.zip` matched SHA-256
+  `d1c5bcbd7177075fcf00d48cd1d9a2239f8415f97b3ec945eaeeaa59a3a098cf`,
+  and the executable and About dialog reported v0.7.4. The native WebView2
+  system strip did not overlap at the verified 394-pixel normal and 361-pixel
+  narrow window widths at default zoom; About displayed the homepage and GitHub
+  links. This synthetic visual pass did not exercise a live provider account.
+
 ## [0.7.4] — 2026-10-02
 
 ### Fixed
