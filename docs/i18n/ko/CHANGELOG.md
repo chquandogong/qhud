@@ -39,6 +39,8 @@ qhud의 모든 주요 변경 사항을 기록합니다. 형식: [Keep a Changelo
 
 ### 의존성
 
+- `sysinfo`를 선언된 Rust 1.90에서 빌드되는 최신 버전인 0.38.4로 갱신했습니다.
+  0.39는 Rust 1.95가 필요합니다.
 - Tauri를 2.12.1(tauri-build 2.7.1, window-state·opener·single-instance 플러그인 포함)로
   갱신하고, Tauri 2.12가 요구하는 대로 선언된 최소 Rust 버전을 1.88에서 1.90으로
   올렸습니다. 고정된 의존성 그래프는 이미 `notify-rust` 때문에 1.89를 요구했으므로

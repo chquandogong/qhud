@@ -37,6 +37,7 @@
 
 ### 依赖
 
+- 将 `sysinfo` 更新至 0.38.4，这是可在所声明的 Rust 1.90 上构建的最新版本；0.39 需要 Rust 1.95。
 - 将 Tauri 更新至 2.12.1（含 tauri-build 2.7.1 及 window-state、opener、single-instance 插件），
   并按 Tauri 2.12 的要求将声明的最低 Rust 版本从 1.88 提高到 1.90。锁定的依赖图此前已因
   `notify-rust` 需要 1.89，因此 1.88 已不准确。新的 `Rust minimum version` CI 作业会检查所声明的版本。
