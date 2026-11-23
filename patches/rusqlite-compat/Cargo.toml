@@ -1,0 +1,14 @@
+[package]
+name = "rusqlite"
+version = "0.39.1+qhud.1"
+edition = "2021"
+rust-version = "1.89"
+license = "MIT"
+publish = false
+description = "qhud adapter for qmonster's rusqlite dependency"
+
+[features]
+bundled = ["upstream/bundled"]
+
+[dependencies]
+upstream = { package = "rusqlite", version = "0.41.1" }

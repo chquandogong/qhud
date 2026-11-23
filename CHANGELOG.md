@@ -16,6 +16,7 @@ All notable changes to qhud. Format: [Keep a Changelog](https://keepachangelog.c
 
 - Show provider readiness, expiry, refresh failures and snapshot age. Add isolated Codex and Claude personal/team profiles and Windows native Antigravity usage.
 - Show provider-reported reset credits, Claude usage grades and the Google AI Pro badge. A dated model guide explains plan and seat conditions. Codex team seats can carry a dated manual verification.
+- Apply security updates for Rustls, WebPKI, Tokio, rustix and URL parsing. Keep qmonster at its pinned revision and update bundled SQLite through `rusqlite` 0.41.1 and `libsqlite3-sys` 0.39.1. Update Tauri patch releases and pinned CI actions.
 
 ### Documentation and verification
 

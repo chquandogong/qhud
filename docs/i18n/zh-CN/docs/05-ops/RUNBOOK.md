@@ -152,6 +152,13 @@ cargo deny --locked check
 3. **许可证或来源：** 不要为单个 crate 放宽全局允许列表。添加注明理由、仅作用于该 crate 的 `exceptions` 条目，或移除该依赖。
 4. 当 cargo-deny 报告某个已忽略的通告或已允许的许可证不再出现时，删除该条目。
 
+复核四项停止维护例外时，检查两个发布目标各自锁定的依赖树。对于 RUSTSEC-2026-0543，检查 qhud 与 qmonster 两者是否依赖 `chrono`。对于 RUSTSEC-2026-0370、RUSTSEC-2026-0371、RUSTSEC-2026-0372，检查 Linux 上 Tauri opener、single-instance 与 `notify-rust` 三条路径。更新其中一条后，其他路径可能仍依赖 `zbus` 5。删除已消失的 crate 对应的条目并重新运行依赖检查。
+
+```sh
+cargo tree --locked --target x86_64-unknown-linux-gnu
+cargo tree --locked --target x86_64-pc-windows-msvc
+```
+
 每当 Tauri、GTK 栈或 qmonster `rev` 变化时复查 `ignore` 列表，并保持 `deny.toml`、[仓库策略](REPOSITORY.md#rust-dependency-policy)及其翻译一致。升级 cargo-deny 本身时，在 `.github/workflows/ci.yml` 中同时修改 `CARGO_DENY_VERSION` 和 `CARGO_DENY_SHA256`；SHA-256 取自上游发布的 `.sha256` 文件，并与下载的归档核对。
 
 <!-- qhud:anchor -->

@@ -152,6 +152,13 @@ cargo deny --locked check
 3. **라이선스 또는 출처:** 크레이트 하나 때문에 전역 허용 목록을 넓히지 않습니다. 이유를 적은 크레이트 단위 `exceptions` 항목을 추가하거나 의존성을 제거합니다.
 4. 무시한 권고나 허용한 라이선스가 더 이상 발견되지 않는다고 cargo-deny가 보고하면 그 항목을 삭제합니다.
 
+유지보수 종료 예외 네 건을 재검토할 때는 두 배포 대상의 고정된 의존성 트리를 확인합니다. RUSTSEC-2026-0543은 qhud와 qmonster 양쪽의 `chrono` 사용을 확인합니다. RUSTSEC-2026-0370, RUSTSEC-2026-0371, RUSTSEC-2026-0372는 Linux의 Tauri opener, single-instance 및 `notify-rust` 경로를 확인합니다. 한 경로를 갱신해도 다른 경로에는 `zbus` 5가 남을 수 있습니다. 사라진 크레이트의 항목을 삭제한 후 의존성 검사를 다시 실행합니다.
+
+```sh
+cargo tree --locked --target x86_64-unknown-linux-gnu
+cargo tree --locked --target x86_64-pc-windows-msvc
+```
+
 Tauri, GTK 스택, qmonster `rev`가 바뀔 때마다 `ignore` 목록을 검토하고, `deny.toml`, [저장소 정책](REPOSITORY.md#rust-dependency-policy), 그 번역을 일치시킵니다. cargo-deny 자체를 갱신할 때는 `.github/workflows/ci.yml`의 `CARGO_DENY_VERSION`과 `CARGO_DENY_SHA256`을 함께 바꿉니다. SHA-256은 상위 릴리스의 `.sha256` 파일에서 가져오고, 내려받은 압축 파일과 대조해 확인합니다.
 
 <!-- qhud:anchor -->
