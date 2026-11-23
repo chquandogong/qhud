@@ -21,7 +21,7 @@
 </p>
 
 <p align="center">
-  <a href="#install">다운로드</a> · <a href="docs/i18n/ko/docs/GUIDE.md">사용자 가이드</a> · <a href="docs/i18n/ko/docs/README.md">문서</a> · <a href="docs/i18n/ko/CONTRIBUTING.md">기여하기</a>
+  <a href="#install">다운로드</a> · <a href="docs/i18n/ko/docs/GUIDE.md">사용자 가이드</a> · <a href="docs/i18n/ko/docs/README.md">문서</a> · <a href="https://github.com/chquandogong/qhud/wiki">GitHub Wiki</a> · <a href="docs/i18n/ko/CONTRIBUTING.md">기여하기</a>
 </p>
 
 ---
@@ -37,6 +37,7 @@ qhud는 여러 명령행 인터페이스에 흩어진 계정 할당량과 세션
 | --- | --- |
 | **사용량과 초기화** | 계정별 기간, 제공되는 모델별 풀, 초기화 카운트다운, 정확한 초기화 타임스탬프. |
 | **계정 맥락** | 구분된 계정/작업공간 행과 재시작 후에도 시점이 표시되는 스냅샷. Codex는 로컬 로그인에 이메일이 있으면 표시하고, 운영자 레이블을 우선하며, 이메일이 없으면 계정 ID를 표시합니다. |
+| **연결과 요금제** | 공급자 이름을 펼치면 연결 상태를 볼 수 있습니다. 개인·팀 사용량은 각 계정 행에 표시되며, 확인된 요금제를 누르면 지원 모델이 열립니다. |
 | **세션 활동** | 지원하는 Linux 환경에서 상태, 컨텍스트 사용 정도, 모델, 추론 노력, 브랜치, 작업 디렉터리, 충돌 표시. |
 | **최신성** | 2초마다 로컬 관찰. 공급자 사용량 요청은 명시적으로 새로고침할 때 실행. |
 | **시스템 사용량과 정보** | CPU·메모리·지원되는 GPU·디스크·네트워크의 작은 기록 그래프. 항목을 선택하면 상세 정보가, About에는 빌드 버전·제작자 Chenghao Quan·[홈페이지](https://chquandogong.github.io/CHENGHAO-QUAN/)가 표시됩니다. |
@@ -82,18 +83,15 @@ qhud는 여러 명령행 인터페이스에 흩어진 계정 할당량과 세션
 
 ## 설치
 
-**현재 릴리스: [v0.7.4](https://github.com/chquandogong/qhud/releases/tag/v0.7.4).**
+**현재 릴리스: [v0.8.0](https://github.com/chquandogong/qhud/releases/tag/v0.8.0).**
 두 플랫폼의 빌드/테스트 작업을 통과해야 공개합니다. 각 아카이브에는 SHA-256 파일이 있습니다.
 
 | 다운로드 | 검증 |
 | --- | --- |
-| [Windows x64 ZIP](https://github.com/chquandogong/qhud/releases/download/v0.7.4/qhud-v0.7.4-windows-x86_64.zip) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.7.4/qhud-v0.7.4-windows-x86_64.zip.sha256) |
-| [Linux x86_64 tarball](https://github.com/chquandogong/qhud/releases/download/v0.7.4/qhud-v0.7.4-linux-x86_64.tar.gz) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.7.4/qhud-v0.7.4-linux-x86_64.tar.gz.sha256) |
+| [Windows x64 ZIP](https://github.com/chquandogong/qhud/releases/download/v0.8.0/qhud-v0.8.0-windows-x86_64.zip) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.8.0/qhud-v0.8.0-windows-x86_64.zip.sha256) |
+| [Linux x86_64 tarball](https://github.com/chquandogong/qhud/releases/download/v0.8.0/qhud-v0.8.0-linux-x86_64.tar.gz) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.8.0/qhud-v0.8.0-linux-x86_64.tar.gz.sha256) |
 
-위 다운로드는 **v0.7.4 바이너리**입니다. 좁은 창에서 시스템 표시줄의 디스크 속도가
-네트워크 레이블 위에 겹쳐 그려지지 않습니다. Tauri 2.12.1과 `sysinfo` 0.38.4로 갱신했으며,
-소스에서 빌드하려면 이제 Rust 1.90이 필요합니다.
-[v0.7.4 릴리스 노트](docs/i18n/ko/docs/05-ops/releases/v0.7.4.md)를 참조하세요.
+v0.8.0에서는 공급자 이름을 눌러 마지막 조회 시점과 로컬 인증 만료 시각을 확인할 수 있습니다. **지원 모델**을 누르면 기준일과 함께 좌석·체험판별 이용 조건이 나옵니다. 로그인한 계정에서 실제 선택할 수 있는 모델은 공급자 앱의 모델 선택기에서 확인하세요. [v0.8.0 릴리스 노트](docs/i18n/ko/docs/05-ops/releases/v0.8.0.md)
 
 현재 release workflow로 게시한 아카이브는 GitHub 빌드 출처 증명도 제공합니다. GitHub CLI에서 실제 다운로드한 아카이브 경로를 사용해 확인하세요. `.sha256` 파일이 아닌 아카이브 자체를 검증합니다.
 
@@ -112,9 +110,9 @@ ZIP을 풀고 버전 디렉터리 안의 `qhud.exe`를 실행합니다. Microsof
 아카이브와 SHA-256 파일을 같은 디렉터리에 다운로드한 뒤 실행합니다.
 
 ```sh
-sha256sum -c qhud-v0.7.4-linux-x86_64.tar.gz.sha256
-tar -xzf qhud-v0.7.4-linux-x86_64.tar.gz
-install -Dm755 qhud-v0.7.4-linux-x86_64/qhud "$HOME/.local/bin/qhud"
+sha256sum -c qhud-v0.8.0-linux-x86_64.tar.gz.sha256
+tar -xzf qhud-v0.8.0-linux-x86_64.tar.gz
+install -Dm755 qhud-v0.8.0-linux-x86_64/qhud "$HOME/.local/bin/qhud"
 "$HOME/.local/bin/qhud"
 ```
 
@@ -128,7 +126,8 @@ Ubuntu 24.04 런타임 의존성에는 `libwebkit2gtk-4.1-0`, `libgtk-3-0`, 트�
 
 - **이동 및 크기 변경:** 머리글이나 바닥글을 드래그하고 모서리 손잡이로 크기를 변경합니다.
 - **확인:** 계정 행이나 세션 타일을 선택합니다. 게이지에 마우스를 올리면 정확한 초기화 시간을 볼 수 있습니다.
-- **새로고침:** 상단 ⟳로 모든 공급자를 새로고침하거나 계정 옆의 ⟳를 사용합니다.
+- **사용량 조회.** 상단의 ⟳를 누르면 전체 공급자를, 공급자 이름 옆의 ⟳를 누르면 해당 공급자를 새로고침합니다.
+- **계정 추가.** Codex 또는 Claude 개인·팀 프로필을 등록한 뒤 ZIP에 동봉된 PowerShell 스크립트로 로그인하고 해당 공급자를 새로고침합니다. [Windows 프로필 설정](docs/i18n/ko/docs/GUIDE.md#windows-personal-and-team-profiles)
 - **미리 보기:** 트레이의 *Pin above windows*(창 위에 고정)를 사용합니다.
 - **종료:** 트레이에서 *Quit qhud*(qhud 종료)를 선택합니다.
 
@@ -148,7 +147,9 @@ qhud --peek
 
 백분율은 **계정과 기간**에 속합니다. Spark 5H/7D를 포함한 모델별 한도는 공급자가 해당 로그인에 대해 반환하는 경우에만 나타납니다. 없는 한도를 임의의 0으로 채우지 않으며, 한 계정의 저장된 사용량을 다른 계정의 이름 아래 재사용하지 않습니다.
 
-저장된 값에는 경과 시간이 표시됩니다. 초기화까지 남은 시간은 카운트다운이며, 게이지에 마우스를 올리면 정확한 날짜와 시간을 볼 수 있습니다. 로컬 관찰은 공급자 API를 요청하지 않습니다. 명시적 새로고침은 공급자 사용량 엔드포인트를 위해 기존 액세스 토큰을 읽을 수 있지만, qhud 자체는 OAuth refresh grant를 실행하지 않습니다. Codex는 대체 조회를 자체 CLI에 위임할 수 있으며, Antigravity는 실행 중인 CLI의 루프백 서비스를 사용합니다.
+저장된 값에는 경과 시간이 표시됩니다. 초기화까지 남은 시간은 카운트다운이며, 게이지에 마우스를 올리면 정확한 날짜와 시간을 볼 수 있습니다. 로컬 관찰은 공급자 API를 요청하지 않습니다. 명시적 새로고침은 공급자 사용량 엔드포인트를 위해 기존 액세스 토큰을 읽을 수 있지만, qhud 자체는 OAuth refresh grant를 실행하지 않습니다. Windows에서 Antigravity는 실행 중인 앱이나 CLI의 로컬 서비스를 통해 사용량을 제공합니다.
+
+초기화권은 조회 시점에 공급자가 알려 준 수동 초기화 가능 횟수입니다. 카운트다운은 현재 사용 기간이 자동으로 초기화되기까지 남은 시간입니다.
 
 계정 설정은 저장소 밖에 보관합니다. [설정 및 데이터 가이드](docs/i18n/ko/docs/GUIDE.md#configuration-and-local-data)를 참조하세요.
 

@@ -6,8 +6,7 @@
 
 # TEST_PLAN
 
-> Status: v0.7.4 post-publication Windows visual evidence recorded; desktop
-> gaps remain · Date: 2026-10-02 · Owner: chquandogong
+> Status: Windows provider panel checked on a development build · Date: 2026-11-23 · Owner: chquandogong
 
 ## Automated gates
 
@@ -18,7 +17,7 @@ validate a `codex/**` branch. Ubuntu 24.04 uses the canonical pinned Git depende
 cargo fmt --all --check
 cargo clippy --locked --all-targets -- -D warnings
 cargo test --locked --all-targets
-node --test tests/system-metrics.test.cjs
+node --test tests/*.test.cjs
 cargo build --locked --release
 ```
 
@@ -27,6 +26,7 @@ Windows MSVC uses the scoped dependency patch through the build script:
 ```powershell
 ./scripts/Build-Windows.ps1 -Test -VisualStudioPath '<Visual Studio installation>'
 git diff --exit-code -- Cargo.toml Cargo.lock
+./tests/connect-account.test.ps1
 ```
 
 CI also runs a separate Ubuntu `repository-integrity` job with Node 22:
@@ -43,8 +43,7 @@ change, run this command locally without compiling Rust; CI still runs all
 jobs on the push or pull request.
 
 `-Test` runs qhud Rust tests and then builds in the same dependency context.
-Run `node --test tests/system-metrics.test.cjs` with Node 22 for the frontend
-system-metrics helpers.
+Run the Node 22 frontend suite for provider status, account identity, model guidance and system metrics.
 The script restores the canonical lockfile after Windows commands; Linux
 builds do not require a sibling checkout or the Windows patch. Release
 publication waits for both Ubuntu and Windows tests and builds to succeed.
@@ -155,6 +154,10 @@ implementation (synthetic-input evidence in DECISION_LOG D-008).
   limits remain absent; no zero-filled values or another account's usage.
 - Verify that background CLI probes do not open console windows. Native
   Windows terminal-tab monitoring is outside the current supported scope.
+
+- Test a returned reset count of zero and a response without that field. Verify that the former displays zero and the latter stays unavailable. Compare two logins sharing a Codex workspace and switch the native Antigravity account during a refresh. Only readings with matching ownership may appear.
+
+In the development build tested on 2026-11-23, 187 Rust tests and 50 Node tests passed. In the native WebView2 widget, opening **Supported models** for a saved Codex Standard team seat displayed model examples, workspace constraints and the guide date. The row still showed that the profile needed to connect. This check covered the guide and pending status. The account’s live usage and individual model permissions still require a signed-in check.
 
 2026-10-02, post-publication Windows visual verification of the published
 v0.7.4 asset: the downloaded `qhud-v0.7.4-windows-x86_64.zip` matched SHA-256

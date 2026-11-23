@@ -17,6 +17,17 @@
 
 ## [未发布]
 
+## [0.8.0] — 2026-11-23
+
+<!-- qhud:anchor -->
+<a id="account-connections-and-usage"></a>
+
+### 账户连接与用量
+
+- 显示供应商就绪状态、凭据到期时间、刷新错误和已保存读数的时间。增加独立的 Codex 与 Claude 个人及团队配置，并支持读取 Windows 原生 Antigravity 的用量。
+- 显示供应商报告的剩余重置次数、Claude 使用等级和 Google AI Pro 套餐标签。模型说明标出套餐、席位条件和资料日期，手动核实的 Codex 团队席位也会标明核实日期。
+- 应用 Rustls、WebPKI、Tokio、rustix 和 URL 解析器的安全更新。保留 qmonster 的固定修订，通过 `rusqlite` 0.41.1 和 `libsqlite3-sys` 0.39.1 更新内置 SQLite。同步更新 Tauri 补丁版本和 CI 操作的固定版本。
+
 <!-- qhud:anchor -->
 <a id="documentation-and-verification"></a>
 

@@ -148,6 +148,9 @@ mod tests {
         FetchedStore {
             schema: SCHEMA_VERSION,
             claude: Some(CachedUsage {
+                org_id: None,
+                plan_name: None,
+                reset_credits: None,
                 fetched_at_ms: 42,
                 account_id: Some("acct".into()),
                 five_hour: Some(crate::usage_cache::CachedWindow {
@@ -161,6 +164,8 @@ mod tests {
             codex: Some(CodexFetched {
                 fetched_at_ms: 43,
                 workspaces: vec![WorkspaceUsage {
+                    email: None,
+                    reset_credits: None,
                     account_id: "ws-1".into(),
                     name: Some("Personal".into()),
                     plan_type: Some("prolite".into()),
@@ -237,6 +242,9 @@ mod tests {
         store.claude_extras.insert(
             "/home/u/claude-personal".into(),
             CachedUsage {
+                org_id: None,
+                plan_name: None,
+                reset_credits: None,
                 fetched_at_ms: 99,
                 account_id: Some("acct-2".into()),
                 five_hour: None,

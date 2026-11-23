@@ -2,6 +2,11 @@
 resolver = "2"
 members = ["src-tauri"]
 
+# The pinned qmonster requests rusqlite 0.39 and enables bundled SQLite.
+# Remove this adapter once qmonster accepts rusqlite 0.41 or newer.
+[patch.crates-io]
+rusqlite = { path = "patches/rusqlite-compat" }
+
 [profile.release]
 strip = true
 lto = true

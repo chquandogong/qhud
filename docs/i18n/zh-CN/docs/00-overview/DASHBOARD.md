@@ -9,7 +9,7 @@
 
 # 项目看板 — qhud
 
-> 状态：v0.7.4 已发布 · 更新：2026-10-02 · 负责人：chquandogong
+> 状态：v0.8.0 · 更新：2026-11-23 · 负责人：chquandogong
 > 公开项目快照。Git 历史、带标签发布及 workflow 运行是权威记录；下方带日期观察保留其原始验证范围。
 
 <!-- qhud:anchor -->
@@ -19,8 +19,8 @@
 
 | 项目 | 值 |
 | --- | --- |
-| 当前版本 | [v0.7.4](https://github.com/chquandogong/qhud/releases/tag/v0.7.4)：修复窄系统条（速率不再重叠）、Tauri 2.12.1、`sysinfo` 0.38.4，并将源码构建最低版本声明为 Rust 1.90。提供 Linux x86_64 tarball、Windows x86_64 ZIP 与 CycloneDX SBOM，各附 SHA-256 文件和来源证明。此前：[v0.7.3](https://github.com/chquandogong/qhud/releases/tag/v0.7.3)：已知 Codex 方案值显示为 **Pro 100**、**Pro 200** 或 **Pro 500**，操作者显式 override 优先，未知值从徽标中隐藏。该版本还打包了 v0.7.2 之后完成的安全、依赖、release workflow 与翻译治理工作。提供 Linux x86_64 tarball、Windows x86_64 ZIP 和 CycloneDX SBOM，每项均有 SHA-256 文件与来源证明。 |
-| 发布后源码 | v0.7.4 打包了 v0.7.3 标签之后的全部源码修改：[#28](https://github.com/chquandogong/qhud/pull/28) v0.7.3 Windows 验证记录、[#29](https://github.com/chquandogong/qhud/pull/29) Tauri 2.12.1、Rust 1.90 与最低版本 CI 作业、[#30](https://github.com/chquandogong/qhud/pull/30) `sysinfo` 0.38.4，以及 [#31](https://github.com/chquandogong/qhud/pull/31) 窄系统条修复与原生 README 截图。此前：v0.7.3 打包了 v0.7.2 标签之后的全部源码修改：[#22](https://github.com/chquandogong/qhud/pull/22) 依赖与 rustls 安全更新、[#23](https://github.com/chquandogong/qhud/pull/23) Rust 依赖策略门禁、[#24](https://github.com/chquandogong/qhud/pull/24) 翻译 workflow、[#25](https://github.com/chquandogong/qhud/pull/25) 发布强化与 SBOM、[#26](https://github.com/chquandogong/qhud/pull/26) 类型化脱敏错误，以及本版本的 Codex 方案名称映射。 |
+| 当前版本 | [v0.8.0](https://github.com/chquandogong/qhud/releases/tag/v0.8.0) · 显示服务商连接状态、各账户用量、剩余重置次数以及套餐支持的模型。 |
+| 发布内容 | Windows ZIP 包含连接额外配置的 PowerShell 脚本。同一版本还提供 Linux 归档和 CycloneDX SBOM。 |
 | 方案标签自动检查 | **v0.7.3 本地源码树，2026-10-01：**8/8 项 Node 测试通过。两项方案标签测试覆盖 `prolite` / `pro` / `promax` 映射、规范化、显式 override 优先级和未知值隐藏。这是使用合成输入的自动化证据，不是实时供应商或桌面显示验证。 |
 | 流水线依赖 | qmonster @ `6a21c44`；Linux 使用规范 Git 依赖，Windows 使用命令级补丁并恢复 lockfile。 |
 | 支持平台 | Ubuntu 24.04 / GNOME 与原生 Windows x64 / WebView2。原生 Windows 终端标签页观测仍在支持范围之外。 |

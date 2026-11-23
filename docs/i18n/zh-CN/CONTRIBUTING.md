@@ -39,12 +39,12 @@
 
 ## 构建与检查
 
-仓库声明 Rust 1.90 或更新版本；CI 使用 stable Rust 构建，`Rust minimum version` 作业检查所声明的版本。应用构建采用普通 HTML/CSS/JavaScript，无需 Node.js 或 npm。Node.js 22 仅用于独立的前端系统指标回归测试。qmonster 固定在 `src-tauri/Cargo.toml` 所列 revision。
+仓库声明 Rust 1.90 或更新版本；CI 使用 stable Rust 构建，`Rust minimum version` 作业检查所声明的版本。应用构建采用普通 HTML/CSS/JavaScript，无需 Node.js 或 npm。独立的前端回归测试使用 Node.js 22 运行。qmonster 固定在 `src-tauri/Cargo.toml` 所列 revision。
 
 在任一开发平台运行：
 
 ```sh
-node --test tests/system-metrics.test.cjs
+node --test tests/*.test.cjs
 ```
 
 ### Linux
@@ -63,6 +63,7 @@ cargo build --locked --release
 使用带 C++ 工作负载和 Windows SDK 的 Developer PowerShell for Visual Studio：
 
 ```powershell
+.\tests\connect-account.test.ps1
 .\scripts\Build-Windows.ps1 -Test
 git diff --exit-code -- Cargo.toml Cargo.lock
 ```

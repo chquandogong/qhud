@@ -53,6 +53,8 @@ GitHub 目前仅允许 squash 合并，提供自动合并及分支更新，并�
 
 - **范围：** qhud 发布的 Linux x86_64 与 Windows x86_64 目标，使用默认 feature。仅被其他目标使用的 crate 不在范围内。
 - **通告：** 任何 RustSec 漏洞都会使检查失败。无人维护（unmaintained）和不健全（unsound）通告同样对依赖图中的所有 crate 判为失败，使新通告必须经过审查，而不是被默默接受。被撤回（yanked）的版本只产生警告。已接受的通告在 `deny.toml` 中按 ID 列出并注明理由。截至 **2026-10-01**，它们是 RUSTSEC-2024-0429（glib 0.18 不健全，GHSA-wrw7-89jp-8q8g，在 [#13](https://github.com/chquandogong/qhud/issues/13) 中跟踪）、RUSTSEC-2024-0370（同一 GTK3 栈中无人维护的 `proc-macro-error`），以及 RUSTSEC-2025-0075、RUSTSEC-2025-0080、RUSTSEC-2025-0081、RUSTSEC-2025-0098 和 RUSTSEC-2025-0100（经 `tauri-utils` → `urlpattern` 引入的无人维护 `unic-*` crate）。已接受条目中没有漏洞。**2026-10-02** 的 Tauri 2.12 更新移除了 `urlpattern` 0.3 及全部 `unic-*` crate，因此删除了这五个条目；仅保留 RUSTSEC-2024-0429 和 RUSTSEC-2024-0370。
+- **2026-11-23** 又审查了四条 RustSec 停止维护通告。两个发布目标均通过 qhud 和固定版本的 qmonster 使用 `chrono`。待两者均迁移至 `time` 或 `jiff`、该 crate 从依赖图中移除后，删除 RUSTSEC-2026-0543 条目。[RustSec 迁移说明](https://rustsec.org/advisories/RUSTSEC-2026-0543.html)
+- 在 Linux 上，Tauri opener 和 single-instance 仍依赖 `zbus` 5。qmonster 也通过 `notify-rust` 提供桌面通知。三项条目对应已并入 `zbus` 6 的独立 crate，即 RUSTSEC-2026-0370（`zvariant`，传输类型）、RUSTSEC-2026-0371（`zbus_names`，名称）和 RUSTSEC-2026-0372（`zvariant_derive`，构建期宏）。每个 crate 从 Linux 依赖图消失后，删除对应条目。[Tauri 迁移跟踪](https://github.com/tauri-apps/plugins-workspace/issues/3716)
 - **许可证：** `deny.toml` 中列出的宽松许可证（包括 MIT、Apache-2.0、BSD-3-Clause、ISC 和 Zlib）允许用于任何 crate。MPL-2.0 仅允许用于五个指名且未修改的间接依赖：`cssparser`、`cssparser-macros`、`dtoa-short`、`selectors` 和 `option-ext`。其他许可证均判为失败。
 - **来源：** 唯一允许的 registry 是 crates.io。唯一允许的 Git 来源是 `https://github.com/chquandogong/qmonster`，且 Git 依赖必须用 `rev` 固定。
 - **禁用：** 重复版本以及没有版本号的 qmonster Git 依赖要求只产生警告，不判为失败；Tauri、GTK 和 windows-rs 依赖图中存在 qhud 无法消除的重复。
@@ -61,7 +63,7 @@ GitHub 目前仅允许 squash 合并，提供自动合并及分支更新，并�
 
 ## PR、issue 与发布
 
-创建 PR 前先搜索已有 issue，并使变更范围明确。[PR 模板](../../../../../.github/PULL_REQUEST_TEMPLATE.md)要求填写相关 issue 或无需 issue 的原因、变更后的行为、实际验证、未经验证的行为、隐私与安全检查，以及同步三种语言的文档。解决审核对话并为严格检查更新分支，七项状态全部通过后才能 squash 合并。自动合并同样不能绕过门禁。普通问题、功能建议和支持问题使用收集版本及环境的三个 [issue 表单](../../../../../.github/ISSUE_TEMPLATE/)；空白 issue 被禁用，选择页面链接文档和私密安全报告。Issues 已启用，Wiki、Projects、Discussions 已关闭。发布前对凭据、账户数据、本地路径和截图脱敏。根据可复现性、支持版本、平台，以及问题属于 qhud 还是上游服务商，对公开 issue 分类；渠道选择见 [SUPPORT.md](../../../../../SUPPORT.md)。
+创建 PR 前先搜索已有 issue，并使变更范围明确。[PR 模板](../../../../../.github/PULL_REQUEST_TEMPLATE.md)要求填写相关 issue 或无需 issue 的原因、变更后的行为、实际验证、未经验证的行为、隐私与安全检查，以及同步三种语言的文档。解决审核对话并为严格检查更新分支，八项必需检查全部通过后才能 squash 合并。自动合并同样不能绕过门禁。普通问题、功能建议和支持问题使用收集版本及环境的三个 [issue 表单](../../../../../.github/ISSUE_TEMPLATE/)；空白 issue 被禁用，选择页面链接文档和私密安全报告。Issues 和[用户 Wiki](https://github.com/chquandogong/qhud/wiki) 已启用。Projects 和 Discussions 已关闭。发布前对凭据、账户数据、本地路径和截图脱敏。根据可复现性、支持版本、平台，以及问题属于 qhud 还是上游服务商，对公开 issue 分类；渠道选择见 [SUPPORT.md](../../../../../SUPPORT.md)。
 
 [发布工作流](../../../../../.github/workflows/release.yml)由 `v*` 标签触发。预检只接受稳定的 `vX.Y.Z` 标签，并要求 Cargo 与 Tauri 版本匹配、对应版本的发布说明非空、CHANGELOG 有条目、标签提交已包含在 `origin/main`。它调用完整 CI 品质门禁，打包 Linux x86_64 和 Windows x86_64，用精确版本的 `cargo-cyclonedx` 从打标签的锁定源码树生成 CycloneDX SBOM，为这三个文件生成 SHA-256 文件和构建来源证明，再验证恰好六项资产及其校验和。发布经过 `release` 环境，先创建草稿。标签查询不返回草稿，因此通过列出 release 查找草稿。已公开的 release 不会被替换，也不会在重复草稿之间擅自选择；若现有草稿资产的字节不同，也不会覆盖。资产验证后才公开草稿。最后确认的 `release` 环境要求维护者作为审批人，并允许这个单人仓库自行批准。**发布不可变设置于 2026-09-14 启用，适用于之后的新 release；既有 `v0.7.1` 不会追溯改变，其 API `immutable` 值为 `false`。** 标签保护已经禁止修改 `v*` 引用。操作顺序见[运行手册](RUNBOOK.md#release-procedure)。
 

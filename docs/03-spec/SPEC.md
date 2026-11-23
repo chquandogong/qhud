@@ -6,7 +6,7 @@
 
 # SPEC — qhud
 
-> Status: living (updated through v0.7.1) · Date: 2026-09-14 · Owner:
+> Status: living (updated through v0.8.0) · Date: 2026-11-23 · Owner:
 > chquandogong
 > What qhud must do. ARCHITECTURE says how it is built, DECISION_LOG says why.
 > Existing requirement numbers remain stable; later releases append new rows.
@@ -80,7 +80,7 @@ is the mapping every other document should follow.
 | FR-22 | Several Claude accounts render at once via registry config directories, one row per account with its own snapshot and refresh; partial fetch failure stays partial                                                    | done (D-015)                                                                    |
 | FR-27 | A row's identity is (account, organization): one login holding a team seat and a personal organization is two rows with separate pools, and a refresh result is matched to its row by config directory and account id | done (v0.5.2, D-018) — a real second-organization row is still field-unverified |
 | FR-34 | A saved snapshot is used only for the account currently signed in; ownership is checked before age, so a newer reading from a previous login cannot mask this login's older one                                       | done (v0.6.0)                                                                   |
-| FR-35 | Codex reads the local ID-token email for display when available; operator labels take precedence, missing/malformed email falls back to the account ID, and account/workspace identity remains ID-based | done (v0.6.2) |
+| FR-35 | Codex labels use the operator override, then the local ID-token email or account ID. Each login’s workspace readings retain both the workspace ID and available email. | done (v0.6.2, v0.8.0) |
 
 Known limit, carried since D-015: a pane's account is not attributable, so
 pane-fed gauges always belong to the default account's row.
@@ -94,9 +94,12 @@ pane-fed gauges always belong to the default account's row.
 | FR-19 | Claude usage-credit spend renders on the account line as minor-unit money with the provider's own severity, and is hidden for plans without it                          | done (v0.5.0)        |
 | FR-20 | Explicit-refresh results persist across restarts and render with their true origin and age; live pane data always wins                                                  | done (v0.5.0)        |
 | FR-21 | One control refreshes every provider concurrently and mirrors the union of their states; per-provider controls remain; `--refresh-all` relays from a shortcut           | done (v0.5.0)        |
-| FR-23 | agy quota on explicit refresh via the CLI's own loopback RPC — no token, machine-local, ports discovered from the operating system; the last read persists              | done (v0.5.0)        |
-| FR-24 | When the active Codex login's direct fetch fails, a short-lived `codex app-server` child answers instead, so the CLI owns token rotation and qhud does not use the token itself on this path | done (v0.5.0, D-016) |
+| FR-23 | On an explicit refresh, agy uses its local CLI listener or the verified native Windows app daemon. Saved readings retain the account returned by the native app. | done (v0.5.0, v0.8.0) |
+| FR-24 | Codex asks `codex app-server` for each configured login first, then checks saved credentials for additional workspaces or missing results. A cross-workspace response must identify the requested workspace. | done (v0.5.0, v0.8.0, D-016) |
 | FR-33 | Provider refreshes running at the same time preserve each other's saved results                                                                                         | done (v0.6.0)        |
+| FR-41 | Report local readiness, explicit refresh outcomes and known authentication expiry. A configured personal or team connection stays visible without usage until its identity matches. | done (v0.8.0) |
+| FR-42 | Show reset credits only when a provider supplies a count, including zero. Attach the count and any native plan name to that account’s dated snapshot. | done (v0.8.0) |
+| FR-43 | Distinguish the organization plan, member usage grade and dated seat verification. A model guide for recognized plans discloses its review date and access conditions. | done (v0.8.0) |
 
 ### Being trustworthy about it
 
@@ -118,8 +121,7 @@ display, without sending credentials to a provider. Its only other work is a
 window-geometry checkpoint every ~30 s
 and, on Linux, a pixel sample every ~28 s. Everything that reaches further
 runs from an explicit operator gesture or its command-line twin, and never
-runs an OAuth refresh grant. On the fetch paths qhud reads an access token for
-Claude and Codex; agy needs no credential, and the Codex fallback delegates authentication to the CLI.
+runs an OAuth refresh grant. On an explicit refresh, Claude and Codex HTTP requests use the existing access token. The Codex CLI manages its own authentication. Native Antigravity uses the registered daemon’s local CSRF token on a verified loopback connection.
 
 **Selecting is not fetching.** Since v0.5.1 no selection, expansion or row
 click performs network work. Only the refresh controls and the relay flags do.
@@ -153,6 +155,8 @@ additive.
   "backend": "herdr",      // "herdr" | "tmux" | null
   "generated_at_ms": 1788790282397,
   "poll_secs": 2,
+  "provider_health": [],
+  "configured_connections": [],
 
   "quotas": [{             // one row per (provider, account, organization)
     "provider": "claude",  // claude | codex | agy | gemini
@@ -161,9 +165,9 @@ additive.
     "d7": { "pct": 7, "source": "providercache",
             "reset_unix": 1788976799, "of_tokens": null },
     "from_label": "claude:1:main",   // pane whose reading won; "" if synthesized
-    "session": "dogu-3d-studio",
+    "session": "demo-session",
     "account": {
-      "display": "chquan@dogu.xyz", // precomputed label → email → id
+      "display": "member@example.test", // precomputed label → email → id
       "label": null, "email": "…", "account_id": "…",
       "org": "…", "org_type": "claude_team", "org_id": "…",
       "tiers": [{ "kind": "org", "tier": "max_5x" }],
@@ -240,6 +244,8 @@ additive.
   }
 }
 ```
+
+A `provider_health` entry describes local readiness and the last explicit refresh. `configured_connections` lists requested logins, their scope and any dated seat verification. Each `quotas` entry may carry a provider-reported `reset_credits` count and `plan_name`. An absent count means unknown, and a returned zero remains visible.
 
 Fields that are usually empty are omitted rather than sent as null:
 `account`, `origin`, `cache_fetched_at_ms`, `scoped`, `extra`,

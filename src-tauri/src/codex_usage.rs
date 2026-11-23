@@ -42,6 +42,10 @@ pub struct UsageWindow {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct WorkspaceUsage {
     pub account_id: String,
+    /// Login email from this source's local ID token. It is display metadata,
+    /// and also prevents two known users in one workspace being coalesced.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub email: Option<String>,
     /// Workspace display name, when `accounts/check` supplied one.
     #[serde(default)]
     pub name: Option<String>,
@@ -51,6 +55,10 @@ pub struct WorkspaceUsage {
     pub windows: Vec<UsageWindow>,
     #[serde(default)]
     pub credits_balance: Option<String>,
+    /// Earned manual rate-limit resets still available. Missing is unknown,
+    /// distinct from a provider-reported zero. This never consumes a reset.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reset_credits: Option<u32>,
     /// True for the ACTIVE login's own workspace (the default
     /// `auth.json`). Its numbers are the same pool the pane statusline
     /// reports, so it merges into the provider row instead of rendering
@@ -71,10 +79,13 @@ pub fn workspace_snapshot(
     let mut cu = CachedUsage {
         fetched_at_ms,
         account_id: Some(ws.account_id.clone()),
+        org_id: None,
+        plan_name: None,
         five_hour: None,
         seven_day: None,
         scoped: Vec::new(),
         extra: None,
+        reset_credits: ws.reset_credits,
     };
     for w in &ws.windows {
         let window = CachedWindow {
@@ -245,10 +256,13 @@ pub fn parse_usage(account_id: &str, body: &str) -> Option<WorkspaceUsage> {
     );
     Some(WorkspaceUsage {
         account_id: account_id.to_string(),
+        email: None,
         name: None,
         plan_type: parsed.plan_type,
         windows,
         credits_balance: parsed.credits.and_then(|c| c.balance),
+        // The HTTP schema used here has no verified reset-credit field.
+        reset_credits: None,
         active: false,
     })
 }
@@ -274,6 +288,10 @@ pub fn parse_app_server_rate_limits(line: &str, account_id: &str) -> Option<Work
         rate_limits: Option<Limits>,
         #[serde(default)]
         rate_limits_by_limit_id: Option<std::collections::BTreeMap<String, Limits>>,
+        // Optional metadata must not make otherwise valid quota unreadable
+        // when a server returns an unexpected reset-credit shape.
+        #[serde(default)]
+        rate_limit_reset_credits: Option<serde_json::Value>,
     }
     #[derive(Deserialize)]
     #[serde(rename_all = "camelCase")]
@@ -321,9 +339,18 @@ pub fn parse_app_server_rate_limits(line: &str, account_id: &str) -> Option<Work
         return None;
     }
     let result = rpc.result?;
+    // https://learn.chatgpt.com/docs/app-server#6-rate-limits-chatgpt
+    // availableCount is authoritative; detail rows can be capped or null.
+    // Do not infer availability from the length/statuses of `credits`.
+    let reset_credits = result
+        .rate_limit_reset_credits
+        .as_ref()
+        .and_then(|credits| credits.get("availableCount"))
+        .and_then(serde_json::Value::as_u64)
+        .and_then(|count| u32::try_from(count).ok());
     let top = result.rate_limits;
     let mut by_id = result.rate_limits_by_limit_id.unwrap_or_default();
-    if top.is_none() && by_id.is_empty() {
+    if top.is_none() && by_id.is_empty() && reset_credits.is_none() {
         return None;
     }
 
@@ -370,40 +397,107 @@ pub fn parse_app_server_rate_limits(line: &str, account_id: &str) -> Option<Work
         .collect();
     Some(WorkspaceUsage {
         account_id: account_id.to_string(),
+        email: None,
         name: None,
         plan_type,
         windows,
         credits_balance,
+        reset_credits,
         active: false,
     })
 }
 
-/// Prefer an explicit CLI, then the user's PATH. The Windows desktop app
-/// also installs versioned CLI binaries outside PATH.
-fn codex_binary() -> std::path::PathBuf {
+/// Prefer an explicit CLI, then PATH and supported per-user Windows layouts.
+/// Desktop app updates must not depend on Explorer having a fresh PATH.
+fn discover_codex_binary() -> Option<std::path::PathBuf> {
     if let Some(path) = std::env::var_os("QHUD_CODEX_BIN").filter(|p| !p.is_empty()) {
-        return path.into();
+        return Some(path.into());
+    }
+    if let Some(path) = crate::provider_health::path_binary("codex") {
+        return Some(path);
     }
     #[cfg(windows)]
     {
-        if let Some(path) = std::env::var_os("PATH") {
-            for dir in std::env::split_paths(&path) {
-                for name in ["codex.exe", "codex.cmd", "codex.bat"] {
-                    let candidate = dir.join(name);
-                    if candidate.is_file() {
-                        return candidate;
-                    }
-                }
-            }
-        }
         if let Some(local) = std::env::var_os("LOCALAPPDATA") {
-            let root = std::path::PathBuf::from(local).join("OpenAI/Codex/bin");
-            if let Some(binary) = desktop_codex_binary(&root) {
-                return binary;
+            if let Some(binary) = windows_codex_binary(&std::path::PathBuf::from(local)) {
+                return Some(binary);
             }
         }
     }
-    "codex".into()
+    None
+}
+
+#[cfg(any(windows, test))]
+fn windows_codex_binary(local: &std::path::Path) -> Option<std::path::PathBuf> {
+    for root in [
+        local.join("Programs/OpenAI/Codex/bin"),
+        local.join("OpenAI/Codex/bin"),
+    ] {
+        let direct = root.join("codex.exe");
+        if direct.is_file() {
+            return Some(direct);
+        }
+        if let Some(binary) = desktop_codex_binary(&root) {
+            return Some(binary);
+        }
+    }
+    None
+}
+
+fn codex_binary() -> std::path::PathBuf {
+    discover_codex_binary().unwrap_or_else(|| "codex".into())
+}
+
+pub fn local_health(now_ms: u64) -> crate::provider_health::ProviderHealth {
+    use crate::provider_health::{HealthState, ProviderHealth};
+    let mut health = ProviderHealth::new("codex", "codex_app_server", now_ms);
+    health.cli_available = discover_codex_binary().is_some_and(|path| path.is_file());
+    let auth_path = crate::paths::codex_home().map(|dir| dir.join("auth.json"));
+    let body = auth_path
+        .as_ref()
+        .and_then(|path| crate::provider_health::read_metadata(path));
+    health.credential_modified_at_ms = auth_path
+        .as_ref()
+        .and_then(|path| crate::provider_health::credential_modified_at_ms(path));
+    health.identity_fingerprint = body
+        .as_deref()
+        .and_then(crate::accounts::codex_account)
+        .and_then(|account| {
+            account.account_id.map(|id| {
+                crate::provider_health::identity_fingerprint(&[
+                    "codex",
+                    &id,
+                    &account.email.unwrap_or_default().to_ascii_lowercase(),
+                ])
+            })
+        });
+    let metadata = body
+        .as_deref()
+        .and_then(crate::provider_health::codex_auth_metadata);
+    health.expires_at_ms = metadata.as_ref().and_then(|m| m.expires_at_ms);
+    if metadata.is_none_or(|m| !m.has_credential) {
+        health.state = HealthState::LoginRequired;
+        health.code = "codex_login_missing";
+        health.message = "No readable Codex subscription login was found.";
+        health.action = Some("codex_login");
+    } else if !health.cli_available {
+        health.state = HealthState::CliMissing;
+        health.code = "codex_cli_missing";
+        health.message = "Codex CLI was not found; automatic login recovery is unavailable.";
+        health.action = Some("install_codex_cli");
+    } else {
+        health.state = HealthState::Ready;
+        health.code = if health
+            .expires_at_ms
+            .is_some_and(|expires| expires <= now_ms)
+        {
+            "codex_refresh_needed"
+        } else {
+            "codex_ready"
+        };
+        health.message = "Codex login and CLI were found; refresh to check usage.";
+    }
+    health
 }
 
 #[cfg(any(windows, test))]
@@ -422,27 +516,57 @@ fn desktop_codex_binary(root: &std::path::Path) -> Option<std::path::PathBuf> {
 /// still works when the on-disk access token has expired and the raw
 /// HTTP path answers 401. qhud reads no token at all here.
 pub async fn fetch_via_app_server() -> Result<WorkspaceUsage, String> {
+    let home = crate::paths::codex_home().ok_or("Codex home could not be determined")?;
+    fetch_via_app_server_at(&home).await
+}
+
+fn app_server_command(
+    binary: &std::path::Path,
+    home: &std::path::Path,
+    force_file_store: bool,
+) -> std::process::Command {
+    let mut command = std::process::Command::new(binary);
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        command.creation_flags(0x0800_0000); // CREATE_NO_WINDOW
+    }
+    command.args(["-s", "read-only", "-a", "on-request"]);
+    if force_file_store {
+        command.args(["-c", "cli_auth_credentials_store=\"file\""]);
+    }
+    command.arg("app-server").env("CODEX_HOME", home);
+    command
+}
+
+/// Each registered home keeps its own login. CODEX_HOME is set on this child
+/// only, so observing another account never switches the user's active login.
+pub async fn fetch_via_app_server_at(home: &std::path::Path) -> Result<WorkspaceUsage, String> {
     use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 
     // The workspace this login is scoped to, for labelling — an identity
     // field read locally, not a credential.
-    let account_id = crate::paths::codex_home()
-        .and_then(|dir| std::fs::read_to_string(dir.join("auth.json")).ok())
+    let account = std::fs::read_to_string(home.join("auth.json"))
+        .ok()
         .and_then(|s| crate::accounts::codex_account(&s))
-        .and_then(|a| a.account_id)
+        .ok_or("no Codex auth.json identity — run `codex login`")?;
+    let account_id = account
+        .account_id
+        .as_deref()
         .ok_or("no Codex auth.json identity — run `codex login`")?;
 
-    let mut command = tokio::process::Command::new(codex_binary());
-    #[cfg(windows)]
-    command.creation_flags(0x0800_0000); // CREATE_NO_WINDOW
-    let mut child = command
-        .args(["-s", "read-only", "-a", "on-request", "app-server"])
-        .stdin(std::process::Stdio::piped())
-        .stdout(std::process::Stdio::piped())
-        .stderr(std::process::Stdio::null())
-        .kill_on_drop(true)
-        .spawn()
-        .map_err(|e| crate::diag::failure("codex app-server spawn", crate::diag::spawn(&e)))?;
+    let normalized =
+        |path: &std::path::Path| path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
+    let is_default_home =
+        crate::paths::codex_home().is_some_and(|default| normalized(&default) == normalized(home));
+    let mut child =
+        tokio::process::Command::from(app_server_command(&codex_binary(), home, !is_default_home))
+            .stdin(std::process::Stdio::piped())
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::null())
+            .kill_on_drop(true)
+            .spawn()
+            .map_err(|e| crate::diag::failure("codex app-server spawn", crate::diag::spawn(&e)))?;
 
     let mut stdin = child.stdin.take().ok_or("no stdin handle")?;
     let stdout = child.stdout.take().ok_or("no stdout handle")?;
@@ -464,7 +588,21 @@ pub async fn fetch_via_app_server() -> Result<WorkspaceUsage, String> {
     let read = async {
         let mut lines = BufReader::new(stdout).lines();
         while let Ok(Some(line)) = lines.next_line().await {
-            if let Some(usage) = parse_app_server_rate_limits(&line, &account_id) {
+            if let Some(mut usage) = parse_app_server_rate_limits(&line, account_id) {
+                let after = std::fs::read_to_string(home.join("auth.json"))
+                    .ok()
+                    .and_then(|body| crate::accounts::codex_account(&body));
+                if !after.as_ref().is_some_and(|after| {
+                    same_login_workspace(
+                        account_id,
+                        account.email.as_deref(),
+                        after.account_id.as_deref().unwrap_or(""),
+                        after.email.as_deref(),
+                    )
+                }) {
+                    return Err("Codex account changed during refresh; retry".to_string());
+                }
+                usage.email = account.email.clone();
                 return Ok(usage);
             }
             // An explicit RPC error for our request id is a real answer too.
@@ -522,36 +660,56 @@ pub fn parse_accounts(body: &str) -> Vec<(String, Option<String>, Option<String>
         .collect()
 }
 
-/// Reads the access token and default workspace out of `~/.codex/auth.json`.
-///
-/// Read fresh on every call rather than cached: Codex rotates the token on
-/// its own schedule and a cached copy goes stale. Only these two fields are
-/// taken; the refresh token is never read, so it cannot be leaked or spent.
-/// Every codex credential on disk: the live `auth.json` plus any parked
-/// `auth.json.saved-*` / `auth.json.bak-*` / `auth.json.<name>` sibling.
-///
-/// This is what makes two workspaces visible at once. The server refuses to
-/// re-scope one token to another workspace (see the SCOPE MISMATCH guard), but
-/// each token reads its OWN workspace, so reading several files covers several
-/// workspaces with no refresh grant and no new credentials.
-fn read_all_auth() -> Vec<(String, Option<String>, String)> {
+/// Known different login emails must never share a seat's quota, even when
+/// both logins belong to the same team workspace. Missing email is not proof
+/// that a known email is the same user.
+pub fn same_login_workspace(
+    id: &str,
+    email: Option<&str>,
+    other_id: &str,
+    other_email: Option<&str>,
+) -> bool {
+    id == other_id
+        && match (email, other_email) {
+            (Some(a), Some(b)) => a.trim().eq_ignore_ascii_case(b.trim()),
+            (None, None) => true,
+            _ => false,
+        }
+}
+
+fn configured_homes() -> Vec<(std::path::PathBuf, bool)> {
     let Some(default_dir) = crate::paths::codex_home() else {
         return Vec::new();
     };
-    // The default home first, then each registry extra home (D-015) —
-    // order decides which file wins the per-account dedupe below.
-    let mut dirs = vec![default_dir.clone()];
+    let resolved = |path: std::path::PathBuf| path.canonicalize().unwrap_or(path);
+    let mut dirs = vec![(resolved(default_dir), true)];
     if let Some(home) = crate::paths::home_dir() {
         let home_str = home.to_string_lossy().to_string();
         for d in crate::registry::load().codex_homes {
-            dirs.push(std::path::PathBuf::from(crate::registry::expand_tilde(
+            let dir = resolved(std::path::PathBuf::from(crate::registry::expand_tilde(
                 &d, &home_str,
             )));
+            if !dirs.iter().any(|(known, _)| *known == dir) {
+                dirs.push((dir, false));
+            }
         }
     }
+    dirs
+}
 
-    let mut out: Vec<(String, Option<String>, String)> = Vec::new();
-    for dir in dirs {
+// Intentionally not Debug/Serialize: contains a provider access token.
+struct AuthSource {
+    token: String,
+    account_id: String,
+    email: Option<String>,
+    active: bool,
+}
+
+/// Read fresh after the CLI has had a chance to renew its own login. The
+/// refresh token is never selected, copied, persisted, or sent by qhud.
+fn read_all_auth() -> Vec<AuthSource> {
+    let mut out: Vec<AuthSource> = Vec::new();
+    for (dir, default_home) in configured_homes() {
         let Ok(entries) = std::fs::read_dir(&dir) else {
             continue;
         };
@@ -579,35 +737,47 @@ fn read_all_auth() -> Vec<(String, Option<String>, String)> {
                 .pointer("/tokens/access_token")
                 .and_then(|t| t.as_str())
                 .filter(|t| !t.is_empty());
-            let acct = v
-                .pointer("/tokens/account_id")
-                .and_then(|t| t.as_str())
-                .map(str::to_string);
+            let account = crate::accounts::codex_account(&body);
             if let Some(tok) = tok
-                && let Some(acct) = acct.clone()
-                && !out
-                    .iter()
-                    .any(|(_, a, _)| a.as_deref() == Some(acct.as_str()))
-            {
-                // Label carries the home when it is not the default one,
-                // so log lines stay attributable across homes.
-                let file = path
-                    .file_name()
-                    .and_then(|n| n.to_str())
-                    .unwrap_or("auth.json");
-                let label = if dir == default_dir {
-                    file.to_string()
-                } else {
-                    format!(
-                        "{}/{file}",
-                        dir.file_name().and_then(|n| n.to_str()).unwrap_or("?")
+                && let Some(account) = account
+                && let Some(id) = account.account_id
+                && !out.iter().any(|known| {
+                    same_login_workspace(
+                        &id,
+                        account.email.as_deref(),
+                        &known.account_id,
+                        known.email.as_deref(),
                     )
-                };
-                out.push((tok.to_string(), Some(acct), label));
+                })
+            {
+                out.push(AuthSource {
+                    token: tok.to_string(),
+                    account_id: id,
+                    email: account.email,
+                    active: default_home
+                        && path.file_name().and_then(|n| n.to_str()) == Some("auth.json"),
+                });
             }
         }
     }
     out
+}
+
+/// Additional workspaces need server-supplied ownership evidence. A server
+/// that ignores the requested workspace header must not duplicate the token's
+/// default quota under a different label; an omitted account_id is ambiguous.
+fn parse_scoped_usage(
+    account_id: &str,
+    body: &str,
+    require_identity: bool,
+) -> Option<WorkspaceUsage> {
+    if require_identity {
+        let value: serde_json::Value = serde_json::from_str(body).ok()?;
+        if value.get("account_id").and_then(|id| id.as_str()) != Some(account_id) {
+            return None;
+        }
+    }
+    parse_usage(account_id, body)
 }
 
 // NOTE (kept from the deleted single-credential reader): the id_token is
@@ -653,9 +823,52 @@ async fn get(
 /// One network round per workspace plus one to enumerate them. Invoked
 /// from an explicit operator gesture only — never from the poll loop.
 pub async fn fetch_all_workspaces() -> Result<Vec<WorkspaceUsage>, String> {
+    // Every registered home delegates to the provider-owned app-server. The
+    // child receives that home only; no process-global environment or default
+    // login is changed. Duplicate logins do not race their token rotation.
+    let mut out: Vec<WorkspaceUsage> = Vec::new();
+    let mut attempted: Vec<(String, Option<String>)> = Vec::new();
+    let mut last_err = None;
+    for (home, active) in configured_homes() {
+        let account = std::fs::read_to_string(home.join("auth.json"))
+            .ok()
+            .and_then(|body| crate::accounts::codex_account(&body));
+        let Some(account) = account else { continue };
+        let Some(id) = account.account_id else {
+            continue;
+        };
+        if attempted.iter().any(|(known_id, known_email)| {
+            same_login_workspace(
+                &id,
+                account.email.as_deref(),
+                known_id,
+                known_email.as_deref(),
+            )
+        }) {
+            continue;
+        }
+        attempted.push((id, account.email));
+        match fetch_via_app_server_at(&home).await {
+            Ok(mut usage) => {
+                usage.active = active;
+                out.push(usage);
+            }
+            Err(error) => {
+                eprintln!("qhud: codex configured app-server unavailable: {error}");
+                last_err = Some(error);
+            }
+        }
+    }
+    // Read credentials after all provider-owned rotations, never before.
     let creds = read_all_auth();
     if creds.is_empty() {
-        return Err("no usable Codex auth.json* credential — run `codex login`".into());
+        return if out.is_empty() {
+            Err(last_err.unwrap_or_else(|| {
+                "no usable Codex auth.json* credential — run `codex login`".into()
+            }))
+        } else {
+            Ok(out)
+        };
     }
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(10))
@@ -663,63 +876,65 @@ pub async fn fetch_all_workspaces() -> Result<Vec<WorkspaceUsage>, String> {
         .map_err(|e| crate::diag::failure("HTTP client build", crate::diag::reqwest(&e)))?;
 
     eprintln!("qhud: codex credentials found: {}", creds.len());
-    let mut out = Vec::new();
-    let mut last_err = None;
-    for (token, account_id, file) in creds {
-        let Some(id) = account_id else { continue };
-        // File labels can contain a private Codex home name. They remain an
-        // internal routing detail; diagnostics identify only active vs saved.
-        let active = file == "auth.json";
-        let credential_kind = if active { "active" } else { "saved" };
-        // Names and plans come from this token's own accounts/check entry.
-        let (name, plan) = match get(&client, ACCOUNTS_URL, &token, Some(&id)).await {
-            Ok(body) => parse_accounts(&body)
-                .into_iter()
-                .find(|(aid, _, _)| *aid == id)
-                .map(|(_, n, p)| (n, p))
-                .unwrap_or((None, None)),
-            Err(_) => (None, None),
+    for credential in creds {
+        let mut candidates = match get(
+            &client,
+            ACCOUNTS_URL,
+            &credential.token,
+            Some(&credential.account_id),
+        )
+        .await
+        {
+            Ok(body) => parse_accounts(&body),
+            Err(_) => Vec::new(),
         };
-        match get(&client, USAGE_URL, &token, Some(&id)).await {
-            Ok(body) => match parse_usage(&id, &body) {
-                Some(mut usage) => {
-                    usage.name = name;
-                    if usage.plan_type.is_none() {
-                        usage.plan_type = plan;
-                    }
-                    // The default auth.json is the ACTIVE login: its
-                    // workspace merges into the provider row (D-011)
-                    // instead of rendering as a second ↳ row.
-                    usage.active = active;
-                    out.push(usage);
+        if !candidates
+            .iter()
+            .any(|(id, _, _)| *id == credential.account_id)
+        {
+            candidates.insert(0, (credential.account_id.clone(), None, None));
+        }
+        for (id, name, plan) in candidates {
+            if let Some(existing) = out.iter_mut().find(|usage| {
+                same_login_workspace(
+                    &usage.account_id,
+                    usage.email.as_deref(),
+                    &id,
+                    credential.email.as_deref(),
+                )
+            }) {
+                if name.is_some() {
+                    existing.name = name;
                 }
-                None => {
-                    eprintln!(
-                        "qhud: codex {credential_kind} credential dropped: body describes another workspace"
-                    );
-                    last_err = Some(format!(
-                        "{credential_kind} credential returned usage for another workspace"
-                    ));
+                if existing.plan_type.is_none() {
+                    existing.plan_type = plan;
                 }
-            },
-            Err(e) => {
-                eprintln!("qhud: codex {credential_kind} credential skipped: {e}");
-                last_err = Some(format!("{credential_kind} credential: {e}"));
-                // The ACTIVE login can still answer through its own CLI:
-                // codex rotates its token inside app-server, so the usual
-                // failure here (expired access token → 401) is recoverable
-                // without qhud touching any credential.
-                if active {
-                    match fetch_via_app_server().await {
-                        Ok(mut w) => {
-                            eprintln!("qhud: codex active login recovered via app-server");
-                            w.active = true;
-                            out.push(w);
+                continue;
+            }
+            let own_workspace = id == credential.account_id;
+            match get(&client, USAGE_URL, &credential.token, Some(&id)).await {
+                Ok(body) => match parse_scoped_usage(&id, &body, !own_workspace) {
+                    Some(mut usage) => {
+                        usage.email = credential.email.clone();
+                        usage.name = name;
+                        if usage.plan_type.is_none() {
+                            usage.plan_type = plan;
                         }
-                        Err(e2) => {
-                            eprintln!("qhud: codex app-server fallback failed: {e2}");
-                        }
+                        usage.active = credential.active && own_workspace;
+                        out.push(usage);
                     }
+                    None => {
+                        eprintln!(
+                            "qhud: codex workspace omitted: response ownership not established"
+                        );
+                        last_err = Some(
+                            "Codex usage response did not establish workspace ownership".into(),
+                        );
+                    }
+                },
+                Err(error) => {
+                    eprintln!("qhud: codex configured workspace unavailable: {error}");
+                    last_err = Some(error);
                 }
             }
         }
@@ -729,10 +944,111 @@ pub async fn fetch_all_workspaces() -> Result<Vec<WorkspaceUsage>, String> {
     }
     Ok(out)
 }
-
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn two_logins_in_the_same_workspace_keep_separate_seat_readings() {
+        assert!(!same_login_workspace(
+            "team",
+            Some("first@example.test"),
+            "team",
+            Some("second@example.test")
+        ));
+        assert!(same_login_workspace(
+            "team",
+            Some("First@Example.Test"),
+            "team",
+            Some("first@example.test")
+        ));
+        assert!(!same_login_workspace(
+            "personal",
+            Some("first@example.test"),
+            "team",
+            Some("first@example.test")
+        ));
+        assert!(!same_login_workspace(
+            "team",
+            None,
+            "team",
+            Some("first@example.test")
+        ));
+        assert!(same_login_workspace("team", None, "team", None));
+    }
+
+    #[test]
+    fn cross_workspace_usage_requires_explicit_matching_server_identity() {
+        let missing_identity = r#"{"plan_type":"team","rate_limit":{"primary_window":{"used_percent":9,"limit_window_seconds":604800}}}"#;
+        assert!(parse_scoped_usage("team", missing_identity, true).is_none());
+        assert!(parse_scoped_usage("personal", missing_identity, false).is_some());
+        let mut body: serde_json::Value = serde_json::from_str(missing_identity).unwrap();
+        body["account_id"] = serde_json::json!("personal");
+        assert!(parse_scoped_usage("team", &body.to_string(), true).is_none());
+        body["account_id"] = serde_json::json!("team");
+        let accepted = parse_scoped_usage("team", &body.to_string(), true).unwrap();
+        assert_eq!(accepted.windows[0].used_percent, 9);
+    }
+
+    #[test]
+    fn extra_home_is_command_local_and_does_not_change_parent_environment() {
+        let before = std::env::var_os("CODEX_HOME");
+        let home = std::path::Path::new("fixture/extra-home");
+        let command = app_server_command(std::path::Path::new("fixture/codex"), home, false);
+        assert_eq!(
+            command
+                .get_envs()
+                .find(|(key, _)| *key == "CODEX_HOME")
+                .and_then(|(_, value)| value),
+            Some(home.as_os_str())
+        );
+        assert_eq!(std::env::var_os("CODEX_HOME"), before);
+        assert_eq!(
+            command.get_args().collect::<Vec<_>>(),
+            vec!["-s", "read-only", "-a", "on-request", "app-server"]
+        );
+        let isolated = app_server_command(std::path::Path::new("fixture/codex"), home, true);
+        assert_eq!(
+            isolated.get_args().collect::<Vec<_>>(),
+            vec![
+                "-s",
+                "read-only",
+                "-a",
+                "on-request",
+                "-c",
+                "cli_auth_credentials_store=\"file\"",
+                "app-server"
+            ]
+        );
+    }
+
+    #[test]
+    fn windows_finds_current_installer_layout_before_legacy_layout() {
+        let nonce = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let root =
+            std::env::temp_dir().join(format!("qhud-codex-layout-{}-{nonce}", std::process::id()));
+        let current = root.join("Programs/OpenAI/Codex/bin/codex.exe");
+        let legacy = root.join("OpenAI/Codex/bin/v1/codex.exe");
+        for path in [&current, &legacy] {
+            std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+            std::fs::write(path, []).unwrap();
+        }
+        assert_eq!(windows_codex_binary(&root), Some(current.clone()));
+        std::fs::remove_file(&current).unwrap();
+        assert_eq!(windows_codex_binary(&root), Some(legacy.clone()));
+        std::fs::remove_file(&legacy).unwrap();
+        assert_eq!(windows_codex_binary(&root), None);
+        // Remove only the uniquely-created fixture directory.
+        assert!(
+            root.canonicalize()
+                .unwrap()
+                .starts_with(std::env::temp_dir().canonicalize().unwrap())
+        );
+        std::fs::remove_dir_all(root).unwrap();
+    }
 
     #[test]
     fn desktop_cli_discovery_uses_latest_complete_version() {
@@ -969,6 +1285,89 @@ mod tests {
           "primary":{"usedPercent":41,"windowDurationMins":10080,"resetsAt":1786937652},
           "secondary":{"usedPercent":9,"windowDurationMins":300,"resetsAt":1786350000},
           "planType":"prolite"}}}}"#;
+
+    #[test]
+    fn app_server_reset_credit_count_is_authoritative_including_zero() {
+        for count in [0, 2, u32::MAX] {
+            for details in [
+                serde_json::Value::Null,
+                serde_json::json!([]),
+                serde_json::json!([{ "id": "synthetic-credit", "status": "available" }]),
+            ] {
+                let mut response: serde_json::Value =
+                    serde_json::from_str(APP_SERVER_LINE).unwrap();
+                response["result"]["rateLimitResetCredits"] = serde_json::json!({
+                    "availableCount": count,
+                    "credits": details,
+                });
+                let usage = parse_app_server_rate_limits(&response.to_string(), "acct").unwrap();
+                assert_eq!(usage.reset_credits, Some(count));
+                assert_eq!(usage.windows.len(), 3, "quota remains intact");
+                assert_eq!(workspace_snapshot(&usage, 7).reset_credits, Some(count));
+            }
+        }
+    }
+
+    #[test]
+    fn missing_or_malformed_reset_metadata_does_not_discard_valid_quota() {
+        for reset in [
+            None,
+            Some(serde_json::Value::Null),
+            Some(serde_json::json!({})),
+            Some(serde_json::json!({"credits": [{"status": "available"}]})),
+            Some(serde_json::json!({"availableCount": null})),
+            Some(serde_json::json!({"availableCount": -1})),
+            Some(serde_json::json!({"availableCount": 1.5})),
+            Some(serde_json::json!({"availableCount": "2"})),
+            Some(serde_json::json!({"availableCount": true})),
+            Some(serde_json::json!({"availableCount": u64::from(u32::MAX) + 1})),
+            Some(serde_json::json!("unexpected")),
+            Some(serde_json::json!([])),
+        ] {
+            let mut response: serde_json::Value = serde_json::from_str(APP_SERVER_LINE).unwrap();
+            if let Some(reset) = reset {
+                response["result"]["rateLimitResetCredits"] = reset;
+            }
+            let usage = parse_app_server_rate_limits(&response.to_string(), "acct").unwrap();
+            assert_eq!(usage.reset_credits, None);
+            assert_eq!(usage.windows.len(), 3);
+            assert_eq!(usage.credits_balance.as_deref(), Some("12.5"));
+        }
+    }
+
+    #[test]
+    fn reset_only_reading_preserves_zero_without_inventing_windows() {
+        for count in [0, 2] {
+            let response = serde_json::json!({"id": 2, "result": {
+                "rateLimits": null, "rateLimitsByLimitId": null,
+                "rateLimitResetCredits": {"availableCount": count}
+            }});
+            let usage = parse_app_server_rate_limits(&response.to_string(), "acct").unwrap();
+            assert_eq!(usage.reset_credits, Some(count));
+            assert!(usage.windows.is_empty());
+        }
+    }
+
+    #[test]
+    fn old_saved_workspaces_and_unverified_http_shape_keep_reset_count_unknown() {
+        let old: WorkspaceUsage = serde_json::from_str(r#"{"account_id":"acct"}"#).unwrap();
+        assert_eq!(old.reset_credits, None);
+        assert!(
+            !serde_json::to_value(old)
+                .unwrap()
+                .as_object()
+                .unwrap()
+                .contains_key("reset_credits")
+        );
+        let mut http: serde_json::Value = serde_json::from_str(USAGE_BODY).unwrap();
+        http["rateLimitResetCredits"] = serde_json::json!({"availableCount": 3});
+        assert_eq!(
+            parse_usage("acct", &http.to_string())
+                .unwrap()
+                .reset_credits,
+            None
+        );
+    }
 
     #[test]
     fn app_server_line_parses_into_the_same_workspace_shape() {

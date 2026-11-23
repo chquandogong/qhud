@@ -21,7 +21,7 @@
 </p>
 
 <p align="center">
-  <a href="#install">下载</a> · <a href="docs/i18n/zh-CN/docs/GUIDE.md">用户指南</a> · <a href="docs/i18n/zh-CN/docs/README.md">文档</a> · <a href="docs/i18n/zh-CN/CONTRIBUTING.md">参与贡献</a>
+  <a href="#install">下载</a> · <a href="docs/i18n/zh-CN/docs/GUIDE.md">用户指南</a> · <a href="docs/i18n/zh-CN/docs/README.md">文档</a> · <a href="https://github.com/chquandogong/qhud/wiki">GitHub Wiki</a> · <a href="docs/i18n/zh-CN/CONTRIBUTING.md">参与贡献</a>
 </p>
 
 ---
@@ -37,6 +37,7 @@ qhud 将分散在各个命令行界面的账户配额和会话状态集中到小
 | --- | --- |
 | **用量与重置** | 账户时间窗口、可用时的模型独立配额池、重置倒计时和准确重置时刻。 |
 | **账户信息** | 独立账户/工作区行及重启后仍标注时间的快照。Codex 在本地登录含邮箱时自动显示邮箱；操作者标签优先，缺少邮箱则回退到账户 ID。 |
+| **连接和方案** | 展开供应商名称可查看连接状态。个人与团队用量各有独立的账户行，点击已识别的方案可展开模型指南。 |
 | **会话活动** | 在受支持的 Linux 环境中：状态、上下文压力、模型、推理力度、分支、工作目录和冲突指示。 |
 | **新旧程度** | 每 2 秒本地观测；只有显式刷新时才请求供应商用量。 |
 | **系统用量与关于** | 低调显示 CPU、内存、受支持 GPU、磁盘和网络历史；选择指标查看详情。About 显示构建版本、作者 Chenghao Quan 和[主页](https://chquandogong.github.io/CHENGHAO-QUAN/)。 |
@@ -82,16 +83,14 @@ qhud 将分散在各个命令行界面的账户配额和会话状态集中到小
 
 ## 安装
 
-**当前版本：[v0.7.4](https://github.com/chquandogong/qhud/releases/tag/v0.7.4)。** 两平台构建/测试均为发布门槛，每份压缩包都有 SHA-256 文件。
+**当前版本：[v0.8.0](https://github.com/chquandogong/qhud/releases/tag/v0.8.0)。** 两平台构建/测试均为发布门槛，每份压缩包都有 SHA-256 文件。
 
 | 下载 | 校验 |
 | --- | --- |
-| [Windows x64 ZIP](https://github.com/chquandogong/qhud/releases/download/v0.7.4/qhud-v0.7.4-windows-x86_64.zip) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.7.4/qhud-v0.7.4-windows-x86_64.zip.sha256) |
-| [Linux x86_64 tarball](https://github.com/chquandogong/qhud/releases/download/v0.7.4/qhud-v0.7.4-linux-x86_64.tar.gz) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.7.4/qhud-v0.7.4-linux-x86_64.tar.gz.sha256) |
+| [Windows x64 ZIP](https://github.com/chquandogong/qhud/releases/download/v0.8.0/qhud-v0.8.0-windows-x86_64.zip) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.8.0/qhud-v0.8.0-windows-x86_64.zip.sha256) |
+| [Linux x86_64 tarball](https://github.com/chquandogong/qhud/releases/download/v0.8.0/qhud-v0.8.0-linux-x86_64.tar.gz) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.8.0/qhud-v0.8.0-linux-x86_64.tar.gz.sha256) |
 
-上面的下载是 **v0.7.4 二进制包**。窄窗口中系统条不再把磁盘速率画到网络标签上。
-该版本更新至 Tauri 2.12.1 与 `sysinfo` 0.38.4，从源码构建现需 Rust 1.90。
-详见 [v0.7.4 发布说明](docs/i18n/zh-CN/docs/05-ops/releases/v0.7.4.md)。
+在 v0.8.0 中，展开供应商名称可查看上次获取用量的时间及本地凭据过期时间。选择**支持模型**，可查看注明核对日期的模型指南及席位、试用条件。当前账户能使用哪些模型，可在供应商应用中打开模型选择器确认。[v0.8.0 发布说明](docs/i18n/zh-CN/docs/05-ops/releases/v0.8.0.md)
 
 当前 release workflow 发布的压缩包还带 GitHub 构建来源证明。使用 GitHub CLI 时，将文件名替换为实际下载的压缩包路径；验证压缩包本身，而非其 `.sha256` 配套文件。
 
@@ -110,9 +109,9 @@ v0.7.2 之后的发布还包含 CycloneDX SBOM `qhud-vX.Y.Z-sbom.cdx.json`、其
 将压缩包及 SHA-256 文件下载到同一目录后：
 
 ```sh
-sha256sum -c qhud-v0.7.4-linux-x86_64.tar.gz.sha256
-tar -xzf qhud-v0.7.4-linux-x86_64.tar.gz
-install -Dm755 qhud-v0.7.4-linux-x86_64/qhud "$HOME/.local/bin/qhud"
+sha256sum -c qhud-v0.8.0-linux-x86_64.tar.gz.sha256
+tar -xzf qhud-v0.8.0-linux-x86_64.tar.gz
+install -Dm755 qhud-v0.8.0-linux-x86_64/qhud "$HOME/.local/bin/qhud"
 "$HOME/.local/bin/qhud"
 ```
 
@@ -125,7 +124,8 @@ Ubuntu 24.04 运行时依赖包括 `libwebkit2gtk-4.1-0`、`libgtk-3-0` 和用�
 
 - **移动和缩放：** 拖动顶部或页脚，使用角落控点调整大小。
 - **查看详情：** 选择账户行或会话卡片；悬停仪表查看准确重置时间。
-- **刷新：** 顶部 ⟳ 刷新全部供应商，账户旁 ⟳ 刷新对应账户。
+- **刷新用量。** 点击顶部 ⟳ 刷新全部供应商，或点击供应商旁的 ⟳ 仅刷新该供应商。
+- **连接其他账户。** 注册 Codex 或 Claude 的个人或团队档案，用 ZIP 内的 PowerShell 脚本登录后刷新对应供应商。[Windows 档案设置](docs/i18n/zh-CN/docs/GUIDE.md#windows-personal-and-team-profiles)
 - **临时置顶：** 使用托盘 *Pin above windows*。
 - **退出：** 在托盘选择 *Quit qhud*。
 
@@ -145,7 +145,9 @@ qhud --peek
 
 百分比属于一个**账户和时间窗口**。Spark 5H/7D 等模型独立限额，只有供应商为该登录返回时才显示。缺失限额不会以虚构零值填充，一个账户保存的用量不会套用另一账户名称。
 
-保存读数标明时间。剩余重置时间是倒计时，悬停仪表可看准确日期和时间。本地观测不请求供应商 API。显式刷新可能读取现有 access token 以调用供应商用量端点；qhud 自身不执行 OAuth refresh grant。Codex 可将回退获取委托给其自身 CLI，Antigravity 则使用运行中 CLI 的环回服务。
+保存读数标明时间。剩余重置时间是倒计时，悬停仪表可看准确日期和时间。本地观测不请求供应商 API。显式刷新可能读取现有 access token 以调用供应商用量端点；qhud 自身不执行 OAuth refresh grant。在 Windows 上，运行中的 Antigravity 应用或 CLI 通过本地服务提供用量。
+
+重置券显示获取用量时供应商返回的手动重置次数。倒计时显示当前用量窗口距离自动重置还剩多久。
 
 账户设置保留在仓库外。见[配置与本地数据指南](docs/i18n/zh-CN/docs/GUIDE.md#configuration-and-local-data)。
 

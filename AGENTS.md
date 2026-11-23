@@ -38,7 +38,7 @@ Rust 1.90 or newer and Node.js 22 are required.
 For frontend-only changes, run:
 
 ```sh
-node --test tests/system-metrics.test.cjs
+node --test tests/*.test.cjs
 ```
 
 For Rust or cross-cutting behavior changes on Linux, run:
@@ -53,6 +53,7 @@ cargo build --locked --release
 For Windows-native validation, use Developer PowerShell and run:
 
 ```powershell
+.\tests\connect-account.test.ps1
 .\scripts\Build-Windows.ps1 -Test
 git diff --exit-code -- Cargo.toml Cargo.lock
 ```

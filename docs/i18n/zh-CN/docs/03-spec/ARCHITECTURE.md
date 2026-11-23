@@ -9,8 +9,8 @@
 
 # 架构 — qhud
 
-> 状态：持续维护（已更新至 v0.7.1） · 日期：2026-09-14 · 负责人：chquandogong
-> 与 SPEC（必须做什么）及 DECISION_LOG（为何这样构建）配套。模块地图已更新至 v0.7.1；带日期验证保存在 TEST_PLAN。
+> 状态：持续维护（已更新至 v0.8.0） · 日期：2026-11-23 · 负责人：chquandogong
+> 与 SPEC（必须做什么）及 DECISION_LOG（为何这样构建）配套。模块地图已更新至 v0.8.0；带日期验证保存在 TEST_PLAN。
 
 <!-- qhud:anchor -->
 <a id="1-what-qhud-is-structurally"></a>
@@ -154,7 +154,8 @@ schema 版本为 1，历次发布始终为 1：只增加字段，通常为空的
 ```
 schema, source, backend, generated_at_ms, poll_secs
 quotas[]   provider, h5, d7, from_label, session, account?, origin?,
-           cache_fetched_at_ms?, scoped[]?, extra?
+           cache_fetched_at_ms?, scoped[]?, extra?, reset_credits?, plan_name?
+provider_health[], configured_connections[]
 panes[]    pane_id, label, session, provider, status, status_label,
            elapsed_secs, cli_version, update_hint, model, effort, branch,
            cwd, mem, cost_usd, flags[], gauges{ctx,h5,d7}, conflicts[]
@@ -247,8 +248,8 @@ reset_unix, of_tokens}`；`origin` 为 `pane`、`cache` 或 `fetched`，前端�
 | | 被动，每 2 s | 显式刷新时 | 凭据保管 |
 | --- | --- | --- | --- |
 | Claude | 通过 qmonster 取得状态行；Claude Code 自有磁盘用量缓存；从 `.claude.json` 取得身份 | `GET https://api.anthropic.com/api/oauth/usage`，每个已登录配置目录一次 | qhud 为 HTTP 请求读取现有 access token |
-| Codex | 当前登录的窗格状态行；从 `auth.json` 取得身份 | 每份保存凭据先访问 `wham/accounts/check` 再访问 `wham/usage`；当前登录失败时，短生命周期 `codex app-server` 子进程通过 stdio 回答 | HTTP 路径由 qhud 读取 access token；回退路径全部由 CLI 管理 |
-| agy | 有窗格时使用窗格状态行；从 `google_accounts.json` 取得身份 | 向正在运行的 agy 进程发送环回 Connect RPC，无令牌和 CSRF | agy 自身；qhud 完全不读取凭据 |
+| Codex | 窗格状态行与本地登录身份 | 先用 `codex app-server` 查询各配置的登录，再通过 `wham/accounts/check` 和 `wham/usage` 查询其他工作区或补充缺失读数。 | CLI 管理自己的登录，HTTP 使用已保存的访问令牌。 |
+| agy | CLI 身份及 Windows 原生守护进程的就绪状态 | 通过环回 RPC 查询 CLI 监听器或经验证的原生守护进程。 | Windows 守护进程使用本机 CSRF 令牌，CLI 监听器无需令牌。 |
 
 三条规则适用于所有路径（D-014、D-016）：
 
@@ -258,9 +259,9 @@ reset_unix, of_tokens}`；`origin` 为 `pane`、`cache` 或 `fetched`，前端�
 
 **Claude。** 每次调用重新读取凭据，只读 access token，不读旁边的 refresh token。User-Agent 是关键条件：没有真实 `claude-code/<version>` 时，端点返回 429 且没有重试提示。身份来自配置目录自己的文件，绝不来自响应；响应包含账户 uuid 和邮箱，从不记录。格式漂移诊断环境变量也只报告 `extra_usage` 与 `spend` 字段是否存在，不输出其值。一次刷新遍历默认账户及全部注册额外配置目录，分别写入各自存储键，局部失败保持局部：额外账户过期不能隐藏默认账户数字。拒绝响应时只报告脱敏错误类别和 JSON 位置；原始 serde 错误可能引用意外的供应商值，因此不会输出（D-021，取代 D-019 的诊断假设）。
 
-**Codex。** 读取每个注册主目录中的 `auth.json` 和停放的同级文件，按账户 id 去重，将当前文件排在最前以确保优先。每份凭据读取自己的工作区：服务器拒绝将一个令牌重新限定到另一工作区，因此响应账户与请求不同则丢弃并记录不匹配，不错误贴标签。窗口标签来自**时长**，不来自 primary/secondary 通道。当前登录的 HTTP 路径失败时，以只读及 on-request 批准设置创建 `codex app-server` 子进程，经 stdio 传入三行 JSON-RPC 握手，刻意保持 stdin 打开——服务器在 EOF 时退出，可能尚未回答——并在 25 秒后超时终止。自 v0.6.0 起，按限额映射可缺失、为 null 或为空，顶层池也可为 null；任一单独存在即可，主池恰好消费一次，避免同一周窗口显示两次，顶层 null 也不能隐藏真实模型读数。
+**Codex。** 各配置主目录下的 `codex app-server` 通过 stdio 返回限额。`CODEX_HOME` 仅对子进程生效。qhud 核对调用期间的登录账户及工作区保持一致，然后用保存的凭据查找其他工作区。每次跨工作区查询的响应必须带有与请求匹配的 ID。用工作区 ID 和可取得的邮箱去重。各限额映射可以缺失、为 null 或为空。自 v0.6.0 起，顶层池或各模型映射只要有一个即可，各主池仅显示一次。
 
-**agy。** 正在运行的 agy 绑定环回监听器，无需令牌和 CSRF 即可回答配额摘要。从操作系统自身表中发现端口：Linux 将 agy 进程 socket inode 与 `/proc/net/tcp` 环回监听器关联；Windows 使用隐藏 PowerShell 查询，其脚本仅返回端口号。依序尝试候选；HTTPS 监听器拒绝普通 HTTP，因而自行被排除。传输格式为省略默认值的 proto3 JSON，缺少剩余比例意味着已无剩余，绝不解释为“未知，算正常”。读数附带刷新开始时的身份，因此之后登录不会重贴保存快照的身份标签。
+**Antigravity。** Windows 原生守护进程注册 PID、环回端口和本机 CSRF 令牌。qhud 在发送令牌前核实可执行文件和端口归属，在查询配额前后读取同一进程的账户信息。如果账户或套餐在期间发生变化，将丢弃读数。账户的 `userTier.name` 提供可选的原生套餐名。agy CLI 监听器无需令牌，Linux 通过 `/proc/net/tcp` 匹配 socket inode。CLI 快照保留刷新时读取的身份。
 
 <!-- qhud:anchor -->
 <a id="15-parsing-and-the-snapshot-shape"></a>
@@ -352,7 +353,9 @@ qhud 不写入 qmonster 自身目录。该状态由 TUI 管理，第二个写入
 | `src-tauri/src/registry.rs` | 操作者注册表、占位规则、忽略项写入 |
 | `src-tauri/src/usage_cache.rs` | 快照结构、Claude 磁盘缓存、宽容数字解析、新旧比较 |
 | `src-tauri/src/claude_usage.rs` | 按配置目录显式刷新 Claude |
-| `src-tauri/src/codex_usage.rs` | Codex 工作区、scope 检查、时长标签、app-server 回退 |
+| `src-tauri/src/codex_usage.rs` | 工作区发现、范围检查、时长标签及各主目录的 app-server 查询 |
+| `src-tauri/src/connections.rs` | 匹配配置、验证带日期的席位信息及本地就绪状态 |
+| `src-tauri/src/provider_health.rs` | 本机连接状态和显式刷新的有限诊断 |
 | `src-tauri/src/agy_usage.rs` | 两个平台的 agy 环回 RPC 和端口发现 |
 | `src-tauri/src/fetched_store.rs` | 刷新持久化、原子写入、并发写锁 |
 | `src-tauri/src/frame_guard.rs` | 像素采样和恢复阶梯（Linux） |
@@ -363,6 +366,8 @@ qhud 不写入 qmonster 自身目录。该状态由 TUI 管理，第二个写入
 | `ui/app.js` | 整个前端：渲染流水线、配额区、卡片、获取状态、事件记录、几何、缩放 |
 | `ui/style.css` | 小组件样式、仪表严重程度、滚动、陈旧标记 |
 | `ui/index.html` | 骨架 |
+
+被动观察也检查供应商的本机就绪条件。已配置但没有匹配凭据的连接可以显示状态，用量留空。 `ui/model-guide.js` 随软件提供已核对的套餐模型说明。展开时读取本地套餐与席位信息，无需访问供应商。
 
 出现问题时首先查看的位置：
 

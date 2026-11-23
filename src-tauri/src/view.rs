@@ -34,6 +34,13 @@ pub struct Payload {
     /// window usage is monotonically increasing, so the max reading
     /// across a provider's panes is the freshest snapshot.
     pub quotas: Vec<ProviderQuota>,
+    /// Local readiness and the result of explicit refreshes. Independent of
+    /// account rows so an unconnected provider still has a recovery action.
+    #[serde(default)]
+    pub provider_health: Vec<crate::provider_health::ProviderHealth>,
+    /// Explicitly configured personal/team logins, including pending profiles.
+    #[serde(default)]
+    pub configured_connections: Vec<crate::connections::ConnectionStatus>,
     pub panes: Vec<PaneView>,
     pub summary: Summary,
     /// Accounts that have connected before but have no live credential
@@ -65,6 +72,12 @@ pub struct Payload {
 #[derive(Serialize, Clone)]
 pub struct ProviderQuota {
     pub provider: String,
+    /// Available manual limit resets, separate from spend credits and timers.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reset_credits: Option<u32>,
+    /// Provider-reported plan from the attached, account-owned snapshot.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub plan_name: Option<String>,
     pub h5: Option<Gauge>,
     pub d7: Option<Gauge>,
     /// Pane whose reading won (freshest snapshot) — shown as source.
@@ -185,6 +198,8 @@ pub fn payload(reports: &[PaneReport]) -> Payload {
         generated_at_ms: now_ms(),
         poll_secs: 2,
         quotas,
+        provider_health: Vec::new(),
+        configured_connections: Vec::new(),
         panes,
         summary,
         account_placeholders: Vec::new(),
@@ -221,6 +236,8 @@ pub fn provider_quotas(panes: &[PaneView]) -> Vec<ProviderQuota> {
         let entry = by_provider
             .entry(pane.provider.clone())
             .or_insert_with(|| ProviderQuota {
+                reset_credits: None,
+                plan_name: None,
                 provider: pane.provider.clone(),
                 h5: None,
                 d7: None,
@@ -292,6 +309,10 @@ pub fn attach_usage_cache(
         row.cache_fetched_at_ms = Some(cache.fetched_at_ms);
         row.scoped = cache.scoped.clone();
         row.extra = cache.extra.clone();
+        row.reset_credits = cache.reset_credits;
+        // The selected snapshot is authoritative even when it omits a plan.
+        // Do not retain a previous entitlement across a newer refresh.
+        row.plan_name = cache.plan_name.clone();
         // Filling a window the pane does NOT have is not overriding it
         // (seen live: an agy pane carrying only the weekly reading).
         // Likewise a pane gauge with no reset time borrows the snapshot's,
@@ -314,16 +335,20 @@ pub fn attach_usage_cache(
         fill(&mut row.d7, cache.seven_day.as_ref());
         return;
     }
-    // Some accounts expose only model-specific pools or extra spend.
-    // Those are useful readings even when no primary window exists.
+    // Some accounts expose only model-specific pools, extra spend, or a
+    // verified plan. Keep that dated metadata without inventing a window.
     if cache.five_hour.is_none()
         && cache.seven_day.is_none()
         && cache.scoped.is_empty()
         && cache.extra.is_none()
+        && cache.reset_credits.is_none()
+        && cache.plan_name.is_none()
     {
         return;
     }
     payload.quotas.push(ProviderQuota {
+        reset_credits: cache.reset_credits,
+        plan_name: cache.plan_name.clone(),
         provider: provider.to_string(),
         h5: cache.five_hour.as_ref().map(to_gauge),
         d7: cache.seven_day.as_ref().map(to_gauge),
@@ -358,6 +383,8 @@ pub fn attach_extra_account(
     };
     let row = match snap {
         Some((cache, origin)) => ProviderQuota {
+            reset_credits: cache.reset_credits,
+            plan_name: cache.plan_name.clone(),
             provider: "claude".to_string(),
             h5: cache.five_hour.as_ref().map(to_gauge),
             d7: cache.seven_day.as_ref().map(to_gauge),
@@ -370,6 +397,8 @@ pub fn attach_extra_account(
             extra: cache.extra.clone(),
         },
         None => ProviderQuota {
+            reset_credits: None,
+            plan_name: None,
             provider: "claude".to_string(),
             h5: None,
             d7: None,
@@ -414,6 +443,8 @@ pub fn attach_fetched_codex(
         return;
     }
     payload.quotas.push(ProviderQuota {
+        reset_credits: None,
+        plan_name: None,
         provider: "codex".to_string(),
         h5: None,
         d7: None,
@@ -468,7 +499,7 @@ pub fn attach_accounts(
         }
         quota.account = accounts
             .iter()
-            .find(|(provider, _)| *provider == quota.provider)
+            .find(|(provider, account)| *provider == quota.provider && account.config_dir.is_none())
             .map(|(_, acct)| acct.clone());
     }
 }
@@ -677,6 +708,9 @@ mod tests {
     fn cache(h5: u8, d7: u8) -> crate::usage_cache::CachedUsage {
         use crate::usage_cache::{CachedWindow, ExtraUsage, ScopedLimit};
         crate::usage_cache::CachedUsage {
+            org_id: None,
+            plan_name: None,
+            reset_credits: None,
             fetched_at_ms: 1_785_996_526_168,
             account_id: Some("acct-1".into()),
             five_hour: Some(CachedWindow {
@@ -714,6 +748,8 @@ mod tests {
             generated_at_ms: 0,
             poll_secs: 2,
             quotas: provider_quotas(&panes),
+            provider_health: Vec::new(),
+            configured_connections: Vec::new(),
             panes,
             summary: Summary::default(),
             account_placeholders: Vec::new(),
@@ -841,6 +877,69 @@ mod tests {
     }
 
     #[test]
+    fn provider_plan_without_quota_is_kept_as_a_dated_snapshot() {
+        let mut saved = cache(20, 3);
+        saved.five_hour = None;
+        saved.seven_day = None;
+        saved.scoped.clear();
+        saved.extra = None;
+        saved.plan_name = Some("Google AI Pro".into());
+        let mut payload = payload_of(vec![]);
+
+        attach_usage_cache(&mut payload, "agy", Some(&saved), "saved-account");
+
+        assert_eq!(payload.quotas.len(), 1);
+        let row = &payload.quotas[0];
+        assert_eq!(row.plan_name.as_deref(), Some("Google AI Pro"));
+        assert!(row.h5.is_none() && row.d7.is_none());
+        assert!(row.scoped.is_empty() && row.extra.is_none());
+        assert_eq!(row.origin, Some("saved-account"));
+        assert_eq!(row.cache_fetched_at_ms, Some(saved.fetched_at_ms));
+    }
+
+    #[test]
+    fn fresh_snapshot_without_plan_clears_the_previous_row_plan() {
+        let mut saved = cache(20, 3);
+        saved.plan_name = Some("Google AI Pro".into());
+        let mut payload = payload_of(vec![]);
+        attach_usage_cache(&mut payload, "agy", Some(&saved), "fetched");
+        assert!(payload.quotas[0].plan_name.is_some());
+
+        saved.fetched_at_ms += 1;
+        saved.plan_name = None;
+        attach_usage_cache(&mut payload, "agy", Some(&saved), "fetched");
+
+        assert!(payload.quotas[0].plan_name.is_none());
+        assert_eq!(
+            payload.quotas[0].cache_fetched_at_ms,
+            Some(saved.fetched_at_ms)
+        );
+        let encoded = serde_json::to_value(&payload.quotas[0]).unwrap();
+        assert!(encoded.get("plan_name").is_none());
+    }
+
+    #[test]
+    fn extra_row_plan_comes_only_from_its_snapshot() {
+        let account = crate::accounts::AccountLabel {
+            account_id: Some("acct-1".into()),
+            plan: Some("operator label is not provider entitlement".into()),
+            ..Default::default()
+        };
+        let mut payload = payload_of(vec![]);
+        attach_extra_account(&mut payload, account.clone(), None);
+        assert!(payload.quotas[0].plan_name.is_none());
+
+        let mut saved = cache(20, 3);
+        saved.plan_name = Some("Provider plan".into());
+        let mut payload = payload_of(vec![]);
+        attach_extra_account(&mut payload, account, Some((&saved, "fetched")));
+        assert_eq!(
+            payload.quotas[0].plan_name.as_deref(),
+            Some("Provider plan")
+        );
+    }
+
+    #[test]
     fn extra_account_rows_sit_after_the_default_and_keep_their_origin() {
         let mut p = payload_of(vec![pane("claude", "claude:1:main", Some(36), None)]);
         attach_usage_cache(&mut p, "claude", Some(&cache(20, 3)), "cache");
@@ -920,12 +1019,77 @@ mod tests {
     }
 
     #[test]
+    fn extra_account_does_not_claim_a_pane_when_default_login_is_missing() {
+        let mut p = payload_of(vec![pane("claude", "claude:1:main", Some(40), None)]);
+        let extra = crate::accounts::AccountLabel {
+            account_id: Some("extra-account".into()),
+            email: Some("extra@example.test".into()),
+            org_id: Some("extra-org".into()),
+            config_dir: Some("fixture/extra-claude".into()),
+            ..Default::default()
+        };
+        attach_extra_account(&mut p, extra.clone(), None);
+        attach_accounts(&mut p, &[("claude".into(), extra.clone())]);
+        let pane_row = p
+            .quotas
+            .iter()
+            .find(|row| row.origin == Some("pane"))
+            .unwrap();
+        assert!(
+            pane_row.account.is_none(),
+            "a pane cannot be attributed to an extra login"
+        );
+        let extra_row = p
+            .quotas
+            .iter()
+            .find(|row| row.account.as_ref() == Some(&extra))
+            .unwrap();
+        assert!(extra_row.h5.is_none() && extra_row.d7.is_none());
+    }
+
+    #[test]
+    fn reset_only_cache_survives_a_restart_including_zero_remaining() {
+        use crate::codex_usage::WorkspaceUsage;
+        for count in [0, 3] {
+            let saved = crate::fetched_store::CodexFetched {
+                fetched_at_ms: 1_786_000_000_000,
+                workspaces: vec![WorkspaceUsage {
+                    account_id: "workspace".into(),
+                    email: Some("seat@example.test".into()),
+                    active: true,
+                    reset_credits: Some(count),
+                    ..Default::default()
+                }],
+            };
+            let restored = serde_json::from_str(&serde_json::to_string(&saved).unwrap()).unwrap();
+            let mut p = payload_of(vec![]);
+            attach_fetched_codex(&mut p, Some(&restored));
+            let row = p.quotas.iter().find(|row| row.provider == "codex").unwrap();
+            assert_eq!(row.reset_credits, Some(count));
+            assert_eq!(row.origin, Some("fetched"));
+            assert_eq!(row.cache_fetched_at_ms, Some(saved.fetched_at_ms));
+            assert!(row.h5.is_none() && row.d7.is_none());
+            assert!(row.scoped.is_empty() && row.extra.is_none());
+
+            // Exercise generic cache synthesis without a workspace anchor.
+            let cache =
+                crate::codex_usage::workspace_snapshot(&saved.workspaces[0], saved.fetched_at_ms);
+            let mut direct = payload_of(vec![]);
+            attach_usage_cache(&mut direct, "codex", Some(&cache), "fetched");
+            assert_eq!(direct.quotas.len(), 1);
+            assert_eq!(direct.quotas[0].reset_credits, Some(count));
+        }
+    }
+
+    #[test]
     fn active_workspace_merges_into_the_codex_row_instead_of_duplicating() {
         use crate::codex_usage::{UsageWindow, WorkspaceUsage};
         let fetched = crate::fetched_store::CodexFetched {
             fetched_at_ms: 1_786_000_000_000,
             workspaces: vec![
                 WorkspaceUsage {
+                    email: None,
+                    reset_credits: None,
                     account_id: "ws-active".into(),
                     name: Some("personal".into()),
                     windows: vec![UsageWindow {
@@ -938,6 +1102,8 @@ mod tests {
                     ..Default::default()
                 },
                 WorkspaceUsage {
+                    email: None,
+                    reset_credits: None,
                     account_id: "ws-other".into(),
                     name: Some("business".into()),
                     ..Default::default()
@@ -986,6 +1152,8 @@ mod tests {
         let snapshot = |reset: u64| crate::fetched_store::CodexFetched {
             fetched_at_ms: 1_786_000_000_000,
             workspaces: vec![WorkspaceUsage {
+                email: None,
+                reset_credits: None,
                 account_id: "ws-active".into(),
                 windows: vec![UsageWindow {
                     label: "weekly".into(),
@@ -1035,6 +1203,8 @@ mod tests {
         let fetched = crate::fetched_store::CodexFetched {
             fetched_at_ms: 1_786_000_000_000,
             workspaces: vec![crate::codex_usage::WorkspaceUsage {
+                email: None,
+                reset_credits: None,
                 account_id: "ws-1".into(),
                 ..Default::default()
             }],
@@ -1084,6 +1254,8 @@ mod tests {
         let saved = crate::fetched_store::CodexFetched {
             fetched_at_ms: 1_786_000_000_000,
             workspaces: vec![WorkspaceUsage {
+                email: None,
+                reset_credits: None,
                 account_id: "ws-active".into(),
                 active: true,
                 windows: vec![

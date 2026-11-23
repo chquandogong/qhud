@@ -69,6 +69,14 @@ pub struct CachedUsage {
     pub fetched_at_ms: u64,
     #[serde(default)]
     pub account_id: Option<String>,
+    /// Organization owning this snapshot. Never borrow the current login's
+    /// organization for an older account-only cache entry.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub org_id: Option<String>,
+    /// Provider-reported entitlement for this snapshot's account. Missing is
+    /// unknown; never infer a plan from quota percentages or a current login.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub plan_name: Option<String>,
     #[serde(default)]
     pub five_hour: Option<CachedWindow>,
     #[serde(default)]
@@ -79,6 +87,10 @@ pub struct CachedUsage {
     /// Usage-credit spend, when the plan carries it.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub extra: Option<ExtraUsage>,
+    /// Available manual limit resets, only when a verified provider field
+    /// supplies the count. Missing means unknown, not zero available.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reset_credits: Option<u32>,
 }
 
 /// Picks between Claude Code's own on-disk snapshot (`"cache"`) and
@@ -332,10 +344,18 @@ fn build(util: Utilization, fetched_at_ms: u64, account_id: Option<String>) -> C
     CachedUsage {
         fetched_at_ms,
         account_id,
+        // The verified Claude cache shape has accountUuid but no snapshot
+        // organization identity. Only explicit scoped fetches bind an org.
+        org_id: None,
+        plan_name: None,
         five_hour: util.five_hour.and_then(RawWindow::resolve),
         seven_day: util.seven_day.and_then(RawWindow::resolve),
         scoped,
         extra: resolve_extra(util.extra_usage, util.spend),
+        // The Claude OAuth usage response verified on 2026-11-17 does not
+        // expose the manual reset offers/count shown in Settings > Usage.
+        // Window reset timestamps and usage-credit balances are unrelated.
+        reset_credits: None,
     }
 }
 
@@ -393,11 +413,101 @@ mod tests {
         CachedUsage {
             fetched_at_ms: at,
             account_id: None,
+            org_id: None,
+            plan_name: None,
             five_hour: None,
             seven_day: None,
             scoped: Vec::new(),
             extra: None,
+            reset_credits: None,
         }
+    }
+
+    #[test]
+    fn manual_reset_count_round_trips_without_inventing_a_legacy_zero() {
+        let legacy = r#"{"fetched_at_ms":7,"scoped":[]}"#;
+        let parsed: CachedUsage = serde_json::from_str(legacy).unwrap();
+        assert_eq!(parsed.reset_credits, None);
+        assert_eq!(parsed.org_id, None);
+        assert!(
+            !serde_json::to_string(&parsed)
+                .unwrap()
+                .contains("reset_credits")
+        );
+        for count in [0, 3] {
+            let mut usage = snap(7);
+            usage.reset_credits = Some(count);
+            let encoded = serde_json::to_string(&usage).unwrap();
+            let decoded: CachedUsage = serde_json::from_str(&encoded).unwrap();
+            assert_eq!(decoded.reset_credits, Some(count));
+        }
+    }
+
+    #[test]
+    fn plan_metadata_is_optional_and_round_trips_with_snapshot_ownership() {
+        let legacy: CachedUsage =
+            serde_json::from_str(r#"{"fetched_at_ms":7,"account_id":"account-a"}"#).unwrap();
+        assert!(legacy.plan_name.is_none());
+        assert!(
+            !serde_json::to_string(&legacy)
+                .unwrap()
+                .contains("plan_name")
+        );
+
+        let mut owned = legacy;
+        owned.org_id = Some("org-a".into());
+        owned.plan_name = Some("Google AI Pro".into());
+        let restored: CachedUsage =
+            serde_json::from_str(&serde_json::to_string(&owned).unwrap()).unwrap();
+        assert_eq!(restored, owned);
+        assert_eq!(restored.account_id.as_deref(), Some("account-a"));
+        assert_eq!(restored.org_id.as_deref(), Some("org-a"));
+        assert_eq!(restored.plan_name.as_deref(), Some("Google AI Pro"));
+    }
+
+    #[test]
+    fn newer_snapshot_without_plan_does_not_inherit_an_old_entitlement() {
+        let mut older = snap(10);
+        older.plan_name = Some("Google AI Pro".into());
+        let newer = snap(20);
+        for (disk, fetched) in [(older.clone(), newer.clone()), (newer, older)] {
+            let (selected, _) = fresher(Some(disk), Some(fetched)).unwrap();
+            assert_eq!(selected.fetched_at_ms, 20);
+            assert!(selected.plan_name.is_none());
+        }
+    }
+
+    #[test]
+    fn old_cache_does_not_borrow_the_current_login_organization() {
+        let body = r#"{
+            "oauthAccount":{"accountUuid":"same-account","organizationUuid":"new-org"},
+            "cachedUsageUtilization":{"accountUuid":"same-account","fetchedAtMs":7,
+              "utilization":{"seven_day":{"utilization":40}}}
+        }"#;
+        let usage = parse_cached_usage(body).unwrap();
+        assert_eq!(usage.account_id.as_deref(), Some("same-account"));
+        assert_eq!(usage.org_id, None);
+        let mut scoped = usage;
+        scoped.org_id = Some("verified-org".into());
+        let decoded: CachedUsage =
+            serde_json::from_str(&serde_json::to_string(&scoped).unwrap()).unwrap();
+        assert_eq!(decoded.org_id.as_deref(), Some("verified-org"));
+    }
+
+    #[test]
+    fn claude_manual_resets_are_not_inferred_from_window_resets_or_money() {
+        let body = r#"{
+            "seven_day":{"utilization":30,"resets_at":"2026-11-23T07:59:59Z"},
+            "limits":[{"kind":"weekly_scoped","percent":10,
+              "resets_at":"2026-11-23T07:59:59Z",
+              "scope":{"model":{"display_name":"Synthetic model"}}}],
+            "extra_usage":{"is_enabled":true,"used_credits":4},
+            "spend":{"balance":{"amount_minor":5,"currency":"USD","exponent":2}}
+        }"#;
+        let usage = parse_utilization(body, 7).unwrap();
+        assert_eq!(usage.seven_day.as_ref().map(|window| window.pct), Some(30));
+        assert_eq!(usage.reset_credits, None);
+        assert_eq!(parse_cached_usage(REAL_CACHE).unwrap().reset_credits, None);
     }
 
     #[test]

@@ -9,7 +9,7 @@
 
 # 대시보드 — qhud
 
-> 상태: v0.7.4 출시 · 갱신: 2026-10-02 · 담당: chquandogong
+> 상태: v0.8.0 · 갱신: 2026-11-23 · 담당: chquandogong
 > 공개 프로젝트 현황입니다. Git 이력, 태그가 붙은 릴리스, workflow 실행이 기준 기록이며 아래 날짜별 관찰은 당시 검증 범위를 유지합니다.
 
 <!-- qhud:anchor -->
@@ -19,8 +19,8 @@
 
 | 항목 | 값 |
 | --- | --- |
-| 현재 릴리스 | [v0.7.4](https://github.com/chquandogong/qhud/releases/tag/v0.7.4) — 좁은 시스템 표시줄 수정(속도 겹침 해소), Tauri 2.12.1, `sysinfo` 0.38.4, 소스 빌드 최소 Rust 1.90 선언. Linux x86_64 tarball, Windows x86_64 ZIP, CycloneDX SBOM과 각각의 SHA-256 파일 및 출처 증명. 이전: [v0.7.3](https://github.com/chquandogong/qhud/releases/tag/v0.7.3) — 알려진 Codex 요금제 값을 **Pro 100**, **Pro 200**, **Pro 500**으로 표시하며, 운영자가 명시한 override가 우선하고 알 수 없는 값은 배지에서 숨깁니다. v0.7.2 이후 완료한 보안, 의존성, 릴리스 workflow, 번역 운영 작업도 패키지에 담습니다. Linux x86_64 tarball, Windows x86_64 ZIP, CycloneDX SBOM을 제공하며 각각 SHA-256 파일과 출처 증명이 있습니다. |
-| 릴리스 이후 소스 | v0.7.4는 v0.7.3 태그 이후의 모든 소스 변경을 담습니다: [#28](https://github.com/chquandogong/qhud/pull/28) v0.7.3 Windows 검증 기록, [#29](https://github.com/chquandogong/qhud/pull/29) Tauri 2.12.1·Rust 1.90·최소 버전 CI 작업, [#30](https://github.com/chquandogong/qhud/pull/30) `sysinfo` 0.38.4, [#31](https://github.com/chquandogong/qhud/pull/31) 좁은 표시줄 수정과 네이티브 README 스크린샷. 이전: v0.7.3은 v0.7.2 태그 이후의 모든 소스 변경을 패키지에 담습니다: [#22](https://github.com/chquandogong/qhud/pull/22) 의존성과 rustls 보안 갱신, [#23](https://github.com/chquandogong/qhud/pull/23) Rust 의존성 정책 게이트, [#24](https://github.com/chquandogong/qhud/pull/24) 번역 workflow, [#25](https://github.com/chquandogong/qhud/pull/25) 릴리스 강화와 SBOM, [#26](https://github.com/chquandogong/qhud/pull/26) 형식화된 비식별 오류, 이번 릴리스의 Codex 요금제 이름 매핑. |
+| 현재 릴리스 | [v0.8.0](https://github.com/chquandogong/qhud/releases/tag/v0.8.0) · 공급자 연결 상태, 계정별 사용량, 남은 초기화권, 요금제별 지원 모델을 표시합니다. |
+| 배포 내용 | Windows ZIP에는 추가 프로필 연결용 PowerShell 스크립트가 포함됩니다. 같은 릴리스에서 Linux 압축 파일과 CycloneDX SBOM도 받을 수 있습니다. |
 | 요금제 레이블 자동 검사 | **v0.7.3 로컬 소스 트리, 2026-10-01:** Node 테스트 8/8 통과. 요금제 레이블 테스트 2개가 `prolite` / `pro` / `promax` 매핑, 정규화, 명시적 override 우선순위, 알 수 없는 값 숨김을 다룹니다. 이는 합성 입력을 사용한 자동화 근거이며 실제 공급자나 데스크톱 표시 검증이 아닙니다. |
 | 파이프라인 의존성 | qmonster @ `6a21c44`; Linux 기준 Git 의존성, Windows 명령 범위 패치 및 lockfile 복원. |
 | 지원 플랫폼 | Ubuntu 24.04 / GNOME 및 Windows x64 네이티브 / WebView2. Windows 터미널 탭 네이티브 관찰은 지원 범위 밖입니다. |

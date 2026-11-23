@@ -226,6 +226,13 @@ When the check fails:
 3. **License or source:** do not widen the global allow list for one crate. Add a crate-scoped `exceptions` entry with its reason, or remove the dependency.
 4. When cargo-deny reports that an ignored advisory or an allowed license is no longer encountered, delete that entry.
 
+When reviewing the four maintenance exceptions, inspect the locked dependency trees for both shipped targets. For RUSTSEC-2026-0543, check both qhud and qmonster for `chrono`. For RUSTSEC-2026-0370, RUSTSEC-2026-0371 and RUSTSEC-2026-0372, check the Linux Tauri opener, single-instance and `notify-rust` paths. Updating a single path can leave another on `zbus` 5. Delete any entry whose crate has disappeared and rerun the dependency gate.
+
+```sh
+cargo tree --locked --target x86_64-unknown-linux-gnu
+cargo tree --locked --target x86_64-pc-windows-msvc
+```
+
 Review the `ignore` list whenever Tauri, the GTK stack, or the qmonster `rev` changes, and keep `deny.toml`, [the repository policy](REPOSITORY.md#rust-dependency-policy), and their translations in agreement. To update cargo-deny itself, change `CARGO_DENY_VERSION` and `CARGO_DENY_SHA256` together in `.github/workflows/ci.yml`; take the SHA-256 from the upstream release's `.sha256` file and confirm it against the downloaded archive.
 
 ## Release procedure

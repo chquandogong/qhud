@@ -10,7 +10,9 @@
   const metaEl = document.getElementById("meta");
   const srcBadge = document.getElementById("srcBadge");
   const grip = document.getElementById("grip");
-  const { codexPlanDisplay } = window.QhudPlanLabels;
+  const { codexPlanDisplay, antigravityPlanDisplay, claudePlanDisplay, claudeOrganizationPlanLabel } = window.QhudPlanLabels;
+  const providerHealth = window.QhudProviderHealth;
+  const identities = window.QhudAccountIdentities;
 
   // localStorage can be denied outright in WebKitGTK for the tauri
   // custom-protocol origin (writes throw SecurityError) — never let
@@ -37,6 +39,7 @@
     selected: store.get("qhud.selected"),
     nodes: new Map(), // pane_id -> tile element
   };
+  const healthLocale = store.get("qhud.language") || "ko";
 
   // ---- formatting -------------------------------------------------
 
@@ -288,6 +291,27 @@
 
   // ---- provider quota strip (account-scoped facts, D-011) ---------
 
+  function patchModelGuide(anchor, facts) {
+    const guide = window.QhudModelGuide.lookup(facts, healthLocale);
+    let panel = anchor.nextElementSibling;
+    if (!panel?.classList.contains("q-model-guide")) panel = null;
+    if (!guide) {
+      panel?.remove();
+      return;
+    }
+    if (!panel) {
+      panel = el("details", "q-model-guide");
+      panel.append(el("summary"), el("div", "q-model-names"), el("small"));
+      anchor.after(panel);
+    }
+    // Reusing the disclosure preserves focus and the reader's open state
+    // while the HUD polls for quota changes.
+    const content = [guide.title, guide.lines.join("\n"), guide.source];
+    for (const [index, node] of Array.from(panel.children).entries()) {
+      if (node.textContent !== content[index]) node.textContent = content[index];
+    }
+  }
+
   function buildQuotaRow(provider) {
     const row = el("div", "q-row");
     row.dataset.provider = provider;
@@ -295,7 +319,10 @@
       el("span", "q-prov", provider),
       el("span", "q-acct"),
       el("span", "q-plan"),
+      el("span", "q-scope"),
+      el("span", "q-seat-annotation"),
       el("span", "q-extra"),
+      el("span", "q-reset-credits"),
       el("span", "q-age"),
     );
     if (provider === "claude") {
@@ -305,7 +332,7 @@
     }
     if (provider === "agy") {
       const btn = el("button", "q-refresh", "⟳");
-      btn.title = "read quota from the running agy (loopback, no token)";
+      btn.title = "read quota from Antigravity on this computer";
       row.append(btn);
     }
     if (provider === "codex") {
@@ -340,7 +367,7 @@
   }
 
   function patchQuotaChip(chip, g) {
-    if (!g) {
+    if (!g || !providerHealth.validPercent(g.pct)) {
       chip.hidden = true;
       return;
     }
@@ -369,14 +396,14 @@
   // Codex workspaces (personal / business) live behind ONE login and share
   // its token, so they cost no extra auth — but fetching them leaves the
   // machine, so it happens on an explicit click and never on the timer.
-  const codexFetch = { state: "idle", rows: [], error: null, at: 0 };
+  const codexFetch = { state: "idle", rows: [], error: null, at: 0, finishedAt: 0 };
   // Explicitly refreshed Claude usage. Only this can produce per-model windows
   // (the statusline has none, and nothing qhud can run refreshes the on-disk
   // cache), so it is a click, never a poll.
-  const claudeFetch = { state: "idle", data: null, error: null, at: 0 };
-  // agy usage via the CLI's own loopback RPC (no token, machine-local) —
-  // only answers while agy runs, so it too is a click, never a poll.
-  const agyFetch = { state: "idle", data: null, error: null, at: 0 };
+  const claudeFetch = { state: "idle", data: null, error: null, at: 0, finishedAt: 0 };
+  // Antigravity usage via the running app's local service. Its desktop
+  // session authentication stays on loopback; requests require a click.
+  const agyFetch = { state: "idle", data: null, error: null, at: 0, finishedAt: 0 };
 
   async function refreshAgyUsage() {
     if (agyFetch.state === "loading") return;
@@ -393,6 +420,7 @@
       agyFetch.state = "error";
       agyFetch.error = String(e);
     }
+    agyFetch.finishedAt = Date.now();
     render();
   }
 
@@ -411,6 +439,7 @@
       claudeFetch.state = "error";
       claudeFetch.error = String(e);
     }
+    claudeFetch.finishedAt = Date.now();
     render();
     // The command succeeding does not prove the per-model gauges rendered —
     // that distinction is exactly what let a wrong Fable value ship before.
@@ -444,7 +473,7 @@
     if (codexFetch.state === "loading") return;
     codexFetch.state = "loading";
     codexFetch.error = null;
-    renderCodexExtra();
+    render();
     try {
       const inv = window.__TAURI__?.core?.invoke;
       if (!inv) throw new Error("not running under Tauri");
@@ -455,13 +484,14 @@
       codexFetch.state = "error";
       codexFetch.error = String(e);
     }
-    renderCodexExtra();
+    codexFetch.finishedAt = Date.now();
+    render();
   }
 
   // A workspace's windows in the snapshot shape the row-override path
   // expects (the JS twin of the backend's workspace_snapshot).
   function wsToUsage(w) {
-    const u = { five_hour: null, seven_day: null, scoped: [] };
+    const u = { five_hour: null, seven_day: null, scoped: [], reset_credits: w.reset_credits };
     for (const x of w.windows || []) {
       if (!x.scope && x.label === "5h")
         u.five_hour = { pct: x.used_percent, reset_unix: x.reset_unix };
@@ -482,16 +512,7 @@
   // before any fetch, the stored rows from qhud's LAST explicit fetch
   // (riding the payload) render instead — dated, never passing for live.
   function codexSource() {
-    if (codexFetch.state === "done")
-      return { rows: codexFetch.rows, at: codexFetch.at, stored: false };
-    const p = state.payload;
-    if (p?.codex_workspaces?.length)
-      return {
-        rows: p.codex_workspaces,
-        at: p.codex_fetched_at_ms || 0,
-        stored: true,
-      };
-    return { rows: [], at: 0, stored: false };
+    return identities.codexSource(codexFetch, state.payload);
   }
 
   // Rebuilds are gated on a source signature: renderCodexExtra now runs on
@@ -511,21 +532,8 @@
       for (const r of [...quotasEl.querySelectorAll("[data-wsid]")]) r.remove();
     };
 
-    if (codexFetch.state === "loading") {
-      codexRowsSig = null;
-      clearRows();
-      ageEl.hidden = false;
-      ageEl.textContent = "fetching…";
-      return;
-    }
-    if (codexFetch.state === "error") {
-      codexRowsSig = null;
-      clearRows();
-      ageEl.hidden = false;
-      ageEl.textContent = "fetch failed";
-      anchor.title = `${codexFetch.error}\n\n⟳ to retry`;
-      return;
-    }
+    // A failed or pending request must not remove the previous workspace
+    // readings or their age. The provider header owns connection feedback.
 
     const { rows, at, stored } = codexSource();
     // The ACTIVE login's workspace lives merged on the provider row
@@ -542,7 +550,10 @@
       return;
     }
     const caption = `${visible.length} ws${at ? ` · ⟳ ${fmtAgeMs(at)} ago` : ""}`;
-    const sig = `${stored}:${at}:${visible.length}`;
+    const connectionSig = (state.payload?.configured_connections || [])
+      .filter((profile) => profile.provider === "codex")
+      .map((profile) => [profile.key, profile.email, profile.account_id, profile.scope, profile.state, profile.has_row, profile.expires_at_ms, profile.seat_annotation]);
+    const sig = JSON.stringify([stored, at, visible.map(identities.workspaceKey), connectionSig]);
     ageEl.hidden = false;
     ageEl.textContent = caption;
     if (sig === codexRowsSig) return; // same rows; only the caption moved
@@ -555,7 +566,7 @@
     let after = anchor;
     for (const w of visible) {
       const row = el("div", `q-row q-ws${stored ? " q-stored" : ""}`);
-      row.dataset.wsid = w.account_id;
+      row.dataset.wsid = identities.workspaceKey(w);
       const wins = (w.windows || []).filter((x) => x.used_percent != null);
       row.append(
         el("span", "q-prov", "↳"),
@@ -565,7 +576,7 @@
           // A hex id prefix is not a label a human can act on. Registry name
           // wins, then whatever accounts/check supplied, and the id is only a
           // last resort.
-          (state.payload?.workspace_names || {})[w.account_id] ||
+          w.email || (state.payload?.workspace_names || {})[w.account_id] ||
             w.name ||
             w.account_id.slice(0, 8),
         ),
@@ -578,6 +589,23 @@
           ) || "",
         ),
       );
+      const annotation = identities.seatAnnotationForAccount(state.payload?.configured_connections, "codex", w);
+      const seat = providerHealth.seatAnnotationView(annotation, healthLocale);
+      const workspaceName = (state.payload?.workspace_names || {})[w.account_id] || w.name;
+      const scope = seat ? `${providerHealth.strings(healthLocale).team} · ${workspaceName || seat.workspaceName}` : workspaceName;
+      if (w.email && scope) row.append(el("span", "q-scope", scope));
+      if (seat) {
+        const badge = el("span", "q-seat-annotation", seat.label);
+        badge.title = seat.detail;
+        row.append(badge);
+      }
+      patchModelGuide(row.lastElementChild, { provider: "codex", planType: w.plan_type, seatType: annotation?.seat_type });
+      const resetCredits = providerHealth.resetCreditsView(w, null, healthLocale);
+      if (resetCredits.label) {
+        const badge = el("span", "q-reset-credits", resetCredits.label);
+        badge.title = resetCredits.hint;
+        row.append(badge);
+      }
       for (const x of wins) {
         const chip = el("span", "q-chip");
         chip.dataset.sev = sev(x.used_percent);
@@ -606,10 +634,17 @@
       }
       if (wins.length === 0) row.append(el("span", "q-age", "no window"));
       const meta = [];
+      if (w.email) meta.push(`account: ${w.email}`);
+      if (scope) meta.push(`workspace: ${scope}`);
       if (stored)
         meta.push(`from qhud's last fetch, ${fmtAgeMs(at)} ago — ⟳ to refresh`);
       if (w.plan_type) meta.push(`plan_type (wire): ${w.plan_type}`);
       if (w.credits_balance) meta.push(`credits ${w.credits_balance}`);
+      if (seat) meta.push(seat.detail);
+      meta.push(resetCredits.detail);
+      for (const profile of identities.connectionsForAccount(state.payload?.configured_connections, "codex", w)) {
+        meta.push(providerHealth.configuredConnectionDetail(profile, healthLocale));
+      }
       if (meta.length) row.title = meta.join("\n");
       const detail = el("div", "q-detail");
       detail.textContent = meta.length
@@ -647,6 +682,7 @@
   // nothing. Selecting was never broken on the tiles; it did not exist
   // where the operator was clicking.
   quotasEl.addEventListener("pointerdown", async (e) => {
+    if (e.target.closest?.(".q-model-guide")) return;
     if (e.target.classList?.contains("q-refresh")) {
       const provider = e.target.closest(".q-row")?.dataset.provider;
       if (provider === "agy") refreshAgyUsage();
@@ -673,6 +709,11 @@
     }
     const row = e.target.closest?.(".q-row");
     if (!row) return;
+    const guide = row.querySelector(".q-model-guide");
+    if (guide && e.target.closest?.(".q-plan, .q-seat-annotation")) {
+      guide.open = !guide.open;
+      return;
+    }
     row.classList.toggle("q-open");
     const rowKind = row.dataset.provider
       ? "provider_row"
@@ -799,10 +840,108 @@
   function providerHeader(provider) {
     let h = quotasEl.querySelector(`.q-sect[data-sect="${provider}"]`);
     if (!h) {
-      h = el("div", "q-sect", provider);
+      h = el("div", "q-sect");
       h.dataset.sect = provider;
+      const toggle = el("button", "q-health-toggle");
+      toggle.type = "button";
+      toggle.setAttribute("aria-expanded", "false");
+      toggle.append(el("span", "q-health-name", providerHealth.NAMES[provider] || provider), el("span", "q-health-state"), el("span", "q-health-caret", "⌄"));
+      const summary = el("span", "q-health-summary");
+      const refresh = el("button", "q-health-refresh", "⟳");
+      refresh.type = "button";
+      const detail = el("div", "q-health-detail");
+      detail.id = `health-detail-${provider}`;
+      detail.hidden = true;
+      toggle.setAttribute("aria-controls", detail.id);
+      const activateToggle = (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        detail.hidden = !detail.hidden;
+        toggle.setAttribute("aria-expanded", String(!detail.hidden));
+        toggle.querySelector(".q-health-caret").textContent = detail.hidden ? "⌄" : "⌃";
+      };
+      const activateRefresh = (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        if (provider === "codex") fetchCodexWorkspaces();
+        else if (provider === "claude") refreshClaudeUsage();
+        else if (provider === "agy") refreshAgyUsage();
+      };
+      toggle.addEventListener("pointerdown", activateToggle);
+      refresh.addEventListener("pointerdown", activateRefresh);
+      // Native keyboard activation generates a click with detail=0. Pointer
+      // clicks already ran above; handling both would toggle twice.
+      toggle.addEventListener("click", (e) => { if (e.detail === 0) activateToggle(e); });
+      refresh.addEventListener("click", (e) => { if (e.detail === 0) activateRefresh(e); });
+      h.append(toggle, refresh, summary, detail);
     }
     return h;
+  }
+
+  function renderProviderHealth() {
+    const entries = state.payload?.provider_health || [];
+    const fetches = { codex: codexFetch, claude: claudeFetch, agy: agyFetch };
+    for (const provider of providerHealth.PROVIDERS) {
+      const health = entries.find((item) => item.provider === provider) || {};
+      const model = providerHealth.view(health, {
+        provider, fetch: fetches[provider], quotas: state.payload?.quotas || [], locale: healthLocale,
+      });
+      const header = providerHeader(provider);
+      if (!header.isConnected) quotasEl.append(header);
+      header.dataset.health = model.state;
+      header.dataset.tone = model.tone;
+      header.querySelector(".q-health-state").textContent = model.label;
+      header.querySelector(".q-health-summary").textContent = model.summary;
+      header.querySelector(".q-health-detail").textContent = model.detail;
+      const toggle = header.querySelector(".q-health-toggle");
+      toggle.title = `${model.name} · ${model.detailsLabel}`;
+      const button = header.querySelector(".q-health-refresh");
+      button.textContent = model.busy ? "…" : "⟳";
+      button.disabled = model.busy;
+      button.title = model.refreshLabel;
+      button.setAttribute("aria-label", model.refreshLabel);
+      for (const row of quotasEl.querySelectorAll(`.q-row[data-provider="${provider}"]`)) {
+        row.classList.toggle("q-usage-stale", model.stale);
+      }
+    }
+    quotasEl.hidden = false;
+  }
+
+  function renderConfiguredConnections(profiles) {
+    const alive = new Set();
+    for (const profile of profiles || []) {
+      const model = providerHealth.configuredConnectionView(profile, healthLocale);
+      if (!model) continue;
+      const annotation = identities.seatAnnotationForProfile(profile);
+      const seat = providerHealth.seatAnnotationView(annotation, healthLocale);
+      const key = `${model.provider}:${model.key}`;
+      alive.add(key);
+      let row = quotasEl.querySelector(`[data-connection-key="${CSS.escape(key)}"]`);
+      if (!row) {
+        row = el("div", "q-row q-connection");
+        row.dataset.connectionKey = key;
+        row.append(el("span", "q-acct"), el("span", "q-scope"), el("span", "q-seat-annotation"), el("span", "q-connection-state"), el("div", "q-detail"));
+        let anchor = providerHeader(model.provider);
+        if (!anchor.isConnected) quotasEl.append(anchor);
+        while (anchor.nextElementSibling && !anchor.nextElementSibling.classList.contains("q-sect")) anchor = anchor.nextElementSibling;
+        anchor.after(row);
+      }
+      row.dataset.connectionState = model.state;
+      row.querySelector(".q-acct").textContent = model.email;
+      row.querySelector(".q-scope").textContent = [model.scope, seat?.workspaceName].filter(Boolean).join(" · ");
+      const badge = row.querySelector(".q-seat-annotation");
+      badge.textContent = seat?.label || "";
+      badge.title = seat?.detail || "";
+      badge.hidden = !seat;
+      patchModelGuide(badge, { provider: model.provider, seatType: annotation?.seat_type });
+      row.querySelector(".q-connection-state").textContent = model.label;
+      const detail = [model.detail, seat?.detail].filter(Boolean).join("\n");
+      row.querySelector(".q-detail").textContent = detail;
+      row.title = detail;
+    }
+    for (const row of quotasEl.querySelectorAll("[data-connection-key]")) {
+      if (!alive.has(row.dataset.connectionKey)) row.remove();
+    }
   }
 
   // One vocabulary for one fact: every window is named by its duration —
@@ -826,6 +965,7 @@
   function scopedChipLabel(x) {
     if (!x.scope) return null;
     if (x.kind === "weekly_scoped") return `${x.scope} 7D`;
+    if (x.kind === "pool_unknown") return x.scope;
     if (x.kind?.startsWith("pool_"))
       return `${x.scope} ${winLabel(x.kind.slice(5))}`;
     return null;
@@ -866,17 +1006,19 @@
   }
 
   function renderQuotas(quotas) {
-    quotasEl.hidden = quotas.length === 0;
-    const aliveProviders = new Set();
+    quotasEl.hidden = false;
+    const aliveProviders = new Set(providerHealth.PROVIDERS);
+    for (const provider of providerHealth.PROVIDERS) {
+      const header = providerHeader(provider);
+      if (!header.isConnected) quotasEl.append(header);
+    }
     const aliveRows = new Set();
     for (const q of quotas) {
       // One row per (provider, account) — a provider may carry several
       // accounts now (D-015), so the provider alone no longer keys a row.
       // (account, org) keys the row: one claude.ai account can hold a
       // team seat and a personal org — separate pools, separate rows.
-      const acctKey =
-        (q.account?.account_id || q.account?.email || "default") +
-        (q.account?.org_id ? ` ${q.account.org_id}` : "");
+      const acctKey = identities.accountKey(q.account);
       aliveProviders.add(q.provider);
       aliveRows.add(`${q.provider} ${acctKey}`);
       let row = quotasEl.querySelector(
@@ -903,26 +1045,15 @@
         q.provider === "claude" &&
         claudeFetch.state === "done" &&
         Array.isArray(claudeFetch.data)
-          ? claudeFetch.data.find(
-              // The fetch key IS the config dir (or "default"): with one
-              // account in two orgs, account_id alone would feed one
-              // org's numbers to both rows.
-              (r) =>
-                r.key === (q.account?.config_dir || "default") &&
-                r.account_id && r.account_id === q.account?.account_id,
-            )
+          ? identities.claudeUsageForAccount(claudeFetch.data, q.account)
           : null;
       // The active codex workspace is merged into this row (its ↳ row
       // would be the same pool twice) — so the row must SAY which
       // workspace it is showing.
       const activeWs =
         q.provider === "codex"
-          ? codexSource().rows.find(
-              (w) =>
-                w.active &&
-                (!q.account?.account_id ||
-                  w.account_id === q.account.account_id),
-            )
+          ? identities.activeWorkspace(codexSource().rows, q.account,
+              (state.payload?.quotas || []).filter((item) => item.provider === "codex").map((item) => item.account))
           : null;
       // The agy RPC read and the codex active-workspace fetch have the
       // same snapshot shape as Claude's ⟳, so one override path serves
@@ -931,12 +1062,10 @@
       // dated.
       const liveUsage =
         liveFetch?.usage ||
-        (q.provider === "agy" && agyFetch.state === "done" &&
-          agyFetch.data?.account_id &&
-          agyFetch.data.account_id === (q.account?.account_id || q.account?.email)
-          ? agyFetch.data
+        (q.provider === "agy" && agyFetch.state === "done"
+          ? identities.antigravityUsageForAccount(agyFetch.data, q)
           : null) ||
-        (activeWs && codexFetch.state === "done" ? wsToUsage(activeWs) : null);
+        (activeWs && !codexSource().stored ? wsToUsage(activeWs) : null);
       // The provider name lives in the section header now, so the row's own
       // slot carries the ACCOUNT — the thing that actually differs per row.
       row.querySelector(".q-prov").textContent = "";
@@ -951,10 +1080,17 @@
         ? (state.payload?.workspace_names || {})[activeWs.account_id] ||
           activeWs.name
         : null;
-      if (activeWsName && acctEl.textContent) {
-        acctEl.textContent += ` · ${activeWsName}`;
-      }
       acctEl.hidden = !acctEl.textContent;
+      const annotation = identities.seatAnnotationForAccount(state.payload?.configured_connections, q.provider, q.account);
+      const seat = providerHealth.seatAnnotationView(annotation, healthLocale);
+      const scopeEl = row.querySelector(".q-scope");
+      scopeEl.textContent = identities.organizationLabel(q.provider, q.account, activeWsName, healthLocale);
+      if (seat) scopeEl.textContent = `${providerHealth.strings(healthLocale).team} · ${scopeEl.textContent || seat.workspaceName}`;
+      scopeEl.hidden = !scopeEl.textContent;
+      const seatEl = row.querySelector(".q-seat-annotation");
+      seatEl.textContent = seat?.label || "";
+      seatEl.title = seat?.detail || "";
+      seatEl.hidden = !seat;
 
       // Plan / seat, inline rather than tooltip-only: "whose quota and on
       // what plan" is the question the strip exists to answer, and hover
@@ -971,11 +1107,15 @@
         q.provider === "codex"
           ? codexPlanDisplay(planOverride, activeWs?.plan_type)
           : null;
-      if (codexPlan || q.account?.plan) {
+      const displayPlan = q.provider === "claude"
+        ? claudePlanDisplay(q.account?.plan, q.account?.org_type, q.account?.tiers)
+        : q.provider === "agy" ? antigravityPlanDisplay(q.account?.plan, q, liveUsage)
+          : codexPlan || q.account?.plan;
+      if (displayPlan) {
         // An explicit plan string is already complete. Appending the derived
         // tier here is what produced "team (max_5x) (max_5x)".
-        bits.push(codexPlan || q.account.plan);
-      } else {
+        bits.push(displayPlan);
+      } else if (!["claude", "agy"].includes(q.provider)) {
         if (q.account?.org_type) bits.push(shortPlan(q.account.org_type));
         for (const t of q.account?.tiers || []) {
           if (t.kind === "user") bits.push(`(${shortTier(t.tier)})`);
@@ -984,6 +1124,22 @@
 
       planEl.textContent = bits.join(" ");
       planEl.hidden = bits.length === 0;
+      patchModelGuide(seatEl, {
+        provider: q.provider,
+        planType: activeWs?.plan_type,
+        seatType: annotation?.seat_type,
+        orgType: q.account?.org_type,
+        planName: q.provider === "agy" ? antigravityPlanDisplay(null, q, liveUsage)
+          : claudePlanDisplay(null, q.account?.org_type, q.account?.tiers),
+      });
+
+      // Reset credits are a remaining count, separate from money and the
+      // quota-window countdown. Display only; no consumption action exists.
+      const resetCredits = providerHealth.resetCreditsView(q, liveUsage, healthLocale);
+      const resetCreditsEl = row.querySelector(".q-reset-credits");
+      resetCreditsEl.hidden = resetCredits.count == null;
+      resetCreditsEl.textContent = resetCredits.label || "";
+      resetCreditsEl.title = resetCredits.hint;
 
       // Usage credits beyond the plan ("extra usage") — the last thing the
       // provider's own usage page shows that the windows do not. A live ⟳
@@ -1023,24 +1179,30 @@
       // would wrongly imply the visible gauges are stale. "cache" is the
       // CLI's own on-disk copy; "fetched" is qhud's last explicit ⟳.
       const ageEl = row.querySelector(".q-age");
-      const snapshotRow = q.origin === "cache" || q.origin === "fetched";
+      const snapshotRow = ["cache", "fetched", "saved-account"].includes(q.origin);
       const showAge = snapshotRow && row.dataset.cacheAge;
       ageEl.textContent = !showAge
         ? ""
-        : q.origin === "fetched"
+        : q.origin === "fetched" || q.origin === "saved-account"
           ? `⟳ ${row.dataset.cacheAge} ago`
           : `~${row.dataset.cacheAge} old`;
       ageEl.hidden = !showAge;
 
       const lines = [];
+      if (seat) lines.push(seat.detail);
+      if (["codex", "claude"].includes(q.provider) || resetCredits.count != null) lines.push(resetCredits.detail);
+      for (const profile of identities.connectionsForAccount(state.payload?.configured_connections, q.provider, q.account)) {
+        lines.push(providerHealth.configuredConnectionDetail(profile, healthLocale));
+      }
       if (q.origin === "cache") {
         lines.push(
-          `no CLI running — from Claude's on-disk snapshot, ${row.dataset.cacheAge} old`,
+          `from the provider's on-disk snapshot, ${row.dataset.cacheAge} old`,
         );
-      } else if (q.origin === "fetched") {
+      } else if (q.origin === "fetched" || q.origin === "saved-account") {
         lines.push(
-          `no CLI running — from qhud's last ⟳, ${row.dataset.cacheAge} ago`,
+          `from qhud's last ⟳, ${row.dataset.cacheAge} ago`,
         );
+        if (q.origin === "saved-account") lines.push(providerHealth.strings(healthLocale).savedAccount);
       } else if (q.cache_fetched_at_ms) {
         lines.push(
           `per-model windows from snapshot, ${row.dataset.cacheAge} old`,
@@ -1065,6 +1227,9 @@
         );
         if (a.org)
           lines.push(`org: ${a.org}${a.org_type ? ` (${a.org_type})` : ""}`);
+        else if (a.org_type) lines.push(`org type (wire): ${a.org_type}`);
+        const organizationPlan = q.provider === "claude" && claudeOrganizationPlanLabel(a.org_type);
+        if (organizationPlan) lines.push(`${providerHealth.strings(healthLocale).organizationPlan}: ${organizationPlan}`);
         // A team seat carries an org pool AND the member's own seat, each
         // with its own tier — collapsing them would hide a pool.
         for (const t of a.tiers || []) lines.push(`${t.kind} tier: ${t.tier}`);
@@ -1095,12 +1260,12 @@
       let d7 = q.d7;
       let scoped = [];
       if (liveUsage) {
-        if (liveUsage.five_hour)
-          h5 = { ...liveUsage.five_hour, source: "live" };
-        if (liveUsage.seven_day)
-          d7 = { ...liveUsage.seven_day, source: "live" };
+        // This is a complete, identity-matched response. A removed window
+        // (for example Ultra's absent 5H cap) must not revive a cached gauge.
+        h5 = liveUsage.five_hour ? { ...liveUsage.five_hour, source: "live" } : null;
+        d7 = liveUsage.seven_day ? { ...liveUsage.seven_day, source: "live" } : null;
         scoped = liveUsage.scoped || [];
-      } else if (q.origin === "fetched" || q.origin === "cache") {
+      } else if (["fetched", "cache", "saved-account"].includes(q.origin)) {
         // The whole row is snapshot data wearing its age caption, so its
         // scoped windows may render as gauges too. On a PANE row they
         // stay tooltip-only: a day-old per-model value next to live
@@ -1152,6 +1317,7 @@
   function render() {
     const p = state.payload;
     if (!p) return;
+    document.getElementById("root").classList.toggle("usage-only", p.panes.length === 0);
 
     window.QhudSystemMetrics?.update(p.system);
 
@@ -1175,6 +1341,8 @@
       // stored copy.
       renderCodexExtra();
       renderPlaceholders(p.account_placeholders || []);
+      renderConfiguredConnections(p.configured_connections || []);
+      renderProviderHealth();
       // Positive confirmation that the strip painted. Absence of a JS error
       // is NOT proof the strip rendered — the pixels are unverifiable from
       // outside the webview (scrot cannot capture XWayland-composited
@@ -1226,13 +1394,15 @@
     }
 
     if (p.panes.length === 0) {
+      tilesEl.classList.add("no-panes");
       if (!tilesEl.querySelector(".empty")) {
         const empty = el("div", "empty");
         empty.textContent =
-          "No connected terminal panes. Account usage is available above; use ⟳ to refresh.";
+          providerHealth.strings(healthLocale).terminalEmpty;
         tilesEl.append(empty);
       }
     } else {
+      tilesEl.classList.remove("no-panes");
       const empty = tilesEl.querySelector(".empty");
       if (empty) empty.remove();
     }

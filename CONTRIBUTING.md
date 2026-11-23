@@ -43,13 +43,13 @@ revision; inspect and redact those outputs before sharing.
 The repository declares Rust 1.90 or later; CI builds on stable Rust, and the
 `Rust minimum version` job checks the declared version. The application
 build uses plain HTML/CSS/JavaScript and needs neither Node.js nor npm. Node.js
-22 is used only for the standalone frontend system-metrics regression test.
+22 runs the standalone frontend regression tests.
 qhud pins qmonster to the revision in `src-tauri/Cargo.toml`.
 
 Run this check on either development platform:
 
 ```sh
-node --test tests/system-metrics.test.cjs
+node --test tests/*.test.cjs
 ```
 
 ### Linux
@@ -69,6 +69,7 @@ cargo build --locked --release
 Use Developer PowerShell for Visual Studio with the C++ workload and Windows SDK:
 
 ```powershell
+.\tests\connect-account.test.ps1
 .\scripts\Build-Windows.ps1 -Test
 git diff --exit-code -- Cargo.toml Cargo.lock
 ```

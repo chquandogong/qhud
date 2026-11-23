@@ -44,6 +44,15 @@ ignore = [
     # proc-macro dependency of glib-macros 0.18 and leaves with the same GTK3
     # stack migration.
     { id = "RUSTSEC-2024-0370", reason = "build-time dependency of glib-macros 0.18 (Tauri 2 GTK3 stack); removed with the #13 migration" },
+    # Reviewed 2026-11-23. chrono has no maintained release in its version line.
+    # See https://rustsec.org/advisories/RUSTSEC-2026-0543.html for successors.
+    { id = "RUSTSEC-2026-0543", reason = "qhud and pinned qmonster depend on chrono on both targets. Remove when both have migrated to time or jiff and chrono leaves the shipped graph." },
+    # On Linux, Tauri opener and single-instance require zbus 5, and qmonster
+    # also uses notify-rust. See https://github.com/tauri-apps/plugins-workspace/issues/3716.
+    # zbus 6 incorporates the types and macros previously shipped in these crates.
+    { id = "RUSTSEC-2026-0370", reason = "Linux zbus 5 uses zvariant for D-Bus wire types. Remove when the standalone crate leaves the graph after the zbus 6 migration." },
+    { id = "RUSTSEC-2026-0371", reason = "Linux zbus 5 uses zbus_names for D-Bus names. Remove when the standalone crate leaves the graph after the zbus 6 migration." },
+    { id = "RUSTSEC-2026-0372", reason = "Linux zvariant uses zvariant_derive at build time. Remove when the standalone macro crate leaves the graph after the zbus 6 migration." },
 ]
 
 [licenses]

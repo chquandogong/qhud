@@ -12,7 +12,7 @@ Node.js and npm are not required.
 
 ## Install a release
 
-Download `qhud-v0.7.4-windows-x86_64.zip` and its checksum file from
+Download `qhud-v0.8.0-windows-x86_64.zip` and its checksum file from
 [GitHub Releases](https://github.com/chquandogong/qhud/releases). Extract the
 archive and run `qhud.exe` inside its versioned directory. Microsoft Edge
 WebView2 Runtime is required.
@@ -88,6 +88,13 @@ local `auth.json` ID token when available, so a new computer normally needs no
 email mapping. Missing or malformed email data falls back to the account ID.
 `labels` in `accounts.json` still override the displayed email without changing
 the account/workspace identity. See the [runbook](RUNBOOK.md) for the schema.
+
+For another Codex or Claude login, register an isolated profile as described in the [user guide](../GUIDE.md). From the extracted Windows ZIP, list the profiles, then sign in with the chosen key. Refresh the provider in qhud to read its usage.
+
+```powershell
+.\scripts\Connect-Account.ps1 -List
+.\scripts\Connect-Account.ps1 -Profile codex-work-personal
+```
 
 Model limits such as GPT-5.3-Codex-Spark 5H/7D are displayed when returned by the
 server. Long names wrap and the usage area scrolls when there are many entries.

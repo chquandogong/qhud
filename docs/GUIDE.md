@@ -20,20 +20,20 @@ contains a versioned directory and comes with a separate SHA-256 file.
 | Windows x64 | Extract the ZIP; run `qhud.exe` inside the extracted directory. | Microsoft Edge WebView2 Runtime. See [Windows setup](05-ops/WINDOWS.md). |
 | Linux x86_64 | Extract the tarball; install the binary inside its versioned directory. | GTK/WebKitGTK; Ubuntu 24.04 is the reference system. See [Linux operations](05-ops/RUNBOOK.md). |
 
-For Linux v0.7.4, after downloading both files:
+For Linux v0.8.0, after downloading both files:
 
 ```sh
-sha256sum -c qhud-v0.7.4-linux-x86_64.tar.gz.sha256
-tar -xzf qhud-v0.7.4-linux-x86_64.tar.gz
-install -Dm755 qhud-v0.7.4-linux-x86_64/qhud "$HOME/.local/bin/qhud"
+sha256sum -c qhud-v0.8.0-linux-x86_64.tar.gz.sha256
+tar -xzf qhud-v0.8.0-linux-x86_64.tar.gz
+install -Dm755 qhud-v0.8.0-linux-x86_64/qhud "$HOME/.local/bin/qhud"
 "$HOME/.local/bin/qhud"
 ```
 
 For a Windows download, compare the displayed digest with the `.sha256` file:
 
 ```powershell
-Get-FileHash -Algorithm SHA256 .\qhud-v0.7.4-windows-x86_64.zip
-Get-Content .\qhud-v0.7.4-windows-x86_64.zip.sha256
+Get-FileHash -Algorithm SHA256 .\qhud-v0.8.0-windows-x86_64.zip
+Get-Content .\qhud-v0.8.0-windows-x86_64.zip.sha256
 ```
 
 Archives published by the current release workflow also carry GitHub build
@@ -66,9 +66,7 @@ sha256sum -c qhud-vX.Y.Z-sbom.cdx.json.sha256
 gh attestation verify ./qhud-vX.Y.Z-sbom.cdx.json --repo chquandogong/qhud
 ```
 
-Sign in using each provider's own CLI. qhud reads existing account information;
-it does not replace provider login flows. Start qhud, then press ⟳ to fetch usage.
-The portable packages do not register shortcuts or automatic startup.
+For Codex and Claude Code, sign in through the provider CLI. For Antigravity on Windows, open the signed-in native app or keep the `agy` CLI running. Start qhud and press the provider’s ⟳ to fetch usage. The portable packages do not register shortcuts or automatic startup.
 
 ## Read the widget
 
@@ -85,6 +83,49 @@ account row; other authenticated workspaces can appear as additional rows.
 A missing model quota is not the same as zero usage. For example, Spark 5H/7D
 is displayed only if the current Codex account's response contains those limits.
 Refreshing another account does not establish the limits for the active account.
+
+The **Reset credits: N** badge shows
+only the count supplied by the provider. Codex uses the official
+`rateLimitResetCredits.availableCount`: an explicit `0` is valid, while a missing
+field stays unavailable. This is separate from extra-usage money and the reset
+countdown; qhud displays the count but never consumes a reset credit. If Claude's
+usage response supplies no manual-reset count, expanded details say that the
+information is unavailable. Reset dates, quota percentages, and reset offers of
+different types are not converted into an invented count. The account row's
+snapshot age applies to the count as well.
+
+Claude's legacy personal `claude_max` metadata with
+`default_claude_max_20x` is displayed as **Ultra**, following the
+[official Max 20x rename](https://support.claude.com/en/articles/17728952-what-is-the-ultra-plan).
+The `default_claude_max_5x` tier displays as **Max 5x**. For Team/Enterprise,
+the primary badge shows the member's explicit user usage grade: **Max 5x** or
+**Ultra** for those two known tiers. The separate personal/team scope and
+expanded **Organization plan: Team/Enterprise** preserve the actual organization
+plan. An organization's tier never substitutes for an unknown member tier;
+without a recognized user grade, the badge retains Team/Enterprise. Explicit
+plan overrides still win. Exact `claude_ultra` or `ultra` metadata also displays
+as Ultra; unknown organization values are not guessed. An absent 5H limit stays
+absent, including when a fresh Ultra response no longer supplies that window.
+
+Select **Supported models** next to a recognized plan or seat badge to expand
+the provider guidance. This is an official-plan reference reviewed on
+**2026-11-23**, not a live check of that account's model access or remaining
+quota. Check the signed-in account and workspace in the provider's own picker:
+
+- **Codex:** run `/model` in Codex CLI. Available models depend on the account,
+  workspace permissions, and client version; a Team/Business plan name alone
+  does not establish a member's seat type. See [official Codex models](https://developers.openai.com/codex/models).
+- **Claude Code:** run `/model` in the terminal or Claude Desktop's Code tab.
+  Max and Ultra plans and Team Premium seats include Fable usage within their
+  limits; Team Standard seats require usage credits for Fable. A displayed
+  **Max 5x** member usage grade does not independently verify a Premium seat.
+  See [Claude Code model configuration](https://code.claude.com/docs/en/model-config)
+  and [Fable eligibility and limits](https://support.claude.com/en/articles/15424964-claude-fable-models-on-your-plan).
+- **Antigravity:** use its model picker. Paid Google AI Pro and trial
+  subscriptions can have different model access; some models require a paid
+  subscription or a qualifying trial. Work accounts follow their organization's
+  access rules, including administrator approval for partner models. See
+  [Antigravity plans and model conditions](https://antigravity.google/pricing).
 
 On supported Linux setups, session tiles add status, context pressure, model,
 effort, branch, working directory, and conflict indicators. Windows Terminal,
@@ -152,6 +193,8 @@ widget before using them.
 These diagnostics run independently:
 
 ```sh
+qhud --provider-health
+qhud --refresh-health
 qhud --dump
 qhud --system-dump
 qhud --claude-usage
@@ -253,13 +296,112 @@ Antigravity multiple-account support is not implemented. A `known` account
 list is maintained by the operator, not automatically learned by qhud. Forgetting
 a placeholder does not hide a live account.
 
+### Windows personal and team profiles
+
+To keep two email addresses' personal and team scopes visible for both Codex
+and Claude, register eight desired connections in `accounts.json` under
+`profiles`. Registration creates a pending display entry; it does not create
+credentials, switch an app's login, or invent an account ID. Use your own email
+addresses and private directories in place of this synthetic example, and merge
+the entries into the existing configuration:
+
+```json
+{
+  "profiles": [
+    { "key": "codex-first-personal", "provider": "codex", "label": "First personal", "email": "first@example.com", "scope": "personal", "directory": "~/qhud-accounts/codex-first" },
+    { "key": "codex-first-team", "provider": "codex", "label": "First team", "email": "first@example.com", "scope": "team", "directory": "~/qhud-accounts/codex-first" },
+    { "key": "codex-second-personal", "provider": "codex", "label": "Second personal", "email": "second@example.com", "scope": "personal", "directory": "~/qhud-accounts/codex-second" },
+    { "key": "codex-second-team", "provider": "codex", "label": "Second team", "email": "second@example.com", "scope": "team", "directory": "~/qhud-accounts/codex-second" },
+    { "key": "claude-first-personal", "provider": "claude", "label": "First personal", "email": "first@example.com", "scope": "personal", "directory": "~/qhud-accounts/claude-first-personal" },
+    { "key": "claude-first-team", "provider": "claude", "label": "First team", "email": "first@example.com", "scope": "team", "directory": "~/qhud-accounts/claude-first-team" },
+    { "key": "claude-second-personal", "provider": "claude", "label": "Second personal", "email": "second@example.com", "scope": "personal", "directory": "~/qhud-accounts/claude-second-personal" },
+    { "key": "claude-second-team", "provider": "claude", "label": "Second team", "email": "second@example.com", "scope": "team", "directory": "~/qhud-accounts/claude-second-team" }
+  ]
+}
+```
+
+One Codex login can enumerate that email's accessible personal and team
+workspaces, so its two profiles may share one isolated Codex home. Claude needs
+separate authenticated profiles for the selected personal/team organizations.
+During Claude login, select the requested organization, not just the right
+email. If an exact organization must be pinned, add its verified
+`expected_org_id` to that profile; do not guess it. Two emails sharing a Codex
+team workspace are kept distinct by email plus workspace ID.
+
+Open PowerShell in the extracted Windows package directory (the one containing `qhud.exe`) or the source repository root. The [connection script](../scripts/Connect-Account.ps1) lists registered profiles with `-List`. Use `-AllPending` to connect them, or `-Profile codex-first-personal` to select that example profile.
+
+```powershell
+.\scripts\Connect-Account.ps1 -List
+.\scripts\Connect-Account.ps1 -AllPending
+```
+
+The script handles pending profiles and deduplicates provider/directory pairs,
+so a shared Codex home is not logged in twice. Sign-in remains interactive in
+the provider's own flow. It uses isolated profile directories and preserves the
+default `~/.codex` and `~/.claude` logins rather than overwriting them. Refresh
+qhud afterward. Unconnected profiles stay numberless as **Connect to qhud**;
+expired credentials, a different email, and a different organization are shown
+explicitly. A matching real account/workspace row replaces its pending entry.
+Adding a profile does not grant access to a personal or team workspace that the
+account does not own.
+
+A Codex team profile can also carry a separately verified seat annotation from
+the workspace's admin Members page. It appears as **Standard · Web verified**
+or **Premium · Web verified**, including while the profile needs connection to
+qhud. This is a dated manual observation, not an automatically refreshed API
+value or proof that qhud is connected. The tooltip and expanded detail show the
+source and verification time. On a usage row, both the email and workspace ID
+must match; the annotation never replaces the provider's Business or other
+plan, and qhud never infers a seat type from that plan.
+
 ## Network and freshness
+
+### Windows provider connection status
+
+Codex, Claude, and Antigravity remain visible even before a quota is available.
+**Ready to fetch** means local prerequisites were found; **Fetch succeeded** means an explicit
+refresh succeeded. Expand a provider's status to see its source, last attempt,
+last successful snapshot, credential expiry when available, and recovery action.
+Credential expiry describes the local login token, not your subscription expiry.
+Old readings stay dated after a failed refresh; missing usage is never zero.
+
+Codex uses the installed CLI's `app-server` for the active account and supports
+the native Windows `Programs/OpenAI/Codex/bin` layout. Claude uses its Claude
+Code login: a signed-in Desktop app does not renew an expired CLI credential.
+Use `claude auth login` when prompted, then refresh qhud. qhud does not automate
+the login or exchange refresh tokens itself.
+
+Antigravity supports a running native Windows app's local daemon registration
+as well as the existing `agy` listener. The native connection validates the
+process and loopback port, then binds quota to the account returned by the app.
+This local app interface may change between Antigravity versions. If no current
+CLI identity matches a saved result, it is labelled **Last fetched account**;
+it is not a claim about the app's current login. Start/open Antigravity and
+refresh if its local service is unavailable.
+
+The Antigravity plan badge uses the queried account's native `userTier.name`,
+such as **Google AI Pro**, saved with that account's usage snapshot. An upgrade
+prompt or quota shape is not treated as a current plan. A fresh response without
+the plan name clears the previous badge; an explicit account `plans` override
+still takes precedence. If the provider supplies no name and no override exists,
+the badge remains absent. A stored plan name has the same snapshot age and account
+ownership as its quota values.
+
+`qhud --provider-health` prints bounded local connection diagnostics without
+emails, account IDs, paths, or credentials. `qhud --refresh-health` explicitly
+refreshes all three providers through the same commands as the widget, then
+prints those diagnostics. The latter performs provider requests. Both run
+without opening another window; ordinary background observation stays passive.
+
+For a Windows source build, `scripts/Build-Windows.ps1 -DependenciesRoot <path>`
+uses a separate dependency directory without overwriting an existing modified
+qmonster checkout. The default remains the adjacent `qhud-deps` directory.
 
 | Provider | Passive observation | Explicit refresh |
 | --- | --- | --- |
 | Claude | Local identity, statusline, and usage cache where available. | Existing OAuth access token sent to the provider usage endpoint. |
-| Codex | Local identity and supported pane statusline data. | Usage/account endpoints per saved credential; active-login fallback via `codex app-server`. |
-| Antigravity | Local account and pane information where available. | Loopback RPC served by a running agy process. |
+| Codex | Local identity and supported pane statusline data. | Active account via `codex app-server`; usage/account endpoints as fallback and for saved credentials. |
+| Antigravity | Local account, native daemon readiness, and pane information where available. | Verified native Windows daemon or a running `agy` process, over loopback RPC. |
 
 Local observation runs every 2 seconds and does not make provider API requests.
 It can read identity fields from files that also contain credentials. Explicit

@@ -6,7 +6,7 @@
 
 # DASHBOARD — qhud
 
-> Status: v0.7.4 released · Updated: 2026-10-02 · Owner: chquandogong
+> Status: v0.8.0 · Updated: 2026-11-23 · Owner: chquandogong
 > Public project snapshot. Git history, tagged releases, and workflow runs are
 > the authoritative records; dated observations below keep their original scope.
 
@@ -14,8 +14,8 @@
 
 | Item | Value |
 | --- | --- |
-| Current release | [v0.7.4](https://github.com/chquandogong/qhud/releases/tag/v0.7.4) — narrow system-strip fix (rates no longer overlap), Tauri 2.12.1, `sysinfo` 0.38.4, and Rust 1.90 as the declared minimum for source builds. Linux x86_64 tarball, Windows x86_64 ZIP, and CycloneDX SBOM, each with a SHA-256 file and provenance attestation. Previously, [v0.7.3](https://github.com/chquandogong/qhud/releases/tag/v0.7.3) — known Codex plan values display as **Pro 100**, **Pro 200**, or **Pro 500**, with explicit operator overrides first and unknown values hidden from badges. It also packages the security, dependency, release-workflow, and translation-governance work completed after v0.7.2. Linux x86_64 tarball, Windows x86_64 ZIP, and CycloneDX SBOM, each with a SHA-256 file and provenance attestation. |
-| Source after release | v0.7.4 packages every source change after the v0.7.3 tag: [#28](https://github.com/chquandogong/qhud/pull/28) the v0.7.3 Windows verification record, [#29](https://github.com/chquandogong/qhud/pull/29) Tauri 2.12.1 with Rust 1.90 and the minimum-version CI job, [#30](https://github.com/chquandogong/qhud/pull/30) `sysinfo` 0.38.4, and [#31](https://github.com/chquandogong/qhud/pull/31) the narrow-strip fix with native README screenshots. Earlier, v0.7.3 packages every source change after the v0.7.2 tag: [#22](https://github.com/chquandogong/qhud/pull/22) dependency and rustls security updates, [#23](https://github.com/chquandogong/qhud/pull/23) the Rust dependency-policy gate, [#24](https://github.com/chquandogong/qhud/pull/24) the translation workflow, [#25](https://github.com/chquandogong/qhud/pull/25) release hardening and the SBOM, [#26](https://github.com/chquandogong/qhud/pull/26) typed redacted errors, and this release's Codex plan-name mapping. |
+| Current release | [v0.8.0](https://github.com/chquandogong/qhud/releases/tag/v0.8.0) · Provider connection status, account-scoped usage, remaining reset credits and supported models by plan. |
+| Release contents | The Windows ZIP includes the PowerShell helper for connecting additional profiles. The release also provides a Linux archive and a CycloneDX SBOM. |
 | Plan-label automated checks | **v0.7.3 local source tree, 2026-10-01:** 8/8 Node tests passed. Two plan-label tests cover the `prolite` / `pro` / `promax` mappings, normalization, explicit-override precedence, and suppression of unknown values. This is synthetic automated evidence, not a live provider or desktop-display pass. |
 | Pipeline dependency | qmonster @ `6a21c44`; canonical Git dependency on Linux, command-scoped Windows patch with lockfile restoration. |
 | Supported platforms | Ubuntu 24.04 / GNOME and native Windows x64 / WebView2. Native Windows terminal-tab observation remains outside the supported scope. |
