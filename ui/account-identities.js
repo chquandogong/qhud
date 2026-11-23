@@ -28,6 +28,15 @@
     const id = text(account?.account_id);
     if (id) candidates = candidates.filter((row) => row.account_id === id);
     const expectedEmail = email(account?.email);
+    if (!expectedEmail) {
+      // The active flag belongs to a workspace, not to every unlabelled
+      // pane. An ID alone is sufficient only when it has a single owner.
+      if (!id) return null;
+      const owners = new Set([...(workspaces || []), ...knownAccounts]
+        .filter((other) => other?.account_id === id)
+        .map((other) => email(other.email)).filter(Boolean));
+      if (owners.size > 1) return null;
+    }
     if (expectedEmail) {
       const exact = candidates.filter((row) => email(row.email) === expectedEmail);
       if (exact.length === 1) return exact[0];
@@ -109,17 +118,52 @@
     return { rows: [], at: 0, stored: false };
   }
 
-  function organizationLabel(provider, account, workspaceName, locale = "ko") {
-    if (provider === "codex") return text(workspaceName) || text(account?.org);
-    const org = text(account?.org);
-    if (provider !== "claude") return org;
-    const type = text(account?.org_type).toLowerCase();
+  function accountScope(provider, type) {
+    const plan = text(type).toLowerCase();
+    if (provider === "claude") {
+      const org = plan.replace(/^claude_/, "");
+      if (["free", "pro", "max", "ultra"].includes(org)) return "personal";
+      if (["team", "enterprise"].includes(org)) return "team";
+    } else if (provider === "codex") {
+      if (["free", "go", "plus", "prolite", "pro", "promax"].includes(plan)) return "personal";
+      if (["team", "business", "enterprise"].includes(plan)) return "team";
+    }
+    return "";
+  }
+
+  // A group controls placement only. Even when two rows share an email,
+  // each retains its own workspace, usage, freshness and connection state.
+  function groupAccountRows(rows) {
+    const groups = [];
+    const byEmail = new Map();
+    for (const row of rows) {
+      const login = email(row.email);
+      let group = byEmail.get(login);
+      if (!group) {
+        group = { email: login, rows: [] };
+        groups.push(group);
+        if (login) byEmail.set(login, group);
+      }
+      group.rows.push(row);
+    }
+    const priority = { personal: 0, team: 1 };
+    for (const group of groups) {
+      group.rows.sort((a, b) => (priority[a.scope] ?? 2) - (priority[b.scope] ?? 2));
+    }
+    return groups;
+  }
+
+  function organizationLabel(provider, account, workspaceName, locale = "ko", scope = accountScope(provider, account?.org_type)) {
+    const org = text(workspaceName) || text(account?.org);
     const labels = String(locale).startsWith("en") ? { personal: "Personal", team: "Team" }
       : String(locale).startsWith("zh") ? { personal: "个人", team: "团队" } : { personal: "개인", team: "팀" };
-    if (["claude_team", "team", "claude_enterprise", "enterprise"].includes(type)) return org ? `${labels.team} · ${org}` : labels.team;
-    if (["claude_pro", "claude_max", "claude_ultra", "pro", "max", "ultra"].includes(type)) return labels.personal;
+    if (scope === "team") return org && org.toLowerCase() !== labels.team.toLowerCase() ? `${labels.team} · ${org}` : labels.team;
+    if (scope === "personal") {
+      return provider === "codex" && org && !["personal", labels.personal.toLowerCase()].includes(org.toLowerCase())
+        ? `${labels.personal} · ${org}` : labels.personal;
+    }
     return org;
   }
 
-  return { email, workspaceKey, accountKey, distinctWorkspaces, activeWorkspace, claudeUsageForAccount, antigravityUsageForAccount, connectionsForAccount, seatAnnotationForProfile, seatAnnotationForAccount, codexSource, organizationLabel };
+  return { email, workspaceKey, accountKey, distinctWorkspaces, activeWorkspace, claudeUsageForAccount, antigravityUsageForAccount, connectionsForAccount, seatAnnotationForProfile, seatAnnotationForAccount, codexSource, accountScope, groupAccountRows, organizationLabel };
 });

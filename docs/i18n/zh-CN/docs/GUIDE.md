@@ -23,20 +23,20 @@
 | Windows x64 | 解压 ZIP，运行解压目录内的 `qhud.exe`。 | Microsoft Edge WebView2 Runtime。见 [Windows 设置](05-ops/WINDOWS.md)。 |
 | Linux x86_64 | 解压 tarball，安装版本目录内的二进制。 | GTK/WebKitGTK；参考系统为 Ubuntu 24.04。见 [Linux 运维](05-ops/RUNBOOK.md)。 |
 
-Linux v0.8.0 下载两个文件后：
+Linux v0.8.1 下载两个文件后：
 
 ```sh
-sha256sum -c qhud-v0.8.0-linux-x86_64.tar.gz.sha256
-tar -xzf qhud-v0.8.0-linux-x86_64.tar.gz
-install -Dm755 qhud-v0.8.0-linux-x86_64/qhud "$HOME/.local/bin/qhud"
+sha256sum -c qhud-v0.8.1-linux-x86_64.tar.gz.sha256
+tar -xzf qhud-v0.8.1-linux-x86_64.tar.gz
+install -Dm755 qhud-v0.8.1-linux-x86_64/qhud "$HOME/.local/bin/qhud"
 "$HOME/.local/bin/qhud"
 ```
 
 Windows 下载后，将显示的摘要与 `.sha256` 文件比较：
 
 ```powershell
-Get-FileHash -Algorithm SHA256 .\qhud-v0.8.0-windows-x86_64.zip
-Get-Content .\qhud-v0.8.0-windows-x86_64.zip.sha256
+Get-FileHash -Algorithm SHA256 .\qhud-v0.8.1-windows-x86_64.zip
+Get-Content .\qhud-v0.8.1-windows-x86_64.zip.sha256
 ```
 
 当前 release workflow 发布的压缩包还带 GitHub 构建来源证明。安装 GitHub CLI，将文件名替换为实际下载文件，验证压缩包本身而非 `.sha256` 配套文件：
@@ -65,7 +65,7 @@ Codex 和 Claude Code 使用各自的 CLI 登录。在 Windows 上，打开已�
 
 ## 阅读组件
 
-主要层级为**供应商 → 账户 → 时间窗口**。每个百分比属于对应账户和窗口。当前 Codex 工作区合入账户行；其他已认证工作区可显示为额外行。
+各供应商按**邮箱地址**分组，每个地址下先列**个人**，再列**团队**。每个工作区或组织分别显示自己的套餐、各时段用量和重置时间。等待连接的配置档案也列在相应的邮箱下。
 
 - **5H / 7D** 表示窗口持续时长，不是距重置的剩余时间。
 - **右侧时间**是距重置的剩余时间；悬停可看准确本地日期和时间。
@@ -297,6 +297,11 @@ Claude 行区分**账户和组织**。两个目录登录同一账户及组织，
 未连接项以**需要连接 qhud**显示且不带数值；凭据过期、邮箱不符、组织不符也会明确
 显示。出现匹配的真实账户/工作区行后会替代待连接项。添加配置档案不会授予账户
 原本没有的个人或团队工作区访问权。
+
+Claude 个人配置档案可以记录在 Claude 网页账户菜单中确认的
+Free 套餐。在 `observed_plan` 中填写该档案的 `email`、值为 `"free"` 的
+`plan` 和确认时间 `verified_at_ms`（Unix 毫秒时间戳）。个人行显示 **Free** 并注明
+暂无用量数据。供应商返回该个人组织的用量时，优先显示实际用量行。
 
 Codex 团队配置档案还可以保存从工作区管理员 Members 页面单独确认的席位
 信息。即使尚需连接 qhud，也会显示为 **Standard · 网页确认** 或

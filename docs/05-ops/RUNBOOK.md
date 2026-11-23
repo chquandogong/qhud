@@ -124,6 +124,7 @@ cargo build --release --locked # binary at target/release/qhud
   **Pro 500**. Explicit `plans` and `workspace_plans` values win over that
   mapping. Unknown wire `plan_type` values stay in expanded details and
   tooltips instead of becoming visible badges.
+- **Reading grouped usage.** Compare organizations under the same provider and email. For a personal Claude **Free** row marked **Usage unavailable**, inspect the source and date in the plan details. A team under the same email can still show numeric usage. [Windows personal and team profiles](../GUIDE.md#windows-personal-and-team-profiles)
 - **Several accounts per provider** (D-015): keep each extra account
   signed in under its own dir, then register the dir —
 

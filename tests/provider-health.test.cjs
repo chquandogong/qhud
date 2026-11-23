@@ -137,6 +137,56 @@ test("successful empty response is not a fabricated zero quota", () => {
   }
 });
 
+const personalFree = {
+  key: "example-personal", provider: "claude", email: "owner@example.com",
+  scope: "personal", state: "wrong_scope", has_row: false,
+  observed_plan: { email: "owner@example.com", plan: "free", verified_at_ms: Date.UTC(2025, 5, 1) },
+};
+
+test("a web-confirmed Claude Free personal row has a dated plan and no usage", () => {
+  const view = health.configuredConnectionView(personalFree, "en");
+  assert.equal(view.state, "usage_unavailable");
+  assert.equal(view.label, "Usage unavailable");
+  assert.equal(view.plan, "Free");
+  assert.equal(view.scope, "Personal");
+  assert.match(view.detail, /2025/);
+  assert.doesNotMatch(JSON.stringify(view), /0%|reset_credits/);
+  assert.equal(health.configuredConnectionView(personalFree, "ko").label, "사용량 미제공");
+  assert.equal(health.configuredConnectionView({ ...personalFree, has_row: true }), null);
+});
+
+test("Claude Free details distinguish the registered connection from the web plan and its usage", () => {
+  const expiresAt = Date.UTC(2025, 6, 12, 12);
+  const labels = health.strings("en");
+  for (const state of ["ready", "credential_expired", "wrong_scope", "login_required"]) {
+    const view = health.configuredConnectionView({ ...personalFree, state, expires_at_ms: expiresAt }, "en");
+    assert.equal(view.plan, "Free");
+    assert.equal(view.label, labels.usageUnavailable);
+    const status = state === "login_required" ? labels.profileLoginRequired : labels[state];
+    assert.ok(view.detail.includes(`${labels.profileStatus}: ${status}`));
+    if (state === "ready" || state === "credential_expired") {
+      assert.ok(view.detail.includes(`${labels.expires}: ${new Date(expiresAt).toLocaleString("en-US")}`));
+    } else {
+      assert.ok(!view.detail.includes(labels.expires));
+    }
+  }
+});
+
+test("a Free plan observation cannot replace another account, organization, or provider's status", () => {
+  const observed = personalFree.observed_plan;
+  for (const patch of [
+    { provider: "codex" }, { scope: "team" }, { state: "wrong_account" },
+    { observed_plan: { ...observed, email: "other@example.com" } },
+    { observed_plan: { ...observed, plan: "pro" } },
+    { observed_plan: { ...observed, verified_at_ms: -1 } },
+    { observed_plan: { ...observed, verified_at_ms: Date.now() + 86400_000 } },
+  ]) {
+    const view = health.configuredConnectionView({ ...personalFree, ...patch });
+    assert.equal(view.state, patch.state || personalFree.state);
+    assert.notEqual(view.plan, "Free");
+  }
+});
+
 test("native Antigravity scoped quotas keep their fetched account provenance", () => {
   const view = health.view({ provider: "agy", state: "connected", last_success_at_ms: NOW }, {
     now: NOW, quotas: [{ provider: "agy", origin: "saved-account", cache_fetched_at_ms: NOW, scoped: [{ scope: "Gemini", pct: 25 }] }],

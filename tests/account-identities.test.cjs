@@ -6,6 +6,49 @@ const health = require("../ui/provider-health.js");
 const a = { email: "first@example.com", account_id: "shared-team", active: true, reset_credits: 3 };
 const b = { email: "second@example.com", account_id: "shared-team", active: false, reset_credits: 0 };
 
+test("account groups keep each login's personal, team, and unclassified rows in order", () => {
+  const firstTeam = Object.freeze({ ...a, email: " FIRST@EXAMPLE.COM ", scope: "team" });
+  const secondTeam = Object.freeze({ ...b, scope: "team" });
+  const unknown = Object.freeze({ email: a.email, scope: "", account_id: "legacy-workspace" });
+  const pendingPersonal = Object.freeze({ email: a.email, scope: "personal", state: "wrong_scope" });
+  const otherTeam = Object.freeze({ email: a.email, scope: "team", account_id: "other-team" });
+  const secondPersonal = Object.freeze({ email: b.email, scope: "personal", reset_credits: 0 });
+  const input = Object.freeze([secondTeam, firstTeam, unknown, pendingPersonal, otherTeam, secondPersonal]);
+
+  const groups = identities.groupAccountRows(input);
+  assert.deepEqual(groups.map((group) => group.email), [b.email, a.email]);
+  assert.deepEqual(groups[0].rows, [secondPersonal, secondTeam]);
+  assert.deepEqual(groups[1].rows, [pendingPersonal, firstTeam, otherTeam, unknown]);
+  assert.equal(groups[0].rows[1], secondTeam);
+  assert.equal(groups[1].rows[0], pendingPersonal);
+});
+
+test("unidentified rows stay separate even when their visible labels or workspace IDs match", () => {
+  const legacy = { label: "Example", account_id: a.account_id, scope: "team" };
+  const other = { ...legacy, email: "  " };
+  assert.deepEqual(identities.groupAccountRows([legacy, a, other]), [
+    { email: "", rows: [legacy] },
+    { email: a.email, rows: [a] },
+    { email: "", rows: [other] },
+  ]);
+  assert.deepEqual(identities.groupAccountRows([]), []);
+});
+
+test("workspace scope follows the provider's wire type, including free or unrecognized plans", () => {
+  const cases = [
+    ["codex", "personal", ["free", "go", "plus", "prolite", "pro", "promax"]],
+    ["codex", "team", ["team", "business", "enterprise"]],
+    ["claude", "personal", ["claude_free", "claude_pro", "claude_max", "claude_ultra"]],
+    ["claude", "team", ["claude_team", "claude_enterprise"]],
+    ["codex", "", ["claude_team", "Example Team", "future_type", undefined]],
+    ["claude", "", ["business", "Example Team", "future_type", undefined]],
+    ["agy", "", ["pro", "team"]],
+  ];
+  for (const [provider, expected, types] of cases) {
+    for (const type of types) assert.equal(identities.accountScope(provider, type), expected, `${provider} / ${type}`);
+  }
+});
+
 test("a shared workspace ID never merges different login emails", () => {
   assert.notEqual(identities.workspaceKey(a), identities.workspaceKey(b));
   assert.notEqual(identities.accountKey(a), identities.accountKey(b));
@@ -16,6 +59,8 @@ test("a shared workspace ID never merges different login emails", () => {
 test("active workspace overrides match login email and workspace together", () => {
   assert.equal(identities.activeWorkspace([a, b], a), a);
   assert.equal(identities.activeWorkspace([a, b], b), null);
+  assert.equal(identities.activeWorkspace([a], {}), null);
+  assert.equal(identities.activeWorkspace([a, b], { account_id: a.account_id }), null);
   const secondActive = { ...b, active: true };
   assert.equal(identities.activeWorkspace([a, secondActive], b), secondActive);
   assert.equal(identities.activeWorkspace([a, secondActive], { account_id: "shared-team" }), null);

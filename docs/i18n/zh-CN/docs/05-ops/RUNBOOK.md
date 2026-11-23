@@ -55,6 +55,7 @@ cargo build --release --locked # binary at target/release/qhud
 - **无需点击的获取入口**：底层组件收不到合成指针输入，见 D-010。`qhud --refresh-all`、`qhud --refresh-claude`、`qhud --fetch-codex` 经单实例通道转发到运行组件，可绑定快捷键。`qhud --claude-usage`、`qhud --codex-usage`、`qhud --agy-usage` 独立运行相同获取，输出 JSON，并像点击一样写入获取存储。`qhud --codex-appserver` 按需运行令牌过期回退。`QHUD_EXTRA_DIAG=1 qhud --claude-usage >/dev/null` 的诊断记录只报告实时响应中是否存在 `extra_usage` 与 `spend`，用作格式漂移线索。
 - **⟳ 显示“usage response did not parse: …”？** 解析器仅返回粗略类别（`schema mismatch`、JSON 语法错误、不完整 JSON 或 I/O 错误）和行、列位置；不会显示字段名或供应商值。仅凭位置无法确定是窗口、百分比还是金额字段发生变化。要获取额外用量的线索，可运行 `QHUD_EXTRA_DIAG=1 qhud --claude-usage >/dev/null`：stderr 中的诊断记录只报告 `extra_usage` 和 `spend` 是否存在。供应商响应和本地 Claude 缓存须保持私密。将本地持有的响应与 `src-tauri/src/usage_cache.rs` 中预期的类型比较，在提出解析器修复前用脱敏的合成最小 JSON 复现。2026-09-01、v0.5.3，`extra_usage.used_credits` 从整数变为值为整数的浮点数，是已确认的一例（D-019）；`lenient_i64` / `lenient_u8` 处理整数语义的金额字段。若确认显示的窗口或百分比发生变化，须另行审查数据契约。不要发布原始响应、账户标识符或含令牌的文件。
 - **账户和套餐**位于 `~/.config/qhud/accounts.json`，刻意在此公开仓库外。`labels` / `plans` / `workspace_names` / `workspace_plans` 设置显示文字；`known[]` 列出曾连接账户；`forgotten` 隐藏占位行，但不隐藏实时账户。Codex 套餐标签采用已审查的上游状态映射：`prolite` → **Pro 100**、`pro` → **Pro 200**、`promax` → **Pro 500**。显式 `plans` 和 `workspace_plans` 值优先于该映射。未知传输 `plan_type` 值不会成为可见标签，只保留在展开详情和工具提示中。
+- **查看账户用量。** 在同一供应商和邮箱下对照各组织的用量。若 Claude **Free** 个人行显示**不提供用量**，可在套餐详情中查看来源和核实日期。同一邮箱的团队行仍可显示团队用量。[Windows 个人与团队档案](../GUIDE.md#windows-personal-and-team-profiles)
 - **每供应商多个账户**（D-015）：各额外账户在自己的目录保持登录，然后注册目录：
 
   ```bash

@@ -6,7 +6,7 @@
 
 # DASHBOARD — qhud
 
-> Status: v0.8.0 · Updated: 2026-11-23 · Owner: chquandogong
+> Status: v0.8.1 · Updated: 2026-11-23 · Owner: chquandogong
 > Public project snapshot. Git history, tagged releases, and workflow runs are
 > the authoritative records; dated observations below keep their original scope.
 
@@ -14,7 +14,7 @@
 
 | Item | Value |
 | --- | --- |
-| Current release | [v0.8.0](https://github.com/chquandogong/qhud/releases/tag/v0.8.0) · Provider connection status, account-scoped usage, remaining reset credits and supported models by plan. |
+| Current release | [v0.8.1](https://github.com/chquandogong/qhud/releases/tag/v0.8.1) · Personal and team rows grouped by email, and the Claude Free usage state. |
 | Release contents | The Windows ZIP includes the PowerShell helper for connecting additional profiles. The release also provides a Linux archive and a CycloneDX SBOM. |
 | Plan-label automated checks | **v0.7.3 local source tree, 2026-10-01:** 8/8 Node tests passed. Two plan-label tests cover the `prolite` / `pro` / `promax` mappings, normalization, explicit-override precedence, and suppression of unknown values. This is synthetic automated evidence, not a live provider or desktop-display pass. |
 | Pipeline dependency | qmonster @ `6a21c44`; canonical Git dependency on Linux, command-scoped Windows patch with lockfile restoration. |

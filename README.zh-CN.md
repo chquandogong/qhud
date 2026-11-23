@@ -83,14 +83,14 @@ qhud 将分散在各个命令行界面的账户配额和会话状态集中到小
 
 ## 安装
 
-**当前版本：[v0.8.0](https://github.com/chquandogong/qhud/releases/tag/v0.8.0)。** 两平台构建/测试均为发布门槛，每份压缩包都有 SHA-256 文件。
+**当前版本：[v0.8.1](https://github.com/chquandogong/qhud/releases/tag/v0.8.1)。** 两平台构建/测试均为发布门槛，每份压缩包都有 SHA-256 文件。
 
 | 下载 | 校验 |
 | --- | --- |
-| [Windows x64 ZIP](https://github.com/chquandogong/qhud/releases/download/v0.8.0/qhud-v0.8.0-windows-x86_64.zip) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.8.0/qhud-v0.8.0-windows-x86_64.zip.sha256) |
-| [Linux x86_64 tarball](https://github.com/chquandogong/qhud/releases/download/v0.8.0/qhud-v0.8.0-linux-x86_64.tar.gz) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.8.0/qhud-v0.8.0-linux-x86_64.tar.gz.sha256) |
+| [Windows x64 ZIP](https://github.com/chquandogong/qhud/releases/download/v0.8.1/qhud-v0.8.1-windows-x86_64.zip) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.8.1/qhud-v0.8.1-windows-x86_64.zip.sha256) |
+| [Linux x86_64 tarball](https://github.com/chquandogong/qhud/releases/download/v0.8.1/qhud-v0.8.1-linux-x86_64.tar.gz) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.8.1/qhud-v0.8.1-linux-x86_64.tar.gz.sha256) |
 
-在 v0.8.0 中，展开供应商名称可查看上次获取用量的时间及本地凭据过期时间。选择**支持模型**，可查看注明核对日期的模型指南及席位、试用条件。当前账户能使用哪些模型，可在供应商应用中打开模型选择器确认。[v0.8.0 发布说明](docs/i18n/zh-CN/docs/05-ops/releases/v0.8.0.md)
+Codex 和 Claude 在每个邮箱下先列**个人**，再列**团队**。各工作区或组织分别显示自己的套餐、各时段用量和重置时间。在 Claude 网页确认为 **Free** 的个人档案没有配额数据时显示**不提供用量**。 [v0.8.1 发布说明](docs/i18n/zh-CN/docs/05-ops/releases/v0.8.1.md)
 
 当前 release workflow 发布的压缩包还带 GitHub 构建来源证明。使用 GitHub CLI 时，将文件名替换为实际下载的压缩包路径；验证压缩包本身，而非其 `.sha256` 配套文件。
 
@@ -109,9 +109,9 @@ v0.7.2 之后的发布还包含 CycloneDX SBOM `qhud-vX.Y.Z-sbom.cdx.json`、其
 将压缩包及 SHA-256 文件下载到同一目录后：
 
 ```sh
-sha256sum -c qhud-v0.8.0-linux-x86_64.tar.gz.sha256
-tar -xzf qhud-v0.8.0-linux-x86_64.tar.gz
-install -Dm755 qhud-v0.8.0-linux-x86_64/qhud "$HOME/.local/bin/qhud"
+sha256sum -c qhud-v0.8.1-linux-x86_64.tar.gz.sha256
+tar -xzf qhud-v0.8.1-linux-x86_64.tar.gz
+install -Dm755 qhud-v0.8.1-linux-x86_64/qhud "$HOME/.local/bin/qhud"
 "$HOME/.local/bin/qhud"
 ```
 

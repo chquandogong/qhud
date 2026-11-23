@@ -6,7 +6,7 @@
 
 # SPEC — qhud
 
-> Status: living (updated through v0.8.0) · Date: 2026-11-23 · Owner:
+> Status: living (updated through v0.8.1) · Date: 2026-11-23 · Owner:
 > chquandogong
 > What qhud must do. ARCHITECTURE says how it is built, DECISION_LOG says why.
 > Existing requirement numbers remain stable; later releases append new rows.
@@ -100,6 +100,7 @@ pane-fed gauges always belong to the default account's row.
 | FR-41 | Report local readiness, explicit refresh outcomes and known authentication expiry. A configured personal or team connection stays visible without usage until its identity matches. | done (v0.8.0) |
 | FR-42 | Show reset credits only when a provider supplies a count, including zero. Attach the count and any native plan name to that account’s dated snapshot. | done (v0.8.0) |
 | FR-43 | Distinguish the organization plan, member usage grade and dated seat verification. A model guide for recognized plans discloses its review date and access conditions. | done (v0.8.0) |
+| FR-44 | Group Codex and Claude profiles by email within each provider, with personal rows before teams. Show a verified Claude Free personal plan with unavailable usage when no quota is reported. | done (v0.8.1) |
 
 ### Being trustworthy about it
 
