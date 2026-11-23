@@ -474,7 +474,7 @@ mod tests {
             .unwrap();
         let result = runtime.block_on(super::fetch_from_typed(&path, 101));
         std::fs::remove_file(path).unwrap();
-        let error = result.err().expect("expired login must fail before HTTP");
+        let error = result.expect_err("expired login must fail before HTTP");
         assert_eq!(
             error.kind,
             crate::provider_health::FetchErrorKind::CredentialExpired
