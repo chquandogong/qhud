@@ -60,6 +60,7 @@
       const userTier = knownTiers.find((item) => item?.kind === "user");
       return claudeUsageGrade(userTier?.tier) || organizationPlan;
     }
+    if (type === "claude_free" || type === "free") return "Free";
     if (type === "claude_ultra" || type === "ultra") return "Ultra";
     if (type === "claude_pro" || type === "pro") return "Pro";
     if (type !== "claude_max" && type !== "max") return null;

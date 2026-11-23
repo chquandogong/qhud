@@ -10,7 +10,7 @@
 qhud's complete documentation is available in all three languages, from first
 installation to architecture, decisions, and release history.
 
-v0.8.0 adds Windows provider connection status, personal and team account profiles, remaining reset credits, and model guidance by plan. See the [v0.8.0 release notes](05-ops/releases/v0.8.0.md) for the changes and verification scope. Earlier field checks describe their own release.
+Codex and Claude now group **Personal** and **Team** under each email. Plans, usage windows and resets stay attached to each workspace or organization. A web-confirmed Claude personal **Free** plan without a quota shows **Usage unavailable**. [v0.8.1 release notes](05-ops/releases/v0.8.1.md)
 
 ## Start using qhud
 
@@ -61,6 +61,7 @@ product behavior. Start with the specification and dashboard for the current sta
 | [v0.7.3 release notes](05-ops/releases/v0.7.3.md) | Automatic Pro 100/200/500 plan names and the security, dependency, release-workflow, and translation work after v0.7.2. |
 | [v0.7.4 release notes](05-ops/releases/v0.7.4.md) | Narrow system-strip fix, Tauri 2.12.1, `sysinfo` 0.38.4 and Rust 1.90 as the declared minimum. |
 | [v0.8.0 release notes](05-ops/releases/v0.8.0.md) | Connection status, multiple accounts, reset credits, and the supported-model guide. |
+| [v0.8.1 release notes](05-ops/releases/v0.8.1.md) | Personal and team rows grouped by email, and the Claude Free usage state. |
 
 ## Languages and source fidelity
 

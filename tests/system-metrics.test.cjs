@@ -116,6 +116,7 @@ test("Antigravity fresh plan data replaces or clears only its matched snapshot a
 });
 
 test("Claude personal usage grades show Ultra or Max 5x from known metadata", () => {
+  assert.equal(plans.claudePlanDisplay(null, "claude_free"), "Free");
   assert.equal(plans.claudePlanDisplay(null, "claude_max", [{ kind: "org", tier: "default_claude_max_20x" }]), "Ultra");
   assert.equal(plans.claudePlanDisplay(null, "claude_max", [{ kind: "org", tier: "default_claude_max_5x" }]), "Max 5x");
   assert.equal(plans.claudePlanDisplay(null, "claude_max", [{ kind: "user", tier: "default_claude_max_20x" }]), "Ultra");

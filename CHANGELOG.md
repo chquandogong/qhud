@@ -10,6 +10,11 @@ All notable changes to qhud. Format: [Keep a Changelog](https://keepachangelog.c
 
 ## [Unreleased]
 
+## [0.8.1] — 2026-11-23
+
+- Each provider now groups workspaces by account email, with Personal first and Team next. Each workspace keeps its own plan, usage windows and reset times.
+- A verified Claude personal Free workspace shows “Usage unavailable” when no usage windows are available. A paid team under the same email still shows its own usage.
+
 ## [0.8.0] — 2026-11-23
 
 ### Account connections and usage

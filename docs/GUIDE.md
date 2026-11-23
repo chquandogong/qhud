@@ -20,20 +20,20 @@ contains a versioned directory and comes with a separate SHA-256 file.
 | Windows x64 | Extract the ZIP; run `qhud.exe` inside the extracted directory. | Microsoft Edge WebView2 Runtime. See [Windows setup](05-ops/WINDOWS.md). |
 | Linux x86_64 | Extract the tarball; install the binary inside its versioned directory. | GTK/WebKitGTK; Ubuntu 24.04 is the reference system. See [Linux operations](05-ops/RUNBOOK.md). |
 
-For Linux v0.8.0, after downloading both files:
+For Linux v0.8.1, after downloading both files:
 
 ```sh
-sha256sum -c qhud-v0.8.0-linux-x86_64.tar.gz.sha256
-tar -xzf qhud-v0.8.0-linux-x86_64.tar.gz
-install -Dm755 qhud-v0.8.0-linux-x86_64/qhud "$HOME/.local/bin/qhud"
+sha256sum -c qhud-v0.8.1-linux-x86_64.tar.gz.sha256
+tar -xzf qhud-v0.8.1-linux-x86_64.tar.gz
+install -Dm755 qhud-v0.8.1-linux-x86_64/qhud "$HOME/.local/bin/qhud"
 "$HOME/.local/bin/qhud"
 ```
 
 For a Windows download, compare the displayed digest with the `.sha256` file:
 
 ```powershell
-Get-FileHash -Algorithm SHA256 .\qhud-v0.8.0-windows-x86_64.zip
-Get-Content .\qhud-v0.8.0-windows-x86_64.zip.sha256
+Get-FileHash -Algorithm SHA256 .\qhud-v0.8.1-windows-x86_64.zip
+Get-Content .\qhud-v0.8.1-windows-x86_64.zip.sha256
 ```
 
 Archives published by the current release workflow also carry GitHub build
@@ -70,9 +70,10 @@ For Codex and Claude Code, sign in through the provider CLI. For Antigravity on 
 
 ## Read the widget
 
-**Provider → account → time window** is the main hierarchy. Each percentage
-belongs to that account and window. An active Codex workspace merges into the
-account row; other authenticated workspaces can appear as additional rows.
+Each provider groups rows by **email address**.
+Under an address, **Personal** comes before **Team**. Each workspace or
+organization keeps its own plan, usage windows and reset times. Configured
+profiles awaiting a connection appear under the same address.
 
 - **5H / 7D** describe the window duration, not the time left until reset.
 - **The time at the right** is the remaining time until reset. Hover for the exact local date and time.
@@ -344,6 +345,12 @@ expired credentials, a different email, and a different organization are shown
 explicitly. A matching real account/workspace row replaces its pending entry.
 Adding a profile does not grant access to a personal or team workspace that the
 account does not own.
+
+A Claude personal profile can record a Free plan
+confirmed in the Claude web account menu. Set the profile's `observed_plan`
+fields to its `email`, `plan` (`"free"`) and `verified_at_ms` (Unix time in
+milliseconds). The personal row shows **Free** and reports that usage is
+unavailable. A matching provider usage row takes precedence.
 
 A Codex team profile can also carry a separately verified seat annotation from
 the workspace's admin Members page. It appears as **Standard · Web verified**

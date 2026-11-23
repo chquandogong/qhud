@@ -83,15 +83,15 @@ qhud는 여러 명령행 인터페이스에 흩어진 계정 할당량과 세션
 
 ## 설치
 
-**현재 릴리스: [v0.8.0](https://github.com/chquandogong/qhud/releases/tag/v0.8.0).**
+**현재 릴리스: [v0.8.1](https://github.com/chquandogong/qhud/releases/tag/v0.8.1).**
 두 플랫폼의 빌드/테스트 작업을 통과해야 공개합니다. 각 아카이브에는 SHA-256 파일이 있습니다.
 
 | 다운로드 | 검증 |
 | --- | --- |
-| [Windows x64 ZIP](https://github.com/chquandogong/qhud/releases/download/v0.8.0/qhud-v0.8.0-windows-x86_64.zip) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.8.0/qhud-v0.8.0-windows-x86_64.zip.sha256) |
-| [Linux x86_64 tarball](https://github.com/chquandogong/qhud/releases/download/v0.8.0/qhud-v0.8.0-linux-x86_64.tar.gz) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.8.0/qhud-v0.8.0-linux-x86_64.tar.gz.sha256) |
+| [Windows x64 ZIP](https://github.com/chquandogong/qhud/releases/download/v0.8.1/qhud-v0.8.1-windows-x86_64.zip) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.8.1/qhud-v0.8.1-windows-x86_64.zip.sha256) |
+| [Linux x86_64 tarball](https://github.com/chquandogong/qhud/releases/download/v0.8.1/qhud-v0.8.1-linux-x86_64.tar.gz) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.8.1/qhud-v0.8.1-linux-x86_64.tar.gz.sha256) |
 
-v0.8.0에서는 공급자 이름을 눌러 마지막 조회 시점과 로컬 인증 만료 시각을 확인할 수 있습니다. **지원 모델**을 누르면 기준일과 함께 좌석·체험판별 이용 조건이 나옵니다. 로그인한 계정에서 실제 선택할 수 있는 모델은 공급자 앱의 모델 선택기에서 확인하세요. [v0.8.0 릴리스 노트](docs/i18n/ko/docs/05-ops/releases/v0.8.0.md)
+Codex와 Claude는 이메일마다 **개인**, **팀** 순서로 표시합니다. 요금제, 기간별 사용량, 초기화 시각은 각 워크스페이스나 조직에서 확인할 수 있습니다. Claude 웹에서 **Free**로 확인한 개인 프로필에 한도 정보가 없으면 **사용량 미제공**으로 표시합니다. [v0.8.1 릴리스 노트](docs/i18n/ko/docs/05-ops/releases/v0.8.1.md)
 
 현재 release workflow로 게시한 아카이브는 GitHub 빌드 출처 증명도 제공합니다. GitHub CLI에서 실제 다운로드한 아카이브 경로를 사용해 확인하세요. `.sha256` 파일이 아닌 아카이브 자체를 검증합니다.
 
@@ -110,9 +110,9 @@ ZIP을 풀고 버전 디렉터리 안의 `qhud.exe`를 실행합니다. Microsof
 아카이브와 SHA-256 파일을 같은 디렉터리에 다운로드한 뒤 실행합니다.
 
 ```sh
-sha256sum -c qhud-v0.8.0-linux-x86_64.tar.gz.sha256
-tar -xzf qhud-v0.8.0-linux-x86_64.tar.gz
-install -Dm755 qhud-v0.8.0-linux-x86_64/qhud "$HOME/.local/bin/qhud"
+sha256sum -c qhud-v0.8.1-linux-x86_64.tar.gz.sha256
+tar -xzf qhud-v0.8.1-linux-x86_64.tar.gz
+install -Dm755 qhud-v0.8.1-linux-x86_64/qhud "$HOME/.local/bin/qhud"
 "$HOME/.local/bin/qhud"
 ```
 

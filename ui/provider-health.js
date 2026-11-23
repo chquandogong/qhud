@@ -35,6 +35,7 @@
       resetCreditsMissing: "초기화권 정보 없음", resetCreditsHint: "조회 시점의 남은 초기화권",
       wrong_account: "다른 계정", wrong_scope: "다른 조직", personal: "개인", team: "팀",
       profileStatus: "등록 연결 상태",
+      usageUnavailable: "사용량 미제공", personalPlanSource: "Claude 웹에서 확인한 개인 플랜",
       profileLoginRequired: "qhud 연결 필요",
       seatWebVerified: "웹 확인", seatLabel: "좌석 유형", seatVerifiedAt: "확인 시각",
       seatSource: "출처: 관리자 Members 페이지", seatHistorical: "웹에서 확인한 기록입니다. 자동으로 최신 상태를 확인하지 않습니다.",
@@ -74,6 +75,7 @@
       resetCreditsMissing: "Reset credits unavailable", resetCreditsHint: "Reset credits remaining at the time of the fetch",
       wrong_account: "Different account", wrong_scope: "Different organization", personal: "Personal", team: "Team",
       profileStatus: "Registered connection",
+      usageUnavailable: "Usage unavailable", personalPlanSource: "Personal plan observed on Claude web",
       profileLoginRequired: "Connect to qhud",
       seatWebVerified: "Web verified", seatLabel: "Seat type", seatVerifiedAt: "Verified at",
       seatSource: "Source: admin Members page", seatHistorical: "A dated web observation; it is not refreshed automatically.",
@@ -113,6 +115,7 @@
       resetCreditsMissing: "未提供重置券信息", resetCreditsHint: "查询时剩余的重置券",
       wrong_account: "账户不符", wrong_scope: "组织不符", personal: "个人", team: "团队",
       profileStatus: "已登记连接状态",
+      usageUnavailable: "不提供用量", personalPlanSource: "在 Claude 网页确认的个人套餐",
       profileLoginRequired: "需要连接 qhud",
       seatWebVerified: "网页确认", seatLabel: "席位类型", seatVerifiedAt: "确认时间",
       seatSource: "来源：管理员 Members 页面", seatHistorical: "这是网页确认记录，不会自动检查最新状态。",
@@ -151,14 +154,30 @@
     if (!profile || profile.has_row || !PROVIDERS.includes(profile.provider) || typeof profile.key !== "string" || !profile.key) return null;
     const t = strings(locale);
     const state = ["login_required", "credential_expired", "wrong_account", "wrong_scope", "ready"].includes(profile.state) ? profile.state : "unknown";
+    const label = state === "login_required" ? t.profileLoginRequired : t[state];
+    // The backend reads the local credential's expiry before checking its account and organization.
+    const expires = ["ready", "credential_expired"].includes(state) && timestamp(profile.expires_at_ms);
+    const dateLocale = { ko: "ko-KR", en: "en-US", zh: "zh-CN" }[localeKey(locale)];
+    const expiryLine = expires ? `${t.expires}: ${new Date(expires).toLocaleString(dateLocale)}` : "";
+    const observed = profile.observed_plan;
+    if (profile.provider === "claude" && profile.scope === "personal" && state !== "wrong_account" &&
+        observed?.plan === "free" && typeof profile.email === "string" && profile.email.trim() &&
+        typeof observed.email === "string" && observed.email.trim().toLowerCase() === profile.email.trim().toLowerCase() &&
+        Number.isSafeInteger(observed.verified_at_ms) && observed.verified_at_ms > 0 && observed.verified_at_ms <= Date.now()) {
+      const when = new Date(observed.verified_at_ms).toLocaleString(dateLocale);
+      const detail = [`${t.personalPlanSource} · Free`, `${t.seatVerifiedAt}: ${when}`, `${t.profileStatus}: ${label}`];
+      if (expiryLine) detail.push(expiryLine);
+      return { key: profile.key, provider: profile.provider, email: profile.email, scope: t.personal,
+        state: "usage_unavailable", plan: "Free", label: t.usageUnavailable,
+        detail: detail.join("\n") };
+    }
     const detail = [];
     if (state === "wrong_account") detail.push(t.profileWrongAccount);
     else if (state === "wrong_scope") detail.push(t.profileWrongScope);
     if (state !== "ready") detail.push(t.profileConnect);
     else detail.push(t.readyDetail);
-    const expires = timestamp(profile.expires_at_ms);
-    if (expires) detail.push(`${t.expires}: ${new Date(expires).toLocaleString(localeKey(locale) === "ko" ? "ko-KR" : localeKey(locale) === "zh" ? "zh-CN" : "en-US")}`);
-    return { key: profile.key, provider: profile.provider, email: profile.email || profile.label || "", scope: ["personal", "team"].includes(profile.scope) ? t[profile.scope] : "", state, label: state === "login_required" ? t.profileLoginRequired : t[state], detail: detail.join("\n") };
+    if (expiryLine) detail.push(expiryLine);
+    return { key: profile.key, provider: profile.provider, email: profile.email || profile.label || "", scope: ["personal", "team"].includes(profile.scope) ? t[profile.scope] : "", state, label, detail: detail.join("\n") };
   }
 
   function seatAnnotationView(annotation, locale = "ko") {
@@ -173,7 +192,7 @@
   }
 
   function configuredConnectionDetail(profile, locale = "ko") {
-    const model = configuredConnectionView({ ...profile, has_row: false }, locale);
+    const model = configuredConnectionView({ ...profile, observed_plan: undefined, has_row: false }, locale);
     if (!model) return "";
     const t = strings(locale);
     return `${t.profileStatus}${model.scope ? ` (${model.scope})` : ""}: ${model.label}\n${model.detail}`;

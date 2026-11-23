@@ -56,10 +56,16 @@ pub struct ConnectionProfile {
     /// by `connections` before it can reach the HUD.
     #[serde(
         default,
-        deserialize_with = "deserialize_seat_annotation",
+        deserialize_with = "deserialize_optional_note",
         skip_serializing_if = "Option::is_none"
     )]
     pub seat_annotation: Option<SeatAnnotation>,
+    #[serde(
+        default,
+        deserialize_with = "deserialize_optional_note",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub observed_plan: Option<ObservedPlan>,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
@@ -71,9 +77,18 @@ pub struct SeatAnnotation {
     pub verified_at_ms: u64,
 }
 
-fn deserialize_seat_annotation<'de, D>(deserializer: D) -> Result<Option<SeatAnnotation>, D::Error>
+/// Plan observed on the provider website, independent of the CLI's organization.
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+pub struct ObservedPlan {
+    pub email: String,
+    pub plan: String,
+    pub verified_at_ms: u64,
+}
+
+fn deserialize_optional_note<'de, D, T>(deserializer: D) -> Result<Option<T>, D::Error>
 where
     D: serde::Deserializer<'de>,
+    T: serde::de::DeserializeOwned,
 {
     // A malformed optional note must not erase otherwise usable profiles or
     // registry settings. Semantic and timestamp checks happen at display time.
@@ -310,6 +325,7 @@ mod tests {
         );
         assert!(legacy.profiles[0].expected_org_id.is_none());
         assert!(legacy.profiles[0].seat_annotation.is_none());
+        assert!(legacy.profiles[0].observed_plan.is_none());
         assert!(
             serde_json::to_value(&legacy.profiles[0])
                 .unwrap()
@@ -336,6 +352,26 @@ mod tests {
         assert_eq!(decoded, reg.profiles[0]);
         assert!(reg.codex_homes.is_empty());
         assert!(reg.known.is_empty());
+    }
+
+    #[test]
+    fn optional_observed_plan_preserves_unregistered_profile_and_other_settings() {
+        let mut doc = serde_json::json!({
+            "labels": {"claude:example": "Keep me"},
+            "profiles": [{"key":"personal","provider":"claude","label":"Personal",
+                "email":"one@example.com","scope":"personal","directory":"~/isolated",
+                "observed_plan":{"email":"one@example.com","plan":"free","verified_at_ms":7}}]
+        });
+        let reg = parse(&doc.to_string());
+        assert!(reg.claude_config_dirs.is_empty());
+        assert_eq!(
+            serde_json::to_value(&reg.profiles[0].observed_plan).unwrap(),
+            doc["profiles"][0]["observed_plan"]
+        );
+        doc["profiles"][0]["observed_plan"]["verified_at_ms"] = serde_json::json!(-1);
+        let reg = parse(&doc.to_string());
+        assert!(reg.profiles[0].observed_plan.is_none());
+        assert_eq!(reg.labels["claude:example"], "Keep me");
     }
 
     #[test]

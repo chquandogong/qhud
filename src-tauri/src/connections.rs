@@ -9,7 +9,7 @@ use crate::{
     accounts::AccountLabel,
     codex_usage::WorkspaceUsage,
     provider_health::{self, AuthMetadata},
-    registry::{ConnectionProfile, SeatAnnotation},
+    registry::{ConnectionProfile, ObservedPlan, SeatAnnotation},
     view::ProviderQuota,
 };
 
@@ -32,6 +32,8 @@ pub struct ConnectionStatus {
     /// A dated manual observation; it never establishes authentication or quota.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub seat_annotation: Option<SeatAnnotation>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub observed_plan: Option<ObservedPlan>,
 }
 
 fn same_email(left: &str, right: &str) -> bool {
@@ -79,7 +81,31 @@ fn status_from_metadata(
             !out.has_row || out.account_id.as_deref() == Some(annotation.workspace_id.as_str())
         });
     }
+    // A team credential for the same email can coexist with a web-only
+    // personal subscription. Keep its observation out of provider usage rows.
+    if !known_wrong_account && !out.has_row {
+        out.observed_plan = validated_observed_plan(profile, now_ms);
+    }
     out
+}
+
+fn validated_observed_plan(profile: &ConnectionProfile, now_ms: u64) -> Option<ObservedPlan> {
+    let note = profile.observed_plan.as_ref()?;
+    let (local, domain) = note.email.split_once('@')?;
+    (profile.provider == "claude"
+        && profile.scope == "personal"
+        && note.plan == "free"
+        && !local.is_empty()
+        && !domain.is_empty()
+        && !domain.contains('@')
+        && note.email.len() <= 254
+        && !note
+            .email
+            .chars()
+            .any(|c| c.is_control() || c.is_whitespace())
+        && same_email(&note.email, &profile.email)
+        && (1..=now_ms).contains(&note.verified_at_ms))
+    .then(|| note.clone())
 }
 
 fn validated_seat_annotation(profile: &ConnectionProfile, now_ms: u64) -> Option<SeatAnnotation> {
@@ -122,6 +148,7 @@ fn login_status_from_metadata(
         org_id: None,
         has_row: false,
         seat_annotation: None,
+        observed_plan: None,
     };
     if !matches!(profile.provider.as_str(), "claude" | "codex")
         || !matches!(profile.scope.as_str(), "personal" | "team")
@@ -287,6 +314,7 @@ mod tests {
             directory: "PRIVATE-PATH-MUST-NOT-SERIALIZE".into(),
             expected_org_id: None,
             seat_annotation: None,
+            observed_plan: None,
         }
     }
 
@@ -305,6 +333,57 @@ mod tests {
             has_credential: true,
             expires_at_ms: Some(expires),
         })
+    }
+
+    fn observed_free_plan() -> ObservedPlan {
+        ObservedPlan {
+            email: "PERSON@example.com".into(),
+            plan: "free".into(),
+            verified_at_ms: 7,
+        }
+    }
+
+    #[test]
+    fn free_plan_observation_does_not_claim_team_usage_or_change_connection_state() {
+        let mut personal = profile("claude", "personal");
+        let team = identity("org-team", "claude_team");
+        let check =
+            |p: &ConnectionProfile, who| status_from_metadata(p, 10, Some(who), auth(20), &[], &[]);
+        let unobserved = check(&personal, team.clone());
+        assert!(unobserved.observed_plan.is_none());
+        personal.observed_plan = Some(observed_free_plan());
+        let observed = check(&personal, team.clone());
+        assert_eq!(observed.state, "wrong_scope");
+        assert!(!observed.has_row);
+        assert_eq!(observed.observed_plan, personal.observed_plan);
+        let mut wire = serde_json::to_value(observed).unwrap();
+        wire.as_object_mut().unwrap().remove("observed_plan");
+        assert_eq!(wire, serde_json::to_value(unobserved).unwrap());
+        let wrong = AccountLabel {
+            email: Some("other@example.com".into()),
+            ..team
+        };
+        assert!(check(&personal, wrong).observed_plan.is_none());
+    }
+
+    #[test]
+    fn observed_plan_requires_matching_personal_claude_email_free_and_valid_date() {
+        for (provider, scope, email, plan, at) in [
+            ("codex", "personal", "person@example.com", "free", 7),
+            ("claude", "team", "person@example.com", "free", 7),
+            ("claude", "personal", "other@example.com", "free", 7),
+            ("claude", "personal", "person@example.com", "pro", 7),
+            ("claude", "personal", "person@example.com", "free", 0),
+            ("claude", "personal", "person@example.com", "free", 11),
+        ] {
+            let mut profile = profile(provider, scope);
+            profile.observed_plan = Some(ObservedPlan {
+                email: email.into(),
+                plan: plan.into(),
+                verified_at_ms: at,
+            });
+            assert!(validated_observed_plan(&profile, 10).is_none());
+        }
     }
 
     fn workspace(email: Option<&str>, plan: &str, id: &str) -> WorkspaceUsage {
@@ -578,11 +657,8 @@ mod tests {
         assert!(!out.has_row);
     }
 
-    #[test]
-    fn claude_row_requires_the_same_account_email_and_organization() {
-        let p = profile("claude", "team");
-        let a = identity("org-team", "claude_team");
-        let row = |account| ProviderQuota {
+    fn claude_row(account: AccountLabel) -> ProviderQuota {
+        ProviderQuota {
             provider: "claude".into(),
             plan_name: None,
             reset_credits: None,
@@ -595,24 +671,41 @@ mod tests {
             cache_fetched_at_ms: None,
             scoped: vec![],
             extra: None,
-        };
+        }
+    }
+
+    #[test]
+    fn observed_free_plan_yields_to_a_matching_live_personal_row() {
+        let mut p = profile("claude", "personal");
+        p.observed_plan = Some(observed_free_plan());
+        let current = identity("org-personal", "claude_max");
+        let quota = claude_row(current.clone());
+        let status = status_from_metadata(&p, 10, Some(current), auth(20), &[quota], &[]);
+        assert!(status.has_row);
+        assert!(status.observed_plan.is_none());
+    }
+
+    #[test]
+    fn claude_row_requires_the_same_account_email_and_organization() {
+        let p = profile("claude", "team");
+        let a = identity("org-team", "claude_team");
         let check = |row| status_from_metadata(&p, 10, Some(a.clone()), auth(20), &[row], &[]);
-        assert!(check(row(a.clone())).has_row);
+        assert!(check(claude_row(a.clone())).has_row);
         let other_org = AccountLabel {
             org_id: Some("org-personal".into()),
             ..a.clone()
         };
-        assert!(!check(row(other_org)).has_row);
+        assert!(!check(claude_row(other_org)).has_row);
         let other_account = AccountLabel {
             account_id: Some("account-other".into()),
             ..a.clone()
         };
-        assert!(!check(row(other_account)).has_row);
+        assert!(!check(claude_row(other_account)).has_row);
         let other_email = AccountLabel {
             email: Some("other@example.com".into()),
             ..a.clone()
         };
-        assert!(!check(row(other_email)).has_row);
+        assert!(!check(claude_row(other_email)).has_row);
     }
 
     #[test]

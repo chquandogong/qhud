@@ -23,20 +23,20 @@ qhud 설치, 기존 CLI 계정 연결, 저장된 스냅샷과 현재 응답을 �
 | Windows x64 | ZIP을 풀고 추출된 디렉터리 안의 `qhud.exe`를 실행합니다. | Microsoft Edge WebView2 Runtime. [Windows 설정](05-ops/WINDOWS.md)을 참조하세요. |
 | Linux x86_64 | tarball을 풀고 버전 디렉터리 안의 바이너리를 설치합니다. | GTK/WebKitGTK. 기준 시스템은 Ubuntu 24.04입니다. [Linux 운영](05-ops/RUNBOOK.md)을 참조하세요. |
 
-Linux v0.8.0에서 두 파일을 모두 다운로드한 뒤 실행합니다.
+Linux v0.8.1에서 두 파일을 모두 다운로드한 뒤 실행합니다.
 
 ```sh
-sha256sum -c qhud-v0.8.0-linux-x86_64.tar.gz.sha256
-tar -xzf qhud-v0.8.0-linux-x86_64.tar.gz
-install -Dm755 qhud-v0.8.0-linux-x86_64/qhud "$HOME/.local/bin/qhud"
+sha256sum -c qhud-v0.8.1-linux-x86_64.tar.gz.sha256
+tar -xzf qhud-v0.8.1-linux-x86_64.tar.gz
+install -Dm755 qhud-v0.8.1-linux-x86_64/qhud "$HOME/.local/bin/qhud"
 "$HOME/.local/bin/qhud"
 ```
 
 Windows 다운로드는 표시된 해시를 `.sha256` 파일과 비교합니다.
 
 ```powershell
-Get-FileHash -Algorithm SHA256 .\qhud-v0.8.0-windows-x86_64.zip
-Get-Content .\qhud-v0.8.0-windows-x86_64.zip.sha256
+Get-FileHash -Algorithm SHA256 .\qhud-v0.8.1-windows-x86_64.zip
+Get-Content .\qhud-v0.8.1-windows-x86_64.zip.sha256
 ```
 
 현재 release workflow로 게시한 아카이브에는 GitHub 빌드 출처 증명도 있습니다. GitHub CLI를 설치하고 실제 다운로드한 파일명으로 바꿔 `.sha256` 제공 파일이 아닌 아카이브 자체를 검증합니다.
@@ -65,7 +65,7 @@ Codex와 Claude Code는 각 공급자의 CLI로 로그인합니다. Windows에�
 
 ## 위젯 읽기
 
-주요 계층은 **공급자 → 계정 → 기간**입니다. 각 백분율은 해당 계정과 기간에 속합니다. 활성 Codex 작업공간은 계정 행에 병합하며, 인증된 다른 작업공간은 추가 행으로 나타날 수 있습니다.
+공급자별로 **이메일 주소** 아래에 **개인**, **팀** 순서로 행을 표시합니다. 플랜, 기간별 사용량, 초기화 시각은 각 작업공간이나 조직에 속합니다. 연결을 기다리는 프로필도 해당 이메일 아래에 표시합니다.
 
 - **5H / 7D**는 초기화까지 남은 시간이 아니라 기간의 길이입니다.
 - **오른쪽 시간**은 초기화까지 남은 시간입니다. 마우스를 올리면 정확한 현지 날짜와 시간을 볼 수 있습니다.
@@ -309,6 +309,12 @@ Codex 팀 작업공간을 공유해도 이메일과 작업공간 ID로 구분합
 미연결 프로필에는 수치 없이 **qhud 연결 필요**를 표시하고, 인증 만료·다른 이메일·다른
 조직도 명시합니다. 일치하는 실제 계정/작업공간 행이 생기면 대기 항목을 대체합니다.
 프로필을 추가해도 계정에 없는 개인·팀 작업공간 접근 권한이 생기지는 않습니다.
+
+Claude 웹의 계정 메뉴에서 확인한 Free 플랜을 개인 프로필에
+기록할 수 있습니다. `observed_plan`에 해당 프로필의 `email`, `plan` 값 `"free"`,
+확인 시각 `verified_at_ms`(Unix 밀리초)를 저장합니다. 개인 행에는 **Free**와 함께
+사용량이 제공되지 않는다고 표시합니다. 공급자가 해당 개인 조직의 사용량을
+반환하면 그 사용량 행을 우선 표시합니다.
 
 Codex 팀 프로필에는 작업공간의 관리자 Members 페이지에서 별도로 확인한 좌석
 정보를 기록할 수 있습니다. qhud 연결 대기 중에도 **Standard · 웹 확인** 또는

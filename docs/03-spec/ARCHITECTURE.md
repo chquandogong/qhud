@@ -6,10 +6,10 @@
 
 # ARCHITECTURE — qhud
 
-> Status: living (updated through v0.8.0) · Date: 2026-11-23 · Owner:
+> Status: living (updated through v0.8.1) · Date: 2026-11-23 · Owner:
 > chquandogong
 > Companion to SPEC (what it must do) and DECISION_LOG (why it is built this
-> way). The module map is updated through v0.8.0; dated verification stays in
+> way). The module map is updated through v0.8.1; dated verification stays in
 > TEST_PLAN.
 
 ## 1. What qhud is, structurally
@@ -347,13 +347,10 @@ try/catch that routes any exception to stderr, then the tiles as a keyed patch
 in payload order, then the footer. A frontend exception used to be invisible
 from outside the webview, which is how a broken strip once shipped.
 
-**Row identity in the strip is (provider, account, organization)** — the same
-key the core dedupes on (D-018) — and a new row is inserted after that
-provider's last existing row so a second account never drags a section header
-out of place. Provider is the outer axis because it is what the operator picks
-when deciding where to run the next task, it matches the pane vocabulary, and
-there are exactly three of them, so the scan path stays stable as accounts
-multiply.
+**Row identity in the strip is (provider, account, organization)**, matching
+the core's deduplication key (D-018). The frontend groups rows by
+email within each provider and orders personal rows before team rows. Each
+row retains its own usage and connection state.
 
 **Age and origin are visible, always.** Only a snapshot-origin row wears an
 age caption; on a live row the snapshot merely contributed per-model windows,

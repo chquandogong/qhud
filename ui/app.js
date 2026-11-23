@@ -318,8 +318,8 @@
     row.append(
       el("span", "q-prov", provider),
       el("span", "q-acct"),
-      el("span", "q-plan"),
       el("span", "q-scope"),
+      el("span", "q-plan"),
       el("span", "q-seat-annotation"),
       el("span", "q-extra"),
       el("span", "q-reset-credits"),
@@ -525,9 +525,6 @@
   // workspaces (personal + business) with separate quota, so collapsing
   // them into a tooltip hid the very thing the fetch is for.
   function renderCodexExtra() {
-    const anchor = quotasEl.querySelector('[data-provider="codex"]');
-    if (!anchor) return;
-    const ageEl = anchor.querySelector(".q-age");
     const clearRows = () => {
       for (const r of [...quotasEl.querySelectorAll("[data-wsid]")]) r.remove();
     };
@@ -539,7 +536,10 @@
     // The ACTIVE login's workspace lives merged on the provider row
     // (same pool as the pane statusline — two rows would be the same 7D
     // twice, clock-skewed); ↳ rows are for the others only.
-    const visible = rows.filter((w) => !w.active);
+    const codexAccounts = (state.payload?.quotas || []).filter((q) => q.provider === "codex").map((q) => q.account);
+    const merged = new Set(codexAccounts.map((account) => identities.activeWorkspace(rows, account, codexAccounts))
+      .filter(Boolean).map(identities.workspaceKey));
+    const visible = rows.filter((w) => !merged.has(identities.workspaceKey(w)));
     if (visible.length === 0) {
       // Nothing to hang below the row; provenance lives on the row/tooltip.
       const sig = `${stored}:${at}:0`;
@@ -549,13 +549,10 @@
       }
       return;
     }
-    const caption = `${visible.length} ws${at ? ` · ⟳ ${fmtAgeMs(at)} ago` : ""}`;
     const connectionSig = (state.payload?.configured_connections || [])
       .filter((profile) => profile.provider === "codex")
       .map((profile) => [profile.key, profile.email, profile.account_id, profile.scope, profile.state, profile.has_row, profile.expires_at_ms, profile.seat_annotation]);
     const sig = JSON.stringify([stored, at, visible.map(identities.workspaceKey), connectionSig]);
-    ageEl.hidden = false;
-    ageEl.textContent = caption;
     if (sig === codexRowsSig) return; // same rows; only the caption moved
     codexRowsSig = sig;
     clearRows();
@@ -563,13 +560,11 @@
     // mapping turns known wire values into product names; unknown values stay
     // in the tooltip instead of leaking into the badge.
 
-    let after = anchor;
     for (const w of visible) {
       const row = el("div", `q-row q-ws${stored ? " q-stored" : ""}`);
       row.dataset.wsid = identities.workspaceKey(w);
       const wins = (w.windows || []).filter((x) => x.used_percent != null);
       row.append(
-        el("span", "q-prov", "↳"),
         el(
           "span",
           "q-acct",
@@ -580,6 +575,7 @@
             w.name ||
             w.account_id.slice(0, 8),
         ),
+        el("span", "q-scope"),
         el(
           "span",
           "q-plan",
@@ -592,8 +588,10 @@
       const annotation = identities.seatAnnotationForAccount(state.payload?.configured_connections, "codex", w);
       const seat = providerHealth.seatAnnotationView(annotation, healthLocale);
       const workspaceName = (state.payload?.workspace_names || {})[w.account_id] || w.name;
-      const scope = seat ? `${providerHealth.strings(healthLocale).team} · ${workspaceName || seat.workspaceName}` : workspaceName;
-      if (w.email && scope) row.append(el("span", "q-scope", scope));
+      const kind = identities.accountScope("codex", w.plan_type) || (seat ? "team" : "");
+      const scope = identities.organizationLabel("codex", null, workspaceName || seat?.workspaceName, healthLocale, kind);
+      row.querySelector(".q-scope").textContent = scope;
+      identifyRow(row, "codex", w.email, kind);
       if (seat) {
         const badge = el("span", "q-seat-annotation", seat.label);
         badge.title = seat.detail;
@@ -651,8 +649,7 @@
         ? meta.join("\n")
         : `workspace ${w.account_id}`;
       row.append(detail);
-      after.after(row);
-      after = row;
+      quotasEl.append(row);
     }
     // Report what was actually appended: the fetch succeeding in Rust does
     // not prove the workspace rows rendered (the pixels are unverifiable from
@@ -701,6 +698,7 @@
           key: rest.join(":"),
         });
         ghost.remove();
+        organizeAccountRows();
       } catch (err) {
         ghost.querySelector(".q-age").textContent = "dismiss failed";
         ghost.title = String(err);
@@ -801,6 +799,7 @@
       ghostsOpen = !ghostsOpen;
       store.set("qhud.ghostsOpen", ghostsOpen ? "1" : null);
       renderPlaceholders(list);
+      organizeAccountRows();
     });
     quotasEl.append(more);
     if (!ghostsOpen) {
@@ -816,6 +815,10 @@
         el("span", "q-plan", p.plan || ""),
         el("span", "q-age", "needs re-auth"),
       );
+      // Older registry keys may be opaque IDs; a display alias alone
+      // cannot link a remembered row to a verified email.
+      const login = /^[^\s@]+@[^\s@]+$/.test(p.key) ? p.key : "";
+      identifyRow(row, p.provider, login, "");
       if (!p.plan) row.querySelector(".q-plan").hidden = true;
       const dismiss = el("button", "q-forget", "✕");
       dismiss.title = "stop showing this account";
@@ -920,15 +923,16 @@
       if (!row) {
         row = el("div", "q-row q-connection");
         row.dataset.connectionKey = key;
-        row.append(el("span", "q-acct"), el("span", "q-scope"), el("span", "q-seat-annotation"), el("span", "q-connection-state"), el("div", "q-detail"));
-        let anchor = providerHeader(model.provider);
-        if (!anchor.isConnected) quotasEl.append(anchor);
-        while (anchor.nextElementSibling && !anchor.nextElementSibling.classList.contains("q-sect")) anchor = anchor.nextElementSibling;
-        anchor.after(row);
+        row.append(el("span", "q-acct"), el("span", "q-scope"), el("span", "q-plan"), el("span", "q-seat-annotation"), el("span", "q-connection-state"), el("div", "q-detail"));
+        quotasEl.append(row);
       }
       row.dataset.connectionState = model.state;
       row.querySelector(".q-acct").textContent = model.email;
+      identifyRow(row, model.provider, profile.email, profile.scope);
       row.querySelector(".q-scope").textContent = [model.scope, seat?.workspaceName].filter(Boolean).join(" · ");
+      const plan = row.querySelector(".q-plan");
+      plan.textContent = model.plan || "";
+      plan.hidden = !model.plan;
       const badge = row.querySelector(".q-seat-annotation");
       badge.textContent = seat?.label || "";
       badge.title = seat?.detail || "";
@@ -942,6 +946,53 @@
     for (const row of quotasEl.querySelectorAll("[data-connection-key]")) {
       if (!alive.has(row.dataset.connectionKey)) row.remove();
     }
+  }
+
+  function identifyRow(row, provider, email, scope) {
+    row.dataset.groupProvider = provider;
+    row.dataset.login = identities.email(email);
+    row.dataset.scope = scope || "";
+    const account = row.querySelector(".q-acct");
+    account.classList.toggle("q-group-email", !!row.dataset.login &&
+      identities.email(account.textContent) === row.dataset.login);
+  }
+
+  // Keep the keyed rows and disclosure elements in place across polls.
+  // Sorting operates only on their position, never on their readings.
+  function organizeAccountRows() {
+    const existing = new Map(Array.from(quotasEl.querySelectorAll(".q-account-group"),
+      (group) => [group.dataset.groupKey, group]));
+    for (const section of quotasEl.querySelectorAll(".q-sect")) {
+      const provider = section.dataset.sect;
+      const rows = Array.from(quotasEl.querySelectorAll(`.q-row[data-group-provider="${CSS.escape(provider)}"]`),
+        (row) => ({ row, email: row.dataset.login, scope: row.dataset.scope }));
+      let previous = section;
+      for (const group of identities.groupAccountRows(rows)) {
+        if (!group.email) {
+          const row = group.rows[0].row;
+          if (previous.nextElementSibling !== row) previous.after(row);
+          previous = row;
+          continue;
+        }
+        const key = JSON.stringify([provider, group.email]);
+        let container = existing.get(key);
+        if (!container) {
+          container = el("section", "q-account-group");
+          container.dataset.groupKey = key;
+          container.setAttribute("aria-label", group.email);
+          container.append(el("h3", "q-account-heading", group.email));
+        }
+        existing.delete(key);
+        if (previous.nextElementSibling !== container) previous.after(container);
+        previous = container;
+        let child = container.firstElementChild;
+        for (const { row } of group.rows) {
+          if (child.nextElementSibling !== row) child.after(row);
+          child = row;
+        }
+      }
+    }
+    for (const empty of existing.values()) empty.remove();
   }
 
   // One vocabulary for one fact: every window is named by its duration —
@@ -1007,6 +1058,8 @@
 
   function renderQuotas(quotas) {
     quotasEl.hidden = false;
+    const codexData = codexSource();
+    const codexAccounts = quotas.filter((q) => q.provider === "codex").map((q) => q.account);
     const aliveProviders = new Set(providerHealth.PROVIDERS);
     for (const provider of providerHealth.PROVIDERS) {
       const header = providerHeader(provider);
@@ -1027,17 +1080,9 @@
       if (!row) {
         row = buildQuotaRow(q.provider);
         row.dataset.acct = acctKey;
-        // Insert after the provider's last existing row so a second
-        // account never drags the section header out of place.
         const section = providerHeader(q.provider);
         if (!section.isConnected) quotasEl.append(section);
-        let anchor = section;
-        for (const r of quotasEl.querySelectorAll(
-          `.q-row[data-provider="${q.provider}"]`,
-        )) {
-          anchor = r;
-        }
-        anchor.after(row);
+        quotasEl.append(row);
       }
       // This account's slice of an in-session ⟳ (fetch_all returns one
       // entry per account); everything below prefers it over the payload.
@@ -1052,8 +1097,7 @@
       // workspace it is showing.
       const activeWs =
         q.provider === "codex"
-          ? identities.activeWorkspace(codexSource().rows, q.account,
-              (state.payload?.quotas || []).filter((item) => item.provider === "codex").map((item) => item.account))
+          ? identities.activeWorkspace(codexData.rows, q.account, codexAccounts)
           : null;
       // The agy RPC read and the codex active-workspace fetch have the
       // same snapshot shape as Claude's ⟳, so one override path serves
@@ -1065,7 +1109,7 @@
         (q.provider === "agy" && agyFetch.state === "done"
           ? identities.antigravityUsageForAccount(agyFetch.data, q)
           : null) ||
-        (activeWs && !codexSource().stored ? wsToUsage(activeWs) : null);
+        (activeWs && !codexData.stored ? wsToUsage(activeWs) : null);
       // The provider name lives in the section header now, so the row's own
       // slot carries the ACCOUNT — the thing that actually differs per row.
       row.querySelector(".q-prov").textContent = "";
@@ -1084,8 +1128,11 @@
       const annotation = identities.seatAnnotationForAccount(state.payload?.configured_connections, q.provider, q.account);
       const seat = providerHealth.seatAnnotationView(annotation, healthLocale);
       const scopeEl = row.querySelector(".q-scope");
-      scopeEl.textContent = identities.organizationLabel(q.provider, q.account, activeWsName, healthLocale);
-      if (seat) scopeEl.textContent = `${providerHealth.strings(healthLocale).team} · ${scopeEl.textContent || seat.workspaceName}`;
+      const matchedProfiles = identities.connectionsForAccount(state.payload?.configured_connections, q.provider, q.account);
+      const type = q.provider === "codex" ? activeWs?.plan_type || q.account?.org_type : q.account?.org_type;
+      const kind = identities.accountScope(q.provider, type) || matchedProfiles[0]?.scope || (seat ? "team" : "");
+      scopeEl.textContent = identities.organizationLabel(q.provider, q.account, activeWsName || seat?.workspaceName, healthLocale, kind);
+      identifyRow(row, q.provider, q.account?.email || activeWs?.email, kind);
       scopeEl.hidden = !scopeEl.textContent;
       const seatEl = row.querySelector(".q-seat-annotation");
       seatEl.textContent = seat?.label || "";
@@ -1187,11 +1234,15 @@
           ? `⟳ ${row.dataset.cacheAge} ago`
           : `~${row.dataset.cacheAge} old`;
       ageEl.hidden = !showAge;
+      if (activeWs && codexData.at) {
+        ageEl.hidden = false;
+        ageEl.textContent = `⟳ ${fmtAgeMs(codexData.at)} ago`;
+      }
 
       const lines = [];
       if (seat) lines.push(seat.detail);
       if (["codex", "claude"].includes(q.provider) || resetCredits.count != null) lines.push(resetCredits.detail);
-      for (const profile of identities.connectionsForAccount(state.payload?.configured_connections, q.provider, q.account)) {
+      for (const profile of matchedProfiles) {
         lines.push(providerHealth.configuredConnectionDetail(profile, healthLocale));
       }
       if (q.origin === "cache") {
@@ -1277,9 +1328,11 @@
       patchLiveScoped(row, scoped, !liveUsage && q.origin === "cache");
       // A signed-in account with no numbers at all (an extra account never
       // ⟳'d, no cache): say what to do instead of rendering a bare name.
-      if (q.provider === "claude" && !h5 && !d7 && !showAge) {
+      const freeWithoutUsage = q.provider === "claude" && ["claude_free", "free"].includes(q.account?.org_type) &&
+        !providerHealth.hasQuota({ h5, d7, scoped });
+      if (freeWithoutUsage || (q.provider === "claude" && !h5 && !d7 && !scoped.length && !showAge)) {
         ageEl.hidden = false;
-        ageEl.textContent = "no data — ⟳";
+        ageEl.textContent = freeWithoutUsage ? providerHealth.strings(healthLocale).usageUnavailable : "no data — ⟳";
       }
       const rowFetch =
         q.provider === "claude"
@@ -1296,19 +1349,11 @@
         }
       }
     }
-    for (const row of [...quotasEl.children]) {
-      if (row.dataset.pkey || row.dataset.wsid) continue; // owned by other renderers
-      if (row.dataset.sect) {
-        if (!aliveProviders.has(row.dataset.sect)) row.remove();
-        continue;
-      }
-      if (
-        row.dataset.provider &&
-        !aliveRows.has(
-          `${row.dataset.provider} ${row.dataset.acct || "default"}`,
-        )
-      )
-        row.remove();
+    for (const row of quotasEl.querySelectorAll(".q-row[data-acct]")) {
+      if (!aliveRows.has(`${row.dataset.provider} ${row.dataset.acct}`)) row.remove();
+    }
+    for (const header of quotasEl.querySelectorAll(".q-sect")) {
+      if (!aliveProviders.has(header.dataset.sect)) header.remove();
     }
   }
 
@@ -1343,6 +1388,7 @@
       renderPlaceholders(p.account_placeholders || []);
       renderConfiguredConnections(p.configured_connections || []);
       renderProviderHealth();
+      organizeAccountRows();
       // Positive confirmation that the strip painted. Absence of a JS error
       // is NOT proof the strip rendered — the pixels are unverifiable from
       // outside the webview (scrot cannot capture XWayland-composited

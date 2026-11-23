@@ -12,7 +12,7 @@
 
 qhud 全部文档均提供三种语言，涵盖首次安装、架构、决策和发布历史。
 
-v0.8.0 新增 Windows 供应商连接状态、个人与团队账户档案、剩余重置券，以及各方案的模型指南。变更内容与验证范围见 [v0.8.0 发布说明](05-ops/releases/v0.8.0.md)。先前的实机记录描述当时的版本。
+Codex 和 Claude 在每个邮箱下先列**个人**，再列**团队**。各工作区或组织分别显示自己的套餐、各时段用量和重置时间。在 Claude 网页确认为 **Free** 的个人档案没有配额数据时显示**不提供用量**。 [v0.8.1 发布说明](05-ops/releases/v0.8.1.md)
 
 <!-- qhud:anchor -->
 <a id="start-using-qhud"></a>
@@ -70,6 +70,7 @@ v0.8.0 新增 Windows 供应商连接状态、个人与团队账户档案、剩�
 | [v0.7.3 发布说明](05-ops/releases/v0.7.3.md) | 自动显示 Pro 100/200/500 方案名称，并包含 v0.7.2 之后的安全、依赖、release workflow 与翻译工作。 |
 | [v0.7.4 发布说明](05-ops/releases/v0.7.4.md) | 窄系统条修复、Tauri 2.12.1、`sysinfo` 0.38.4，以及声明最低 Rust 1.90。 |
 | [v0.8.0 发布说明](05-ops/releases/v0.8.0.md) | 连接状态、多账户、重置券及支持模型指南。 |
+| [v0.8.1 发布说明](05-ops/releases/v0.8.1.md) | 按邮箱分组的个人与团队行，以及 Claude Free 的用量状态。 |
 
 <!-- qhud:anchor -->
 <a id="languages-and-source-fidelity"></a>

@@ -925,7 +925,38 @@ body {
   font-style: normal;
 }
 .q-row .q-prov:empty {
-  width: 10px;
+  display: none;
+}
+.q-account-group {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.q-account-heading {
+  margin: 2px 0 0;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--tx);
+  overflow-wrap: anywhere;
+}
+.q-account-group > .q-row {
+  margin-left: 3px;
+  padding-left: 8px;
+  border-left: 1px solid var(--line);
+}
+.q-account-group .q-group-email,
+.q-account-group .q-prov,
+.q-row .q-scope:empty {
+  display: none;
+}
+.q-account-group .q-scope {
+  color: var(--tx);
+  font-weight: 600;
+}
+.q-connection[data-connection-state="usage_unavailable"] .q-connection-state {
+  color: var(--tx-mut);
 }
 /* Collapsed summary for accounts with no live credential. */
 .q-more {

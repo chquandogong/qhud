@@ -82,15 +82,15 @@ Example data is available only with `--demo`.
 
 ## Install
 
-**Current release: [v0.8.0](https://github.com/chquandogong/qhud/releases/tag/v0.8.0).**
+**Current release: [v0.8.1](https://github.com/chquandogong/qhud/releases/tag/v0.8.1).**
 Both platform build/test jobs gate publication. Each archive has a SHA-256 file.
 
 | Download | Verify |
 | --- | --- |
-| [Windows x64 ZIP](https://github.com/chquandogong/qhud/releases/download/v0.8.0/qhud-v0.8.0-windows-x86_64.zip) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.8.0/qhud-v0.8.0-windows-x86_64.zip.sha256) |
-| [Linux x86_64 tarball](https://github.com/chquandogong/qhud/releases/download/v0.8.0/qhud-v0.8.0-linux-x86_64.tar.gz) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.8.0/qhud-v0.8.0-linux-x86_64.tar.gz.sha256) |
+| [Windows x64 ZIP](https://github.com/chquandogong/qhud/releases/download/v0.8.1/qhud-v0.8.1-windows-x86_64.zip) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.8.1/qhud-v0.8.1-windows-x86_64.zip.sha256) |
+| [Linux x86_64 tarball](https://github.com/chquandogong/qhud/releases/download/v0.8.1/qhud-v0.8.1-linux-x86_64.tar.gz) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.8.1/qhud-v0.8.1-linux-x86_64.tar.gz.sha256) |
 
-In v0.8.0, expand a provider header to see the last fetch and local credential expiry. Select **Supported models** to see the dated plan guide and its seat or trial conditions. The signed-in provider’s model picker shows the models available to your account. [v0.8.0 release notes](docs/05-ops/releases/v0.8.0.md)
+Codex and Claude now group **Personal** and **Team** under each email. Plans, usage windows and resets stay attached to each workspace or organization. A web-confirmed Claude personal **Free** plan without a quota shows **Usage unavailable**. [v0.8.1 release notes](docs/05-ops/releases/v0.8.1.md)
 
 Archives published by the current release workflow also carry GitHub build
 provenance. With GitHub CLI, substitute the path of the archive you downloaded;
@@ -116,9 +116,9 @@ for prerequisites, source builds, and configuration.
 After downloading the archive and its SHA-256 file into the same directory:
 
 ```sh
-sha256sum -c qhud-v0.8.0-linux-x86_64.tar.gz.sha256
-tar -xzf qhud-v0.8.0-linux-x86_64.tar.gz
-install -Dm755 qhud-v0.8.0-linux-x86_64/qhud "$HOME/.local/bin/qhud"
+sha256sum -c qhud-v0.8.1-linux-x86_64.tar.gz.sha256
+tar -xzf qhud-v0.8.1-linux-x86_64.tar.gz
+install -Dm755 qhud-v0.8.1-linux-x86_64/qhud "$HOME/.local/bin/qhud"
 "$HOME/.local/bin/qhud"
 ```
 
