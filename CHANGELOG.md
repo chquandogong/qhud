@@ -10,6 +10,13 @@ All notable changes to qhud. Format: [Keep a Changelog](https://keepachangelog.c
 
 ## [Unreleased]
 
+## [0.8.0] — 2026-11-23
+
+### Account connections and usage
+
+- Show provider readiness, expiry, refresh failures and snapshot age. Add isolated Codex and Claude personal/team profiles and Windows native Antigravity usage.
+- Show provider-reported reset credits, Claude usage grades and the Google AI Pro badge. A dated model guide explains plan and seat conditions. Codex team seats can carry a dated manual verification.
+
 ### Documentation and verification
 
 - Add native Windows captures of the published v0.7.4 WebView2 build to the

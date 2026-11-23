@@ -50,8 +50,8 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Frontend metrics tests
-        run: node --test tests/system-metrics.test.cjs
+      - name: Frontend regression tests
+        run: node --test tests/*.test.cjs
 
       - name: Format
         run: cargo fmt --all --check
@@ -90,6 +90,10 @@ jobs:
 
       - name: Restore the Rust build cache
         uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+
+      - name: Test the Windows account connection helper
+        shell: powershell
+        run: ./tests/connect-account.test.ps1
 
       - name: Test and build with the Windows dependency patch
         shell: pwsh

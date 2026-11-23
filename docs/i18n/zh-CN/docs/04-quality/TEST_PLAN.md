@@ -9,7 +9,7 @@
 
 # 测试计划
 
-> 状态：已记录 v0.7.4 发布后的 Windows 视觉证据；桌面验证缺口仍保留 · 日期：2026-10-02 · 负责人：chquandogong
+> 状态：已在开发构建中检查 Windows 供应商面板 · 日期：2026-11-23 · 负责人：chquandogong
 
 <!-- qhud:anchor -->
 <a id="automated-gates"></a>
@@ -22,7 +22,7 @@ CI 在推送到 `main` 及 pull request 时运行；`codex/**` 分支通过草�
 cargo fmt --all --check
 cargo clippy --locked --all-targets -- -D warnings
 cargo test --locked --all-targets
-node --test tests/system-metrics.test.cjs
+node --test tests/*.test.cjs
 cargo build --locked --release
 ```
 
@@ -31,6 +31,7 @@ Windows MSVC 通过构建脚本使用限定范围的依赖补丁：
 ```powershell
 ./scripts/Build-Windows.ps1 -Test -VisualStudioPath '<Visual Studio installation>'
 git diff --exit-code -- Cargo.toml Cargo.lock
+./tests/connect-account.test.ps1
 ```
 
 CI 还使用 Node 22 运行独立的 Ubuntu `repository-integrity` 作业：
@@ -41,7 +42,7 @@ node scripts/check-repository.mjs
 
 它检查包、Tauri 和 lockfile 版本是否一致，韩语 README 副本是否逐字节相同，当前发布说明与安装示例，英语、韩语、简体中文文档文件集及发布说明的语言链接，以及本地 Markdown 链接目标。仅修改文档时可在本地运行此命令，无需编译 Rust；推送或 pull request 的 CI 仍执行所有作业。
 
-`-Test` 在同一依赖上下文先运行 qhud Rust 测试，再构建。使用 Node 22 运行 `node --test tests/system-metrics.test.cjs`，检查前端系统指标辅助函数。Windows 命令结束后脚本恢复规范 lockfile；Linux 构建无需同级检出或 Windows 补丁。发布等待 Ubuntu 和 Windows 测试、构建全部成功。
+`-Test` 在同一依赖上下文先运行 qhud Rust 测试，再构建。运行 Node 22 前端测试，检查供应商状态、账户身份、模型说明和系统指标。Windows 命令结束后脚本恢复规范 lockfile；Linux 构建无需同级检出或 Windows 补丁。发布等待 Ubuntu 和 Windows 测试、构建全部成功。
 
 2026-09-07：[CI 34117359064](https://github.com/chquandogong/qhud/actions/runs/34117359064) 在 `1514e09` 上通过：Ubuntu fmt/clippy、**98/98 项测试**和 release 构建；Windows **98/98 项测试**、release 构建及规范依赖文件检查。本地 Windows 脚本也通过 98/98 项测试和 release 构建。
 
@@ -118,6 +119,10 @@ node scripts/check-repository.mjs
 - 缩小窗口或显示多个账户/模型行。所有配额和重置均可滚动访问，窗格和页脚控件仍保留。
 - 确认模型名称及重置倒计时可读。服务器缺少的模型限额保持缺失，不填零、不使用其他账户用量。
 - 验证后台 CLI 探测不弹控制台窗口。原生 Windows 终端标签页监控不在当前支持范围。
+
+- 测试返回零次重置和缺少该字段的两种响应，前者应显示零，后者应保持未知。比较共享同一个 Codex 工作区的两次登录，并在刷新期间切换原生 Antigravity 账户。仅应显示归属匹配的读数。
+
+在 2026-11-23 测试的开发构建中，187 项 Rust 测试和 50 项 Node 测试通过。在原生 WebView2 小组件中展开已保存的 Codex 团队 Standard 席位的**支持模型**，可以看到模型示例、工作区权限条件和核对日期。该行仍显示配置等待连接。这次检查涵盖模型说明和待连接状态，账户实时用量和具体模型权限仍需登录后核实。
 
 2026-10-02，对已发布 v0.7.4 产物进行发布后 Windows 视觉验证。下载的
 `qhud-v0.7.4-windows-x86_64.zip` 的 SHA-256 与

@@ -16,6 +16,7 @@
 //!   - read the credential fresh each call, never cache or copy it
 //!   - the response carries account uuid and email — never log the raw body
 
+use crate::provider_health::{FetchError, FetchErrorKind, HealthState, ProviderHealth};
 use crate::usage_cache::CachedUsage;
 
 const USAGE_URL: &str = "https://api.anthropic.com/api/oauth/usage";
@@ -45,10 +46,93 @@ fn default_credentials() -> Result<std::path::PathBuf, String> {
         .ok_or_else(|| "Claude configuration directory could not be determined".to_string())
 }
 
+fn claude_binary() -> Option<std::path::PathBuf> {
+    crate::provider_health::path_binary("claude").or_else(|| {
+        let home = crate::paths::home_dir()?;
+        let path = home.join(if cfg!(windows) {
+            ".local/bin/claude.exe"
+        } else {
+            ".local/bin/claude"
+        });
+        path.is_file().then_some(path)
+    })
+}
+
+pub fn local_health(now_ms: u64) -> ProviderHealth {
+    local_health_paths(
+        default_credentials().ok(),
+        crate::paths::claude_config_file(),
+        now_ms,
+    )
+}
+
+/// Local evidence for one isolated profile. Does not merge the provider-wide
+/// last-refresh outcome, so one account cannot make another appear connected.
+#[cfg(test)]
+fn local_health_at(
+    config_dir: &std::path::Path,
+    config_file: &std::path::Path,
+    now_ms: u64,
+) -> ProviderHealth {
+    local_health_paths(
+        Some(config_dir.join(".credentials.json")),
+        Some(config_file.to_path_buf()),
+        now_ms,
+    )
+}
+
+fn local_health_paths(
+    credential_path: Option<std::path::PathBuf>,
+    config_file: Option<std::path::PathBuf>,
+    now_ms: u64,
+) -> ProviderHealth {
+    let mut health = ProviderHealth::new("claude", "claude_code", now_ms);
+    health.cli_available = claude_binary().is_some();
+    health.credential_modified_at_ms = credential_path
+        .as_ref()
+        .and_then(|path| crate::provider_health::credential_modified_at_ms(path));
+    health.identity_fingerprint = config_file
+        .and_then(|path| crate::provider_health::read_metadata(&path))
+        .and_then(|body| crate::accounts::claude_account(&body))
+        .and_then(|account| {
+            account.account_id.map(|id| {
+                crate::provider_health::identity_fingerprint(&[
+                    "claude",
+                    &id,
+                    account.org_id.as_deref().unwrap_or(""),
+                ])
+            })
+        });
+    let metadata = credential_path
+        .and_then(|path| crate::provider_health::read_metadata(&path))
+        .and_then(|body| crate::provider_health::claude_auth_metadata(&body));
+    health.expires_at_ms = metadata.as_ref().and_then(|m| m.expires_at_ms);
+    if metadata.is_none_or(|m| !m.has_credential) {
+        health.state = HealthState::LoginRequired;
+        health.code = "claude_login_missing";
+        health.message = "Sign in through Claude Code; Claude Chat app login is not shared here.";
+        health.action = Some("claude_login");
+    } else if health
+        .expires_at_ms
+        .is_some_and(|expires| expires <= now_ms)
+    {
+        health.state = HealthState::CredentialExpired;
+        health.code = "claude_credential_expired";
+        health.message = "The Claude Code login has expired. Open Claude Code and sign in again.";
+        health.action = Some("claude_login");
+    } else {
+        health.state = HealthState::Ready;
+        health.code = "claude_ready";
+        health.message = "Claude Code login was found; refresh to check usage.";
+    }
+    health
+}
+
 /// `claude-code/<installed version>`. The User-Agent is load-bearing: without
 /// a real one this endpoint answers 429 with no Retry-After.
 fn user_agent() -> String {
-    let mut command = std::process::Command::new("claude");
+    let mut command =
+        std::process::Command::new(claude_binary().unwrap_or_else(|| "claude".into()));
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
@@ -75,7 +159,57 @@ pub struct AccountFetch {
     pub key: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub account_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub org_id: Option<String>,
     pub usage: CachedUsage,
+}
+
+#[derive(Clone, PartialEq, Eq)]
+struct AccountScope {
+    account_id: String,
+    org_id: Option<String>,
+}
+
+fn account_scope(config_json: &std::path::Path) -> Result<AccountScope, String> {
+    let account = crate::provider_health::read_metadata(config_json)
+        .and_then(|body| crate::accounts::claude_account(&body))
+        .ok_or_else(|| {
+            "Claude account identity unavailable — open Claude Code and sign in".to_string()
+        })?;
+    let account_id = account
+        .account_id
+        .filter(|id| !id.is_empty())
+        .ok_or_else(|| {
+            "Claude account identity unavailable — open Claude Code and sign in".to_string()
+        })?;
+    Ok(AccountScope {
+        account_id,
+        org_id: account.org_id.filter(|id| !id.is_empty()),
+    })
+}
+
+fn bind_scope(
+    mut usage: CachedUsage,
+    before: &AccountScope,
+    after: &AccountScope,
+) -> Result<CachedUsage, String> {
+    if before != after {
+        return Err("Claude account or organization changed during refresh; retry".into());
+    }
+    usage.account_id = Some(before.account_id.clone());
+    usage.org_id = before.org_id.clone();
+    Ok(usage)
+}
+
+async fn fetch_scoped(
+    credentials: &std::path::Path,
+    config_json: &std::path::Path,
+    now_ms: u64,
+) -> Result<CachedUsage, String> {
+    let before = account_scope(config_json)?;
+    let usage = fetch_from(credentials, now_ms).await?;
+    let after = account_scope(config_json)?;
+    bind_scope(usage, &before, &after)
 }
 
 /// ⟳ for every signed-in Claude account: the default (`~/.claude`) plus
@@ -83,21 +217,17 @@ pub struct AccountFetch {
 /// fetched store under its own key. Partial failure is partial: an
 /// expired extra account must not hide the default's numbers.
 pub async fn fetch_all(now_ms: u64) -> Result<Vec<AccountFetch>, String> {
-    let ident = |config_json: &std::path::Path| -> Option<String> {
-        let body = std::fs::read_to_string(config_json).ok()?;
-        crate::accounts::claude_account(&body)?.account_id
-    };
     let mut out = Vec::new();
     let mut errs = Vec::new();
 
     let home = crate::paths::home_dir();
     match fetch(now_ms).await {
-        Ok(mut usage) => {
-            usage.account_id = crate::paths::claude_config_file().and_then(|p| ident(&p));
+        Ok(usage) => {
             crate::fetched_store::record_claude(&usage);
             out.push(AccountFetch {
                 key: "default".into(),
                 account_id: usage.account_id.clone(),
+                org_id: usage.org_id.clone(),
                 usage,
             });
         }
@@ -109,13 +239,19 @@ pub async fn fetch_all(now_ms: u64) -> Result<Vec<AccountFetch>, String> {
         for d in crate::registry::load().claude_config_dirs {
             let dir = crate::registry::expand_tilde(&d, &home_str);
             let base = std::path::Path::new(&dir);
-            match fetch_from(&base.join(".credentials.json"), now_ms).await {
-                Ok(mut usage) => {
-                    usage.account_id = ident(&base.join(".claude.json"));
+            match fetch_scoped(
+                &base.join(".credentials.json"),
+                &base.join(".claude.json"),
+                now_ms,
+            )
+            .await
+            {
+                Ok(usage) => {
                     crate::fetched_store::record_claude_extra(&dir, &usage);
                     out.push(AccountFetch {
                         key: dir,
                         account_id: usage.account_id.clone(),
+                        org_id: usage.org_id.clone(),
                         usage,
                     });
                 }
@@ -135,17 +271,41 @@ pub async fn fetch_all(now_ms: u64) -> Result<Vec<AccountFetch>, String> {
 
 /// One request, from a click, for the default account.
 pub async fn fetch(now_ms: u64) -> Result<CachedUsage, String> {
-    fetch_from(&default_credentials()?, now_ms).await
+    let config = crate::paths::claude_config_file()
+        .ok_or_else(|| "Claude account configuration could not be determined".to_string())?;
+    fetch_scoped(&default_credentials()?, &config, now_ms).await
 }
 
 /// One request against a specific credential file. Returns the same shape
 /// the on-disk cache uses so the renderer needs no second code path.
 pub async fn fetch_from(cred: &std::path::Path, now_ms: u64) -> Result<CachedUsage, String> {
-    let token = read_token_at(cred)?;
+    fetch_from_typed(cred, now_ms)
+        .await
+        .map_err(|error| error.to_string())
+}
+
+async fn fetch_from_typed(cred: &std::path::Path, now_ms: u64) -> Result<CachedUsage, FetchError> {
+    if crate::provider_health::read_metadata(cred)
+        .and_then(|body| crate::provider_health::claude_auth_metadata(&body))
+        .and_then(|metadata| metadata.expires_at_ms)
+        .is_some_and(|expires| expires <= now_ms)
+    {
+        return Err(FetchError::new(
+            FetchErrorKind::CredentialExpired,
+            "Claude credential expired — open Claude Code and sign in again",
+        ));
+    }
+    let token = read_token_at(cred)
+        .map_err(|error| FetchError::new(crate::provider_health::classify_error(&error), error))?;
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(10))
         .build()
-        .map_err(|e| crate::diag::failure("HTTP client build", crate::diag::reqwest(&e)))?;
+        .map_err(|e| {
+            FetchError::new(
+                FetchErrorKind::Unavailable,
+                crate::diag::failure("HTTP client build", crate::diag::reqwest(&e)),
+            )
+        })?;
     let resp = client
         .get(USAGE_URL)
         .bearer_auth(&token)
@@ -154,30 +314,49 @@ pub async fn fetch_from(cred: &std::path::Path, now_ms: u64) -> Result<CachedUsa
         .header("accept", "application/json")
         .send()
         .await
-        .map_err(|e| crate::diag::failure("usage request", crate::diag::reqwest(&e)))?;
+        .map_err(|e| {
+            FetchError::new(
+                FetchErrorKind::Network,
+                crate::diag::failure("usage request", crate::diag::reqwest(&e)),
+            )
+        })?;
 
     let status = resp.status();
-    if status == reqwest::StatusCode::UNAUTHORIZED {
+    if status == reqwest::StatusCode::UNAUTHORIZED || status == reqwest::StatusCode::FORBIDDEN {
         // Deliberately NOT refreshing: the refresh token rotates, and racing
         // Claude Code's own refresh is what breaks a login.
-        return Err("Claude token rejected (401) — sign in again with `claude`".into());
+        return Err(FetchError::new(
+            FetchErrorKind::LoginRequired,
+            format!(
+                "Claude token rejected ({}) — sign in again with `claude`",
+                status.as_u16()
+            ),
+        ));
     }
     if status == reqwest::StatusCode::TOO_MANY_REQUESTS {
         // Response headers are provider-controlled too. Do not copy even a
         // syntactically valid Retry-After value into ambient diagnostics.
-        return Err("rate limited (429)".into());
+        return Err(FetchError::new(
+            FetchErrorKind::RateLimited,
+            "rate limited (429)",
+        ));
     }
     if !status.is_success() {
         let code = status.as_u16();
-        return Err(format!(
-            "usage endpoint returned HTTP {code} ({})",
-            crate::diag::http_status(code)
+        return Err(FetchError::new(
+            FetchErrorKind::Unavailable,
+            format!(
+                "usage endpoint returned HTTP {code} ({})",
+                crate::diag::http_status(code)
+            ),
         ));
     }
-    let body = resp
-        .text()
-        .await
-        .map_err(|e| crate::diag::failure("usage response read", crate::diag::reqwest(&e)))?;
+    let body = resp.text().await.map_err(|e| {
+        FetchError::new(
+            FetchErrorKind::Network,
+            crate::diag::failure("usage response read", crate::diag::reqwest(&e)),
+        )
+    })?;
     // The body carries account uuid and email — never log it. The env-gated
     // diagnostic reports only field presence, for diagnosing shape drift:
     // QHUD_EXTRA_DIAG=1 qhud --claude-usage
@@ -188,12 +367,121 @@ pub async fn fetch_from(cred: &std::path::Path, now_ms: u64) -> Result<CachedUsa
         let spend = v.get("spend").is_some_and(|value| !value.is_null());
         eprintln!("qhud diag fields: extra_usage={extra_usage}, spend={spend}");
     }
-    crate::usage_cache::parse_utilization_detailed(&body, now_ms)
-        .map_err(|e| format!("usage response did not parse: {e}"))
+    crate::usage_cache::parse_utilization_detailed(&body, now_ms).map_err(|e| {
+        FetchError::new(
+            FetchErrorKind::InvalidResponse,
+            format!("usage response did not parse: {e}"),
+        )
+    })
 }
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn quota_binding_rejects_account_and_organization_switches() {
+        use super::{AccountScope, bind_scope};
+        let usage = crate::usage_cache::parse_utilization_detailed(
+            r#"{"seven_day":{"utilization":23}}"#,
+            7,
+        )
+        .unwrap();
+        let before = AccountScope {
+            account_id: "same-account".into(),
+            org_id: Some("personal-org".into()),
+        };
+        let bound = bind_scope(usage.clone(), &before, &before).unwrap();
+        assert_eq!(bound.account_id.as_deref(), Some("same-account"));
+        assert_eq!(bound.org_id.as_deref(), Some("personal-org"));
+        for after in [
+            AccountScope {
+                account_id: "same-account".into(),
+                org_id: Some("team-org".into()),
+            },
+            AccountScope {
+                account_id: "another-account".into(),
+                org_id: before.org_id.clone(),
+            },
+            AccountScope {
+                account_id: "same-account".into(),
+                org_id: None,
+            },
+        ] {
+            let error = bind_scope(usage.clone(), &before, &after).unwrap_err();
+            assert!(error.contains("changed during refresh"));
+            assert!(!error.contains("same-account"));
+            assert!(!error.contains("personal-org"));
+            assert!(!error.contains("team-org"));
+        }
+    }
+
+    #[test]
+    fn isolated_profile_health_and_scope_use_only_that_profile() {
+        let nonce = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let dir = std::env::temp_dir().join(format!("qhud-profile-{}-{nonce}", std::process::id()));
+        std::fs::create_dir(&dir).unwrap();
+        let config = dir.join(".claude.json");
+        let credential = dir.join(".credentials.json");
+        let missing = super::local_health_at(&dir, &config, 101);
+        assert_eq!(
+            missing.state,
+            crate::provider_health::HealthState::LoginRequired
+        );
+        assert!(super::account_scope(&config).is_err());
+        std::fs::write(&config,
+            r#"{"oauthAccount":{"accountUuid":"fixture-account","organizationUuid":"fixture-org"}}"#,
+        ).unwrap();
+        std::fs::write(
+            &credential,
+            r#"{"claudeAiOauth":{"accessToken":"never-send-profile-canary","expiresAt":100}}"#,
+        )
+        .unwrap();
+        let expired = super::local_health_at(&dir, &config, 101);
+        assert_eq!(
+            expired.state,
+            crate::provider_health::HealthState::CredentialExpired
+        );
+        let scope = super::account_scope(&config).unwrap();
+        assert_eq!(scope.account_id, "fixture-account");
+        assert_eq!(scope.org_id.as_deref(), Some("fixture-org"));
+        let serialized = serde_json::to_string(&expired).unwrap();
+        assert!(!serialized.contains("canary"));
+        assert!(!serialized.contains("fixture-account"));
+        assert!(!serialized.contains("fixture-org"));
+        std::fs::remove_file(credential).unwrap();
+        std::fs::remove_file(config).unwrap();
+        std::fs::remove_dir(dir).unwrap();
+    }
+
+    #[test]
+    fn expired_login_is_reported_before_any_provider_request() {
+        let nonce = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let path =
+            std::env::temp_dir().join(format!("qhud-expired-{}-{nonce}.json", std::process::id()));
+        std::fs::write(
+            &path,
+            r#"{"claudeAiOauth":{"accessToken":"never-send-canary","expiresAt":100}}"#,
+        )
+        .unwrap();
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+        let result = runtime.block_on(super::fetch_from_typed(&path, 101));
+        std::fs::remove_file(path).unwrap();
+        let error = result.err().expect("expired login must fail before HTTP");
+        assert_eq!(
+            error.kind,
+            crate::provider_health::FetchErrorKind::CredentialExpired
+        );
+        assert!(!error.to_string().contains("canary"));
+    }
+
     #[test]
     fn credential_errors_name_a_category_not_the_path_or_token() {
         let missing = std::path::Path::new("/nonexistent/person@example.com/.credentials.json");

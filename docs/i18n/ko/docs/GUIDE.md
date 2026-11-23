@@ -23,20 +23,20 @@ qhud 설치, 기존 CLI 계정 연결, 저장된 스냅샷과 현재 응답을 �
 | Windows x64 | ZIP을 풀고 추출된 디렉터리 안의 `qhud.exe`를 실행합니다. | Microsoft Edge WebView2 Runtime. [Windows 설정](05-ops/WINDOWS.md)을 참조하세요. |
 | Linux x86_64 | tarball을 풀고 버전 디렉터리 안의 바이너리를 설치합니다. | GTK/WebKitGTK. 기준 시스템은 Ubuntu 24.04입니다. [Linux 운영](05-ops/RUNBOOK.md)을 참조하세요. |
 
-Linux v0.7.4에서 두 파일을 모두 다운로드한 뒤 실행합니다.
+Linux v0.8.0에서 두 파일을 모두 다운로드한 뒤 실행합니다.
 
 ```sh
-sha256sum -c qhud-v0.7.4-linux-x86_64.tar.gz.sha256
-tar -xzf qhud-v0.7.4-linux-x86_64.tar.gz
-install -Dm755 qhud-v0.7.4-linux-x86_64/qhud "$HOME/.local/bin/qhud"
+sha256sum -c qhud-v0.8.0-linux-x86_64.tar.gz.sha256
+tar -xzf qhud-v0.8.0-linux-x86_64.tar.gz
+install -Dm755 qhud-v0.8.0-linux-x86_64/qhud "$HOME/.local/bin/qhud"
 "$HOME/.local/bin/qhud"
 ```
 
 Windows 다운로드는 표시된 해시를 `.sha256` 파일과 비교합니다.
 
 ```powershell
-Get-FileHash -Algorithm SHA256 .\qhud-v0.7.4-windows-x86_64.zip
-Get-Content .\qhud-v0.7.4-windows-x86_64.zip.sha256
+Get-FileHash -Algorithm SHA256 .\qhud-v0.8.0-windows-x86_64.zip
+Get-Content .\qhud-v0.8.0-windows-x86_64.zip.sha256
 ```
 
 현재 release workflow로 게시한 아카이브에는 GitHub 빌드 출처 증명도 있습니다. GitHub CLI를 설치하고 실제 다운로드한 파일명으로 바꿔 `.sha256` 제공 파일이 아닌 아카이브 자체를 검증합니다.
@@ -58,7 +58,7 @@ sha256sum -c qhud-vX.Y.Z-sbom.cdx.json.sha256
 gh attestation verify ./qhud-vX.Y.Z-sbom.cdx.json --repo chquandogong/qhud
 ```
 
-각 공급자의 자체 CLI로 로그인합니다. qhud는 기존 계정 정보를 읽으며 공급자의 로그인 절차를 대체하지 않습니다. qhud를 시작한 다음 ⟳를 눌러 사용량을 조회합니다. 포터블 패키지는 바로가기나 자동 시작을 등록하지 않습니다.
+Codex와 Claude Code는 각 공급자의 CLI로 로그인합니다. Windows에서 Antigravity는 로그인한 앱을 열거나 `agy` CLI를 실행해 둡니다. qhud를 열고 공급자 이름 옆의 ⟳를 눌러 사용량을 조회하세요. 포터블 패키지는 바로가기나 자동 시작을 등록하지 않습니다.
 
 <!-- qhud:anchor -->
 <a id="read-the-widget"></a>
@@ -74,6 +74,46 @@ gh attestation verify ./qhud-vX.Y.Z-sbom.cdx.json --repo chquandogong/qhud
 - **창 분할 0개**는 지원하는 터미널 소스가 없다는 뜻입니다. 계정 사용량은 계속 표시할 수 있습니다.
 
 모델 할당량이 없는 것은 사용량 0과 다릅니다. 예를 들어 Spark 5H/7D는 현재 Codex 계정의 응답에 해당 한도가 있을 때만 표시합니다. 다른 계정을 새로고침해도 활성 계정의 한도를 확인한 것이 되지는 않습니다.
+
+**초기화권 N개** 배지는 공급자가
+제공한 횟수만 표시합니다. Codex는 공식 `rateLimitResetCredits.availableCount`를
+사용합니다. 명시적인 `0`은 유효하지만 필드가 없으면 확인 불가로 남습니다. 이는
+추가 사용 금액 및 초기화까지 남은 시간과 별개이며, qhud는 횟수를 표시할 뿐
+초기화권을 사용하지 않습니다. Claude 사용량 응답에 수동 초기화 횟수가 없으면
+펼친 상세에 정보가 없다고 표시합니다. 초기화 날짜, 사용률, 유형이 다른 초기화
+제안으로 횟수를 만들어 내지 않습니다. 횟수에도 해당 계정 행의 스냅샷 경과 시간이
+적용됩니다.
+
+Claude의 기존 개인 `claude_max` 메타데이터와 `default_claude_max_20x` 조합은
+[공식 Max 20x 이름 변경](https://support.claude.com/en/articles/17728952-what-is-the-ultra-plan)에
+따라 **Ultra**로 표시합니다. `default_claude_max_5x`는 **Max 5x**로 표시합니다.
+Team/Enterprise에서는 위 두 종류의 알려진 사용자 등급에 따라 구성원의 사용량 등급을
+기본 배지에 **Max 5x** 또는 **Ultra**로 표시합니다. 별도의 개인/팀 구분과 펼친
+상세의 **조직 플랜: Team/Enterprise**는 실제 조직 플랜을 유지합니다. 알 수 없는
+구성원 등급을 조직 등급으로 대신하지 않으며, 사용자 등급을 알 수 없으면 배지는
+Team/Enterprise로 유지합니다. 명시적 플랜 재정의를 우선합니다. 정확한
+`claude_ultra` 또는 `ultra` 메타데이터도 Ultra로 표시하지만 알 수 없는 조직 값은
+추측하지 않습니다. 새로운 Ultra 응답에서
+5H 한도를 더 이상 제공하지 않는 경우를 포함하여, 없는 5H 한도는 표시하지 않습니다.
+
+인식된 요금제 또는 좌석 배지 옆의 **지원 모델**을 선택하면 공급자 안내를 펼칩니다.
+이는 **2026-11-23**에 검토한 공식 요금제 참고 정보이며, 해당 계정의 모델 접근 권한이나
+남은 사용량을 실시간으로 확인한 결과는 아닙니다. 실제 선택 가능 여부는 공급자의
+모델 선택기에서 로그인한 계정과 작업공간을 기준으로 확인하세요.
+
+- **Codex:** Codex CLI에서 `/model`을 실행합니다. 제공 모델은 계정, 작업공간 권한,
+  클라이언트 버전에 따라 달라지며 Team/Business 플랜 이름만으로 구성원의 좌석
+  유형을 확인할 수 없습니다. [공식 Codex 모델 안내](https://developers.openai.com/codex/models)를 참고하세요.
+- **Claude Code:** 터미널 또는 Claude Desktop의 Code 탭에서 `/model`을 실행합니다.
+  Max·Ultra 플랜과 Team Premium 좌석은 한도 내 Fable 사용을 포함하지만,
+  Team Standard 좌석에서 Fable을 사용하려면 사용 크레딧이 필요합니다.
+  표시된 **Max 5x** 구성원 사용량 등급만으로 Premium 좌석을 확인한 것은 아닙니다.
+  [Claude Code 모델 설정](https://code.claude.com/docs/en/model-config)과
+  [Fable 이용 자격 및 한도](https://support.claude.com/en/articles/15424964-claude-fable-models-on-your-plan)를 참고하세요.
+- **Antigravity:** 앱의 모델 선택기를 사용합니다. 유료 Google AI Pro와 체험 구독은
+  접근 가능한 모델이 다를 수 있으며, 일부 모델은 유료 구독 또는 특정 자격을 갖춘
+  체험 구독이 필요합니다. 업무용 계정에는 파트너 모델의 관리자 승인 등 조직의
+  접근 규칙이 적용됩니다. [Antigravity 요금제 및 모델 조건](https://antigravity.google/pricing)을 참고하세요.
 
 지원하는 Linux 환경에서는 세션 타일에 상태, 컨텍스트 사용 정도, 모델, 추론 노력, 브랜치, 작업 디렉터리, 충돌 표시가 추가됩니다. 이 릴리스는 Windows Terminal, PowerShell, WezTerm 탭을 네이티브로 관찰하지 않습니다.
 
@@ -139,6 +179,8 @@ Windows에서는 `& '.\qhud.exe' --refresh-all`처럼 실행 파일 경로를 �
 다음 진단 명령은 독립적으로 실행됩니다.
 
 ```sh
+qhud --provider-health
+qhud --refresh-health
 qhud --dump
 qhud --system-dump
 qhud --claude-usage
@@ -221,15 +263,112 @@ try {
 Claude 행은 **계정과 조직**을 구별합니다. 두 디렉터리에 같은 계정과 조직으로 로그인해도 별도의 할당량 풀이 생기지 않습니다. Antigravity 다중 계정 지원은 구현하지 않았습니다. `known` 계정 목록은 qhud가 자동으로 학습하지 않으며 운영자가 관리합니다. 자리표시자를 잊기 처리해도 활성 계정이 숨겨지지는 않습니다.
 
 <!-- qhud:anchor -->
+<a id="windows-personal-and-team-profiles"></a>
+
+### Windows 개인 및 팀 프로필
+
+두 이메일의 개인·팀 범위를 Codex와 Claude에서 모두 표시하려면 `accounts.json`의
+`profiles`에 연결할 항목 여덟 개를 등록합니다. 등록은 연결 대기 표시를 만들며,
+인증 정보를 생성하거나 앱의 로그인을 전환하거나 계정 ID를 만들어 내지 않습니다.
+아래 합성 예시의 이메일과 비공개 디렉터리를 자신의 것으로 바꾸고 기존 설정에
+항목을 병합하세요.
+
+```json
+{
+  "profiles": [
+    { "key": "codex-first-personal", "provider": "codex", "label": "First personal", "email": "first@example.com", "scope": "personal", "directory": "~/qhud-accounts/codex-first" },
+    { "key": "codex-first-team", "provider": "codex", "label": "First team", "email": "first@example.com", "scope": "team", "directory": "~/qhud-accounts/codex-first" },
+    { "key": "codex-second-personal", "provider": "codex", "label": "Second personal", "email": "second@example.com", "scope": "personal", "directory": "~/qhud-accounts/codex-second" },
+    { "key": "codex-second-team", "provider": "codex", "label": "Second team", "email": "second@example.com", "scope": "team", "directory": "~/qhud-accounts/codex-second" },
+    { "key": "claude-first-personal", "provider": "claude", "label": "First personal", "email": "first@example.com", "scope": "personal", "directory": "~/qhud-accounts/claude-first-personal" },
+    { "key": "claude-first-team", "provider": "claude", "label": "First team", "email": "first@example.com", "scope": "team", "directory": "~/qhud-accounts/claude-first-team" },
+    { "key": "claude-second-personal", "provider": "claude", "label": "Second personal", "email": "second@example.com", "scope": "personal", "directory": "~/qhud-accounts/claude-second-personal" },
+    { "key": "claude-second-team", "provider": "claude", "label": "Second team", "email": "second@example.com", "scope": "team", "directory": "~/qhud-accounts/claude-second-team" }
+  ]
+}
+```
+
+Codex 로그인 하나로 해당 이메일이 접근할 수 있는 개인·팀 작업공간을 조회할 수
+있으므로 두 프로필이 하나의 격리된 Codex 홈을 공유할 수 있습니다. Claude는 선택한
+개인·팀 조직별로 별도의 인증된 프로필이 필요합니다. Claude 로그인에서는 이메일뿐
+아니라 요청한 조직도 선택하세요. 정확한 조직을 고정해야 하면 확인한
+`expected_org_id`를 프로필에 추가하며 추측해서 넣지 않습니다. 두 이메일이 같은
+Codex 팀 작업공간을 공유해도 이메일과 작업공간 ID로 구분합니다.
+
+압축을 푼 Windows 패키지에서 `qhud.exe`가 있는 폴더 또는 소스 저장소 루트에 PowerShell을 엽니다. [연결 스크립트](../../../../scripts/Connect-Account.ps1)에 `-List`를 주면 등록된 프로필이 나옵니다. `-AllPending`으로 연결하거나 `-Profile codex-first-personal`로 예시의 프로필 하나를 선택하세요.
+
+```powershell
+.\scripts\Connect-Account.ps1 -List
+.\scripts\Connect-Account.ps1 -AllPending
+```
+
+스크립트는 연결 대기 프로필을 처리하고 공급자·디렉터리 조합을 중복 제거하므로,
+공유 Codex 홈에 두 번 로그인하지 않습니다. 로그인은 공급자의 자체 절차에서
+사용자가 진행합니다. 격리된 프로필 디렉터리를 사용하며 기본 `~/.codex`와
+`~/.claude` 로그인을 덮어쓰지 않고 보존합니다. 이후 qhud를 새로고침하세요.
+미연결 프로필에는 수치 없이 **qhud 연결 필요**를 표시하고, 인증 만료·다른 이메일·다른
+조직도 명시합니다. 일치하는 실제 계정/작업공간 행이 생기면 대기 항목을 대체합니다.
+프로필을 추가해도 계정에 없는 개인·팀 작업공간 접근 권한이 생기지는 않습니다.
+
+Codex 팀 프로필에는 작업공간의 관리자 Members 페이지에서 별도로 확인한 좌석
+정보를 기록할 수 있습니다. qhud 연결 대기 중에도 **Standard · 웹 확인** 또는
+**Premium · 웹 확인**으로 표시합니다. 이는 날짜가 있는 수동 확인 기록이며,
+자동 갱신되는 API 값이나 qhud 연결 성공의 증거가 아닙니다. 툴팁과 펼친 상세에
+출처와 확인 시각을 표시합니다. 사용량 행에는 이메일과 작업공간 ID가 모두 일치할
+때만 붙이며, 공급자의 Business 등 실제 플랜을 대체하거나 해당 플랜에서 좌석
+유형을 추정하지 않습니다.
+
+<!-- qhud:anchor -->
 <a id="network-and-freshness"></a>
 
 ## 네트워크 및 최신성
 
+<!-- qhud:anchor -->
+<a id="windows-provider-connection-status"></a>
+
+### Windows 공급자 연결 상태
+
+사용량이 없어도 Codex, Claude, Antigravity가 표시됩니다. **조회 준비**는 로컬
+연결 조건을 찾았다는 뜻이고, **조회 성공**은 명시적인 새로고침에 성공했다는 뜻입니다.
+공급자 상태를 펼치면 데이터 출처, 마지막 시도, 마지막 성공 스냅샷, 확인 가능한
+인증 만료 시각과 복구 방법을 볼 수 있습니다. 인증 만료는 로컬 로그인 토큰의
+만료이며 구독 만료가 아닙니다. 조회에 실패해도 기존 값은 경과 시간과 함께 남고,
+없는 사용량을 0으로 표시하지 않습니다.
+
+Codex는 활성 계정에 설치된 CLI의 `app-server`를 사용하며 Windows의
+`Programs/OpenAI/Codex/bin` 설치 경로를 지원합니다. Claude는 Claude Code의
+로그인을 사용합니다. Desktop 앱에 로그인해도 만료된 CLI 인증이 갱신되지는
+않습니다. 안내에 따라 `claude auth login`을 완료하고 qhud를 새로고침하세요.
+qhud는 로그인을 자동 조작하거나 자체적으로 refresh token을 교환하지 않습니다.
+
+Antigravity는 기존 `agy` 리스너와 실행 중인 Windows 네이티브 앱의 로컬 데몬
+등록을 지원합니다. 프로세스와 루프백 포트를 검증하고 앱이 반환한 계정에 사용량을
+연결합니다. 이 로컬 인터페이스는 Antigravity 버전에 따라 달라질 수 있습니다.
+저장된 결과와 현재 CLI 식별 정보가 일치하지 않으면 **마지막 조회 계정**으로
+표시하며 현재 앱 로그인이라고 단정하지 않습니다. 로컬 서비스가 없으면 Antigravity를
+실행하거나 열고 다시 조회하세요.
+
+Antigravity 플랜 배지는 조회한 계정의 네이티브 `userTier.name`을 사용합니다.
+예를 들어 **Google AI Pro**를 해당 계정의 사용량 스냅샷과 함께 저장합니다.
+업그레이드 안내나 할당량 형태를 현재 플랜으로 간주하지 않습니다. 새 응답에 플랜
+이름이 없으면 이전 배지를 지우며, 명시적 계정 `plans` 재정의는 계속 우선합니다.
+공급자가 이름을 제공하지 않고 재정의도 없으면 배지를 표시하지 않습니다. 저장된
+플랜 이름은 사용량 값과 같은 스냅샷 경과 시간 및 계정 소유 관계를 따릅니다.
+
+`qhud --provider-health`는 이메일, 계정 ID, 경로, 인증 정보를 제외한 로컬 연결
+진단을 출력합니다. `qhud --refresh-health`는 위젯과 같은 명령으로 세 공급자를
+명시적으로 조회한 뒤 진단을 출력하므로 공급자 요청이 발생합니다. 두 명령 모두
+추가 창을 열지 않으며 일반 백그라운드 관찰은 계속 수동적으로 동작합니다.
+
+Windows 소스 빌드에서 `scripts/Build-Windows.ps1 -DependenciesRoot <path>`는
+기존 수정된 qmonster 체크아웃을 덮어쓰지 않고 별도 의존성 디렉터리를 사용합니다.
+기본 경로는 계속 인접한 `qhud-deps` 디렉터리입니다.
+
 | 공급자 | 수동 관찰 | 명시적 새로고침 |
 | --- | --- | --- |
 | Claude | 가능한 경우 로컬 식별 정보, 상태줄, 사용량 캐시. | 기존 OAuth 액세스 토큰을 공급자 사용량 엔드포인트로 전송. |
-| Codex | 로컬 식별 정보와 지원하는 창 분할 상태줄 데이터. | 저장된 자격 증명별 사용량/계정 엔드포인트. 활성 로그인에는 `codex app-server` 대체 경로. |
-| Antigravity | 가능한 경우 로컬 계정과 창 분할 정보. | 실행 중인 agy 프로세스가 제공하는 루프백 RPC. |
+| Codex | 로컬 식별 정보와 지원하는 창 분할 상태줄 데이터. | 활성 계정은 `codex app-server`, 대체 경로와 저장된 인증은 사용량/계정 엔드포인트. |
+| Antigravity | 가능한 경우 로컬 계정, 네이티브 데몬 준비 상태와 창 분할 정보. | 검증된 Windows 네이티브 데몬 또는 실행 중인 `agy` 프로세스의 루프백 RPC. |
 
 로컬 관찰은 2초마다 실행되며 공급자 API를 요청하지 않습니다. 자격 증명도 들어 있는 파일에서 식별 필드를 읽을 수 있습니다. 명시적 새로고침은 기존 액세스 토큰을 읽을 수 있으며, qhud 자체는 OAuth refresh grant를 실행하지 않습니다. 공급자 CLI가 인증과 위임된 토큰 갱신을 관리합니다.
 

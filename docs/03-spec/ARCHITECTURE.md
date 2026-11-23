@@ -6,10 +6,10 @@
 
 # ARCHITECTURE — qhud
 
-> Status: living (updated through v0.7.1) · Date: 2026-09-14 · Owner:
+> Status: living (updated through v0.8.0) · Date: 2026-11-23 · Owner:
 > chquandogong
 > Companion to SPEC (what it must do) and DECISION_LOG (why it is built this
-> way). The module map is updated through v0.7.1; dated verification stays in
+> way). The module map is updated through v0.8.0; dated verification stays in
 > TEST_PLAN.
 
 ## 1. What qhud is, structurally
@@ -251,7 +251,8 @@ than sent as null.
 ```
 schema, source, backend, generated_at_ms, poll_secs
 quotas[]   provider, h5, d7, from_label, session, account?, origin?,
-           cache_fetched_at_ms?, scoped[]?, extra?
+           cache_fetched_at_ms?, scoped[]?, extra?, reset_credits?, plan_name?
+provider_health[], configured_connections[]
 panes[]    pane_id, label, session, provider, status, status_label,
            elapsed_secs, cli_version, update_hint, model, effort, branch,
            cwd, mem, cost_usd, flags[], gauges{ctx,h5,d7}, conflicts[]
@@ -442,8 +443,8 @@ without asking, and who holds the credential.
 |        | Passive, every 2 s                                                                               | On an explicit refresh                                                                                                                                  | Credential custody                                                                         |
 | ------ | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
 | Claude | statusline through qmonster; Claude Code's own on-disk usage cache; identity from `.claude.json` | `GET https://api.anthropic.com/api/oauth/usage`, once per signed-in config dir                                                                          | qhud reads the existing access token for the HTTP request                                  |
-| Codex  | pane statusline for the active login; identity from `auth.json`                                  | `wham/accounts/check` then `wham/usage` per saved credential; on failure of the active login, a short-lived `codex app-server` child answers over stdio | qhud reads an access token for the HTTP path; the CLI owns everything on the fallback path |
-| agy    | pane statusline when a pane exists; identity from `google_accounts.json`                         | a loopback Connect RPC to the running agy process, no token and no CSRF                                                                                 | agy itself — qhud reads no credential at all                                               |
+| Codex | pane statusline and local login identity | Query each configured login via `codex app-server`, then use `wham/accounts/check` and `wham/usage` for additional workspaces or missing readings. | The CLI manages its login. HTTP uses the saved access token. |
+| agy | CLI identity and native daemon readiness on Windows | Read the CLI listener or verified native daemon via loopback RPC. | The Windows daemon uses its local CSRF token. The CLI listener needs none. |
 
 Three rules hold across all of them (D-014, D-016):
 
@@ -471,31 +472,9 @@ error category and JSON position. Raw serde errors are never surfaced because
 they can quote an unexpected provider value (D-021, superseding D-019's
 diagnostic assumption).
 
-**Codex.** Every `auth.json` and parked sibling in every registered home is
-read, deduped by account id with the live file sorted first so it wins. Each
-credential reads its own workspace: the server refuses to re-scope one token
-to another workspace, so a body that describes a different account than the
-one requested is dropped rather than mislabelled, with the mismatch logged.
-Window labels come from the window's **duration**, never from its
-primary/secondary lane. When the active login's HTTP path fails, a
-`codex app-server` child is spawned read-only with on-request approvals,
-handed a three-line JSON-RPC handshake over stdio with stdin deliberately held
-open — the server exits on EOF, possibly before answering — and given 25
-seconds before it is killed. Since v0.6.0 the per-limit map may be absent,
-null or empty and the top-level pool may be null; either alone is enough, the
-main pool is consumed exactly once so one weekly window is never rendered
-twice, and a null top-level value cannot hide real per-model readings.
+**Codex.** `codex app-server` reads rate limits over stdio in each configured home. `CODEX_HOME` applies to the child only. qhud verifies that the logged-in account and workspace stayed the same during the call. It then reads saved credentials to find additional workspaces and requires a matching response ID for each cross-workspace query. Deduplication uses the workspace ID and email when available. A per-limit pool may be absent, null or empty. Since v0.6.0 either the top-level pool or the per-model map is sufficient, and each main pool renders once.
 
-**agy.** A running agy binds a loopback listener that answers the quota
-summary with no token and no CSRF. Ports are discovered from the operating
-system's own tables: on Linux by joining the agy process's socket inodes
-against the loopback listeners in `/proc/net/tcp`, on Windows by a hidden
-PowerShell query whose script returns nothing but port numbers. Candidates are
-tried in order; the HTTPS listener rejects plain HTTP and so excludes itself.
-The wire format is proto3 JSON, which omits default values — an absent
-remaining fraction means nothing is left, never "unknown, call it fine". The
-reading is stamped with the identity present when the refresh began, so a
-later sign-in cannot relabel a saved snapshot.
+**Antigravity.** On Windows the native daemon registers a PID, loopback port and local CSRF token. qhud validates the executable and port ownership before sending that token, calls the same process for identity before and after its quota, and discards a reading if the account or plan changes mid-refresh. The account’s `userTier.name` supplies the optional native plan name. For the CLI path, agy’s listener requires no token. Linux matches socket inodes using `/proc/net/tcp`. A CLI snapshot retains the identity captured at refresh time.
 
 ## 15. Parsing and the snapshot shape
 
@@ -643,7 +622,9 @@ per-module test counts. Dated whole-suite evidence lives in TEST_PLAN.
 | `src-tauri/src/registry.rs` | The operator's registry, placeholder rules, dismissal writes |
 | `src-tauri/src/usage_cache.rs` | The snapshot shape, Claude's on-disk cache, lenient wire numbers, freshness |
 | `src-tauri/src/claude_usage.rs` | Claude explicit refresh, per config directory |
-| `src-tauri/src/codex_usage.rs` | Codex workspaces, scope guard, duration labels, app-server fallback |
+| `src-tauri/src/codex_usage.rs` | Workspace discovery, scope checks, duration labels and per-home app-server reads |
+| `src-tauri/src/connections.rs` | Profile matching, dated seat validation and local readiness |
+| `src-tauri/src/provider_health.rs` | Local health and bounded explicit-refresh diagnostics |
 | `src-tauri/src/agy_usage.rs` | agy loopback RPC and port discovery on both platforms |
 | `src-tauri/src/fetched_store.rs` | Refresh persistence, atomic writes, concurrent-write lock |
 | `src-tauri/src/frame_guard.rs` | Pixel sampling and the heal ladder (Linux) |
@@ -654,6 +635,8 @@ per-module test counts. Dated whole-suite evidence lives in TEST_PLAN.
 | `ui/app.js` | The whole frontend: render pipeline, strip, tiles, fetch states, breadcrumbs, geometry, zoom |
 | `ui/style.css` | Widget styling, gauge severity, scrolling, staleness marks |
 | `ui/index.html` | Skeleton |
+
+Passive reads also check provider prerequisites. A configured profile without a matching credential can have a connection row with empty quota values. Plan guidance is a reviewed, bundled catalog in `ui/model-guide.js`. Expanding it reads local plan and seat facts without contacting a provider.
 
 Where to look first when something is wrong:
 

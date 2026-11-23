@@ -39,6 +39,48 @@ pub struct KnownAccount {
     pub plan: Option<String>,
 }
 
+/// A requested login/scope, including profiles that have never signed in.
+/// Directory paths stay in the local registry and are not part of HUD status.
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+pub struct ConnectionProfile {
+    pub key: String,
+    pub provider: String,
+    pub label: String,
+    pub email: String,
+    pub scope: String,
+    pub directory: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub expected_org_id: Option<String>,
+    /// Manually verified display metadata, independent of CLI authentication
+    /// and provider quota. Validated against the requested login and workspace
+    /// by `connections` before it can reach the HUD.
+    #[serde(
+        default,
+        deserialize_with = "deserialize_seat_annotation",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub seat_annotation: Option<SeatAnnotation>,
+}
+
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+pub struct SeatAnnotation {
+    pub email: String,
+    pub workspace_id: String,
+    pub workspace_name: String,
+    pub seat_type: String,
+    pub verified_at_ms: u64,
+}
+
+fn deserialize_seat_annotation<'de, D>(deserializer: D) -> Result<Option<SeatAnnotation>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    // A malformed optional note must not erase otherwise usable profiles or
+    // registry settings. Semantic and timestamp checks happen at display time.
+    let value = serde_json::Value::deserialize(deserializer)?;
+    Ok(serde_json::from_value(value).ok())
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct Registry {
     pub labels: HashMap<String, String>,
@@ -59,6 +101,9 @@ pub struct Registry {
     /// in via `CODEX_HOME=<dir> codex`. Each contains its own
     /// `auth.json` (+ parked siblings). `~` expands to $HOME.
     pub codex_homes: Vec<String>,
+    /// Desired connections are separate from verified account identities.
+    /// Adding a profile never activates its credential directory by itself.
+    pub profiles: Vec<ConnectionProfile>,
 }
 
 /// Expands a single leading `~/` (or bare `~`) against the given home.
@@ -107,6 +152,8 @@ pub fn parse(json: &str) -> Registry {
         claude_config_dirs: Vec<String>,
         #[serde(default)]
         codex_homes: Vec<String>,
+        #[serde(default)]
+        profiles: Vec<ConnectionProfile>,
     }
     let raw: Raw = serde_json::from_str(json).unwrap_or_default();
     Registry {
@@ -117,6 +164,7 @@ pub fn parse(json: &str) -> Registry {
         forgotten: raw.forgotten.into_iter().collect(),
         claude_config_dirs: raw.claude_config_dirs,
         codex_homes: raw.codex_homes,
+        profiles: raw.profiles,
     }
 }
 
@@ -240,6 +288,81 @@ mod tests {
         assert!(parse("not json").known.is_empty());
         assert!(parse("{}").forgotten.is_empty());
         assert!(parse("{}").claude_config_dirs.is_empty());
+        assert!(parse("{}").profiles.is_empty());
+    }
+
+    #[test]
+    fn requested_profiles_do_not_activate_credentials_or_invent_identities() {
+        let reg = parse(
+            r#"{"profiles":[{"key":"work-team","provider":"claude",
+            "label":"Work team","email":"work@example.com","scope":"team",
+            "directory":"~/private/work-team","expected_org_id":"org-team"}]}"#,
+        );
+        assert_eq!(reg.profiles.len(), 1);
+        assert_eq!(reg.profiles[0].expected_org_id.as_deref(), Some("org-team"));
+        assert!(reg.known.is_empty());
+        assert!(reg.claude_config_dirs.is_empty());
+        assert!(reg.codex_homes.is_empty());
+        let legacy = parse(
+            r#"{"profiles":[{"key":"personal","provider":"codex",
+            "label":"Personal","email":"one@example.com","scope":"personal",
+            "directory":"~/.codex"}]}"#,
+        );
+        assert!(legacy.profiles[0].expected_org_id.is_none());
+        assert!(legacy.profiles[0].seat_annotation.is_none());
+        assert!(
+            serde_json::to_value(&legacy.profiles[0])
+                .unwrap()
+                .get("seat_annotation")
+                .is_none()
+        );
+    }
+
+    #[test]
+    fn seat_annotation_round_trips_without_activating_a_profile() {
+        let reg = parse(
+            r#"{"profiles":[{"key":"team","provider":"codex","label":"Team",
+                "email":"one@example.com","scope":"team","directory":"~/isolated",
+                "seat_annotation":{"email":"one@example.com","workspace_id":"workspace-1",
+                    "workspace_name":"Example","seat_type":"standard","verified_at_ms":7}}]}"#,
+        );
+        assert_eq!(reg.profiles.len(), 1);
+        let annotation = reg.profiles[0].seat_annotation.as_ref().unwrap();
+        assert_eq!(annotation.seat_type, "standard");
+        assert_eq!(annotation.workspace_id, "workspace-1");
+        assert_eq!(annotation.verified_at_ms, 7);
+        let serialized = serde_json::to_string(&reg.profiles[0]).unwrap();
+        let decoded: ConnectionProfile = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(decoded, reg.profiles[0]);
+        assert!(reg.codex_homes.is_empty());
+        assert!(reg.known.is_empty());
+    }
+
+    #[test]
+    fn malformed_optional_seat_annotation_preserves_other_registry_data() {
+        for annotation in [
+            serde_json::Value::Null,
+            serde_json::json!("standard"),
+            serde_json::json!({"seat_type": "standard"}),
+            serde_json::json!({
+                "email": "one@example.com", "workspace_id": "workspace-1",
+                "workspace_name": "Example", "seat_type": "standard", "verified_at_ms": -1
+            }),
+        ] {
+            let doc = serde_json::json!({
+                "labels": {"codex:one": "Keep me"},
+                "profiles": [{"key": "team", "provider": "codex", "label": "Team",
+                    "email": "one@example.com", "scope": "team", "directory": "~/isolated",
+                    "seat_annotation": annotation}]
+            });
+            let reg = parse(&doc.to_string());
+            assert_eq!(reg.profiles.len(), 1);
+            assert!(reg.profiles[0].seat_annotation.is_none());
+            assert_eq!(
+                reg.labels.get("codex:one").map(String::as_str),
+                Some("Keep me")
+            );
+        }
     }
 
     #[test]

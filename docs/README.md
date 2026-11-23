@@ -10,11 +10,7 @@
 qhud's complete documentation is available in all three languages, from first
 installation to architecture, decisions, and release history.
 
-The latest download is v0.7.4. It fixes the narrow system-strip overlap, moves
-to Tauri 2.12.1 and `sysinfo` 0.38.4, and declares Rust 1.90 as the minimum for
-source builds. Read the [v0.7.4 release notes](05-ops/releases/v0.7.4.md) for the
-exact scope and verification limits. Earlier research and dated field checks keep their
-original scope.
+v0.8.0 adds Windows provider connection status, personal and team account profiles, remaining reset credits, and model guidance by plan. See the [v0.8.0 release notes](05-ops/releases/v0.8.0.md) for the changes and verification scope. Earlier field checks describe their own release.
 
 ## Start using qhud
 
@@ -64,6 +60,7 @@ product behavior. Start with the specification and dashboard for the current sta
 | [v0.7.2 release notes](05-ops/releases/v0.7.2.md) | Reset countdown kept when a pane reading has none; first release with the post-v0.7.1 security work. |
 | [v0.7.3 release notes](05-ops/releases/v0.7.3.md) | Automatic Pro 100/200/500 plan names and the security, dependency, release-workflow, and translation work after v0.7.2. |
 | [v0.7.4 release notes](05-ops/releases/v0.7.4.md) | Narrow system-strip fix, Tauri 2.12.1, `sysinfo` 0.38.4 and Rust 1.90 as the declared minimum. |
+| [v0.8.0 release notes](05-ops/releases/v0.8.0.md) | Connection status, multiple accounts, reset credits, and the supported-model guide. |
 
 ## Languages and source fidelity
 

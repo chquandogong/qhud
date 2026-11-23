@@ -96,3 +96,59 @@ test("Codex plan labels keep explicit overrides and hide unknown wire values", (
   assert.equal(plans.codexPlanDisplay(null, "future_plan"), null);
   assert.equal(plans.codexPlanDisplay(null, null), null);
 });
+
+test("Antigravity displays the account's supplied plan name without inferring it from usage or upgrade prompts", () => {
+  assert.equal(plans.antigravityPlanDisplay(null, { plan_name: "Google AI Pro" }), "Google AI Pro");
+  assert.equal(plans.antigravityPlanDisplay(null, { plan_name: " Google AI Ultra " }), "Google AI Ultra");
+  assert.equal(plans.antigravityPlanDisplay(null, { five_hour: { pct: 20 }, upgrade_prompt: "Google AI Pro" }), null);
+  for (const plan_name of [null, undefined, "", "   ", "Google\nAI Pro", 12]) {
+    assert.equal(plans.antigravityPlanDisplay(null, { plan_name }), null);
+  }
+});
+
+test("Antigravity fresh plan data replaces or clears only its matched snapshot and preserves explicit overrides", () => {
+  const saved = { account_id: "one@example.com", plan_name: "Google AI Pro" };
+  assert.equal(plans.antigravityPlanDisplay(null, saved, { plan_name: "Google AI Ultra" }), "Google AI Ultra");
+  assert.equal(plans.antigravityPlanDisplay(null, saved, { plan_name: null }), null);
+  assert.equal(plans.antigravityPlanDisplay(null, saved, {}), null);
+  assert.equal(plans.antigravityPlanDisplay(" Custom plan ", saved, {}), " Custom plan ");
+  assert.equal(plans.antigravityPlanDisplay(null, { account_id: "other@example.com" }), null);
+});
+
+test("Claude personal usage grades show Ultra or Max 5x from known metadata", () => {
+  assert.equal(plans.claudePlanDisplay(null, "claude_max", [{ kind: "org", tier: "default_claude_max_20x" }]), "Ultra");
+  assert.equal(plans.claudePlanDisplay(null, "claude_max", [{ kind: "org", tier: "default_claude_max_5x" }]), "Max 5x");
+  assert.equal(plans.claudePlanDisplay(null, "claude_max", [{ kind: "user", tier: "default_claude_max_20x" }]), "Ultra");
+  assert.equal(plans.claudePlanDisplay(null, "claude_ultra"), "Ultra");
+  assert.equal(plans.claudePlanDisplay(null, " ultra "), "Ultra");
+});
+
+test("Claude usage grade preserves personal tier precedence and explicit overrides", () => {
+  const personalUltra = [{ kind: "user", tier: "default_claude_max_20x" }];
+  assert.equal(plans.claudePlanDisplay(null, "claude_team", personalUltra), "Ultra");
+  assert.equal(plans.claudePlanDisplay(null, "claude_max", [{ kind: "org", tier: "default_claude_max_5x" }, ...personalUltra]), "Max 5x");
+  assert.equal(plans.claudePlanDisplay(" Research seat ", "claude_max", personalUltra), " Research seat ");
+  assert.equal(plans.claudePlanDisplay("", "claude_max", personalUltra), "Ultra");
+  assert.equal(plans.claudePlanDisplay(null, "future_org", personalUltra), null);
+  assert.equal(plans.claudePlanDisplay(null, null, personalUltra), null);
+});
+
+test("Team and Enterprise badges use explicit member grade while preserving the organization plan", () => {
+  const tiers = [{ kind: "org", tier: "default_raven" }, { kind: "user", tier: "default_claude_max_5x" }];
+  assert.equal(plans.claudePlanDisplay(null, "claude_team", tiers), "Max 5x");
+  assert.equal(plans.claudePlanDisplay(null, "claude_enterprise", tiers), "Max 5x");
+  assert.equal(plans.claudeOrganizationPlanLabel("claude_team"), "Team");
+  assert.equal(plans.claudeOrganizationPlanLabel("claude_enterprise"), "Enterprise");
+  assert.equal(plans.claudeOrganizationPlanLabel("claude_max"), null);
+  assert.equal(plans.claudeOrganizationPlanLabel("future_org"), null);
+  assert.equal(plans.claudePlanDisplay(null, "claude_team", [{ kind: "org", tier: "default_claude_max_20x" }, tiers[1]]), "Max 5x");
+  assert.equal(plans.claudePlanDisplay("Custom seat", "claude_team", tiers), "Custom seat");
+});
+
+test("unknown Team member grades are not inferred from organization tiers", () => {
+  const tiers = [{ kind: "org", tier: "default_claude_max_20x" }, { kind: "user", tier: "future_tier" }];
+  assert.equal(plans.claudePlanDisplay(null, "claude_team", tiers), "Team");
+  assert.equal(plans.claudePlanDisplay(null, "claude_enterprise", tiers), "Enterprise");
+  assert.equal(plans.claudePlanDisplay(null, "claude_team", [tiers[0]]), "Team");
+  assert.equal(plans.claudePlanDisplay(null, "claude_team", [{ kind: "user", tier: "toString" }]), "Team");
+});

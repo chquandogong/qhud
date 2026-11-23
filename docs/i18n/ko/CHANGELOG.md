@@ -16,6 +16,16 @@ qhud의 모든 주요 변경 사항을 기록합니다. 형식: [Keep a Changelo
 
 ## [미출시]
 
+## [0.8.0] — 2026-11-23
+
+<!-- qhud:anchor -->
+<a id="account-connections-and-usage"></a>
+
+### 계정 연결과 사용량
+
+- 공급자별 조회 준비 상태, 인증 만료, 조회 오류 및 저장값의 경과 시간을 표시합니다. Codex·Claude의 개인·팀 프로필과 Windows 네이티브 Antigravity 사용량 조회를 추가했습니다.
+- 공급자가 보고한 초기화권, Claude 사용 등급, Google AI Pro 배지를 표시합니다. 요금제와 좌석별 모델 안내에는 기준 날짜를, 수동으로 확인한 Codex 팀 좌석에는 확인 날짜를 표시합니다.
+
 <!-- qhud:anchor -->
 <a id="documentation-and-verification"></a>
 

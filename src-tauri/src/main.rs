@@ -5,12 +5,14 @@ mod accounts;
 mod agy_usage;
 mod claude_usage;
 mod codex_usage;
+mod connections;
 mod demo;
 mod diag;
 mod fetched_store;
 mod frame_guard;
 mod paths;
 mod poll;
+mod provider_health;
 mod registry;
 mod system_metrics;
 mod usage_cache;
@@ -252,7 +254,18 @@ fn ui_event(event: UiDiagnostic) {
 #[tauri::command]
 async fn fetch_codex_workspaces() -> Result<Vec<codex_usage::WorkspaceUsage>, String> {
     eprintln!("qhud ui: codex-workspace-fetch requested");
+    provider_health::begin_refresh("codex", view::now_ms());
     let out = codex_usage::fetch_all_workspaces().await;
+    provider_health::finish_refresh(
+        "codex",
+        view::now_ms(),
+        out.as_ref().map_err(String::as_str).and_then(|rows| {
+            rows.iter()
+                .any(|row| row.active)
+                .then_some(())
+                .ok_or("Default Codex account usage unavailable; another account succeeded")
+        }),
+    );
     match &out {
         Ok(w) => {
             eprintln!("qhud: codex fetch ok ({} workspaces)", w.len());
@@ -274,8 +287,19 @@ async fn fetch_codex_workspaces() -> Result<Vec<codex_usage::WorkspaceUsage>, St
 #[tauri::command]
 async fn fetch_claude_usage() -> Result<Vec<claude_usage::AccountFetch>, String> {
     eprintln!("qhud ui: claude-usage-refresh requested");
+    provider_health::begin_refresh("claude", view::now_ms());
     // fetch_all records each success to the fetched store itself.
     let out = claude_usage::fetch_all(view::now_ms()).await;
+    provider_health::finish_refresh(
+        "claude",
+        view::now_ms(),
+        out.as_ref().map_err(String::as_str).and_then(|rows| {
+            rows.iter()
+                .any(|row| row.key == "default")
+                .then_some(())
+                .ok_or("Default Claude account usage unavailable; another account succeeded")
+        }),
+    );
     match &out {
         Ok(accounts) => eprintln!("qhud: claude usage ok ({} accounts)", accounts.len()),
         Err(e) => eprintln!("qhud: claude usage failed: {e}"),
@@ -290,7 +314,13 @@ async fn fetch_claude_usage() -> Result<Vec<claude_usage::AccountFetch>, String>
 #[tauri::command]
 async fn fetch_agy_usage() -> Result<crate::usage_cache::CachedUsage, String> {
     eprintln!("qhud ui: agy-usage-refresh requested");
+    provider_health::begin_refresh("agy", view::now_ms());
     let out = agy_usage::fetch(view::now_ms()).await;
+    provider_health::finish_refresh(
+        "agy",
+        view::now_ms(),
+        out.as_ref().map(|_| ()).map_err(String::as_str),
+    );
     match &out {
         Ok(u) => {
             eprintln!("qhud: agy usage ok ({} scoped pools)", u.scoped.len());
@@ -440,6 +470,37 @@ fn main() {
 
     // Diagnostic mode (before single-instance, no GTK): print one
     // observe payload — exactly what the widget renders — and exit.
+    if std::env::args().any(|a| a == "--provider-health" || a == "--refresh-health") {
+        if std::env::args().any(|a| a == "--refresh-health") {
+            let runtime = match tokio::runtime::Runtime::new() {
+                Ok(runtime) => runtime,
+                Err(error) => {
+                    eprintln!("qhud: async runtime start: {}", diag::io(&error));
+                    std::process::exit(1);
+                }
+            };
+            runtime.block_on(async {
+                let codex = tokio::spawn(fetch_codex_workspaces());
+                let claude = tokio::spawn(fetch_claude_usage());
+                let agy = tokio::spawn(fetch_agy_usage());
+                let _ = codex.await;
+                let _ = claude.await;
+                let _ = agy.await;
+            });
+        }
+        match serde_json::to_string_pretty(&poll::provider_health_snapshot()) {
+            Ok(json) => println!("{json}"),
+            Err(error) => {
+                eprintln!(
+                    "qhud: provider health serialization: {}",
+                    diag::json(&error)
+                );
+                std::process::exit(1);
+            }
+        }
+        return;
+    }
+
     if std::env::args().any(|a| a == "--dump") {
         match poll::dump_once() {
             Some(json) => println!("{json}"),

@@ -136,12 +136,77 @@ fn enrich_payload(mut payload: view::Payload) -> view::Payload {
     view::attach_accounts(&mut payload, &active);
     attach_identity_rows(&mut payload, &active);
     view::attach_placeholders(&mut payload, &registry::load(), &active);
+    let now = view::now_ms();
+    payload.provider_health = crate::provider_health::local_checks(now);
+    payload
+        .provider_health
+        .push(crate::provider_health::decorate(
+            crate::agy_usage::local_health(now),
+        ));
+    for health in &mut payload.provider_health {
+        // A success time describes the actual visible snapshot, never a
+        // previous account's success or a credential-file modification time.
+        health.last_success_at_ms = provider_success_at(
+            &payload.quotas,
+            health.provider,
+            default_account(&active, health.provider),
+        );
+    }
+    payload.configured_connections =
+        crate::connections::statuses(now, &payload.quotas, &payload.codex_workspaces);
     payload.summary.max_5h_pct = payload
         .quotas
         .iter()
         .filter_map(|q| q.h5.as_ref().map(|g| g.pct))
         .max();
     payload
+}
+
+fn provider_success_at(
+    quotas: &[view::ProviderQuota],
+    provider: &str,
+    default: Option<&accounts::AccountLabel>,
+) -> Option<u64> {
+    quotas
+        .iter()
+        .filter(|row| row.provider == provider)
+        .filter(|row| {
+            let Some(owner) = row.account.as_ref() else {
+                return false;
+            };
+            if provider == "agy" {
+                return true;
+            }
+            let Some(current) = default else { return false };
+            owner.config_dir.is_none()
+                && owner
+                    .account_id
+                    .as_deref()
+                    .or(owner.email.as_deref())
+                    .is_some_and(|id| !id.is_empty())
+                && owner.org_id == current.org_id
+                && owner.account_id == current.account_id
+                && crate::codex_usage::same_login_workspace(
+                    owner.account_id.as_deref().unwrap_or(""),
+                    owner.email.as_deref(),
+                    current.account_id.as_deref().unwrap_or(""),
+                    current.email.as_deref(),
+                )
+        })
+        .filter(|row| {
+            row.h5.is_some()
+                || row.d7.is_some()
+                || !row.scoped.is_empty()
+                || row.extra.is_some()
+                || row.reset_credits.is_some()
+        })
+        .filter_map(|row| row.cache_fetched_at_ms)
+        .max()
+}
+
+/// Bounded connection diagnostics, without account labels, tokens or paths.
+pub fn provider_health_snapshot() -> Vec<crate::provider_health::ProviderHealth> {
+    enrich_payload(local_payload()).provider_health
 }
 
 /// An account with no saved quota still needs a row so its refresh
@@ -156,6 +221,8 @@ fn attach_identity_rows(payload: &mut view::Payload, active: &[(String, accounts
             continue;
         }
         let row = view::ProviderQuota {
+            reset_credits: None,
+            plan_name: None,
             provider: provider.clone(),
             h5: None,
             d7: None,
@@ -199,10 +266,7 @@ fn attach_snapshots(payload: &mut view::Payload, active: &[(String, accounts::Ac
     // agy has no on-disk provider cache; the only snapshot is qhud's own
     // last loopback read. Legacy snapshots without an account identity
     // cannot safely be attributed after a login switch.
-    if let Some((cache, origin)) = account_snapshot(None, store.agy, default_account(active, "agy"))
-    {
-        view::attach_usage_cache(payload, "agy", Some(&cache), origin);
-    }
+    attach_agy_snapshot(payload, store.agy, default_account(active, "agy"));
     for (provider, acct) in active {
         if provider != "claude" {
             continue;
@@ -216,6 +280,35 @@ fn attach_snapshots(payload: &mut view::Payload, active: &[(String, accounts::Ac
         view::attach_extra_account(payload, acct.clone(), snap.as_ref().map(|(c, o)| (c, *o)));
     }
     attach_codex_snapshot(payload, store.codex, default_account(active, "codex"));
+}
+
+/// The native Antigravity app does not maintain Gemini CLI's identity file.
+/// Retain the identity returned by its quota RPC as a dated historical row;
+/// never relabel that quota with a different CLI login found on this machine.
+fn attach_agy_snapshot(
+    payload: &mut view::Payload,
+    snapshot: Option<usage_cache::CachedUsage>,
+    current: Option<&accounts::AccountLabel>,
+) {
+    let Some(snapshot) = snapshot else { return };
+    let Some(identity) = snapshot.account_id.as_deref().filter(|id| !id.is_empty()) else {
+        return;
+    };
+    if current.and_then(|a| a.account_id.as_deref().or(a.email.as_deref())) == Some(identity) {
+        view::attach_usage_cache(payload, "agy", Some(&snapshot), "fetched");
+        return;
+    }
+    let mut saved = view::payload(&[]);
+    view::attach_usage_cache(&mut saved, "agy", Some(&snapshot), "saved-account");
+    for row in &mut saved.quotas {
+        row.account = Some(accounts::AccountLabel {
+            account_id: Some(identity.to_string()),
+            email: identity.contains('@').then(|| identity.to_string()),
+            display_name: Some(identity.to_string()),
+            ..Default::default()
+        });
+    }
+    payload.quotas.extend(saved.quotas);
 }
 
 fn default_account<'a>(
@@ -238,8 +331,10 @@ fn account_snapshot(
     let identity = account
         .and_then(|a| a.account_id.as_deref().or(a.email.as_deref()))
         .filter(|id| !id.is_empty())?;
-    let matches =
-        |snapshot: &usage_cache::CachedUsage| snapshot.account_id.as_deref() == Some(identity);
+    let matches = |snapshot: &usage_cache::CachedUsage| {
+        snapshot.account_id.as_deref() == Some(identity)
+            && snapshot.org_id.as_deref() == account.and_then(|a| a.org_id.as_deref())
+    };
     usage_cache::fresher(disk.filter(matches), fetched.filter(matches))
 }
 
@@ -252,9 +347,17 @@ fn attach_codex_snapshot(
     account: Option<&accounts::AccountLabel>,
 ) {
     let current_id = account.and_then(|a| a.account_id.as_deref());
+    let current_email = account.and_then(|a| a.email.as_deref());
     if let Some(saved) = saved.as_mut() {
         for workspace in &mut saved.workspaces {
-            workspace.active = current_id == Some(workspace.account_id.as_str());
+            workspace.active = current_id.is_some_and(|id| {
+                crate::codex_usage::same_login_workspace(
+                    id,
+                    current_email,
+                    &workspace.account_id,
+                    workspace.email.as_deref(),
+                )
+            });
         }
     }
     view::attach_fetched_codex(payload, saved.as_ref());
@@ -454,6 +557,9 @@ mod tests {
 
     fn snapshot(id: Option<&str>, fetched_at_ms: u64, pct: u8) -> usage_cache::CachedUsage {
         usage_cache::CachedUsage {
+            org_id: None,
+            plan_name: None,
+            reset_credits: None,
             fetched_at_ms,
             account_id: id.map(str::to_string),
             five_hour: Some(usage_cache::CachedWindow {
@@ -469,14 +575,36 @@ mod tests {
     #[test]
     fn switching_accounts_does_not_relabel_the_previous_logins_snapshot() {
         let current = account("account-b", None);
-        let old_fetch = snapshot(Some("account-a"), 200, 90);
+        let mut old_fetch = snapshot(Some("account-a"), 200, 90);
+        old_fetch.plan_name = Some("Previous account plan".into());
         let current_cache = snapshot(Some("account-b"), 100, 12);
 
         assert!(account_snapshot(None, Some(old_fetch.clone()), Some(&current)).is_none());
         let (selected, origin) =
             account_snapshot(Some(current_cache.clone()), Some(old_fetch), Some(&current)).unwrap();
         assert_eq!(selected, current_cache);
+        assert!(selected.plan_name.is_none());
         assert_eq!(origin, "cache");
+    }
+
+    #[test]
+    fn same_claude_account_in_different_organizations_keeps_separate_usage() {
+        let mut current = account("same-login", None);
+        current.org_id = Some("team-org".into());
+        let mut personal = snapshot(Some("same-login"), 200, 90);
+        personal.org_id = Some("personal-org".into());
+        let mut team = snapshot(Some("same-login"), 100, 12);
+        team.org_id = Some("team-org".into());
+        let (selected, origin) =
+            account_snapshot(Some(team.clone()), Some(personal.clone()), Some(&current)).unwrap();
+        assert_eq!(selected, team);
+        assert_eq!(origin, "cache");
+        assert!(account_snapshot(None, Some(personal.clone()), Some(&current)).is_none());
+        current.org_id = None;
+        assert!(
+            account_snapshot(None, Some(personal), Some(&current)).is_none(),
+            "unknown current organization must not adopt a known organization's snapshot"
+        );
     }
 
     #[test]
@@ -500,12 +628,74 @@ mod tests {
     }
 
     #[test]
+    fn native_antigravity_snapshot_keeps_its_owner_without_cli_identity() {
+        let mut payload = local_payload();
+        attach_agy_snapshot(
+            &mut payload,
+            Some(snapshot(Some("native@example.invalid"), 200, 12)),
+            None,
+        );
+        assert_eq!(payload.quotas.len(), 1);
+        let row = &payload.quotas[0];
+        assert_eq!(row.origin, Some("saved-account"));
+        assert_eq!(
+            row.account.as_ref().unwrap().account_id.as_deref(),
+            Some("native@example.invalid")
+        );
+        assert_eq!(row.cache_fetched_at_ms, Some(200));
+        assert_eq!(row.h5.as_ref().unwrap().pct, 12);
+    }
+
+    #[test]
+    fn native_antigravity_snapshot_is_not_relabelled_with_gemini_cli_login() {
+        let mut payload = local_payload();
+        let cli = account("different-cli-account", None);
+        let mut saved = snapshot(Some("native@example.invalid"), 200, 12);
+        saved.plan_name = Some("Google AI Pro".into());
+        attach_agy_snapshot(&mut payload, Some(saved), Some(&cli));
+        let active = [("agy".into(), cli)];
+        view::attach_accounts(&mut payload, &active);
+        assert_eq!(
+            payload.quotas[0]
+                .account
+                .as_ref()
+                .unwrap()
+                .account_id
+                .as_deref(),
+            Some("native@example.invalid")
+        );
+        assert_eq!(payload.quotas[0].origin, Some("saved-account"));
+        assert_eq!(
+            payload.quotas[0].plan_name.as_deref(),
+            Some("Google AI Pro")
+        );
+        attach_identity_rows(&mut payload, &active);
+        assert_eq!(payload.quotas.len(), 2);
+        let current = payload
+            .quotas
+            .iter()
+            .find(|row| row.account.as_ref() == Some(&active[0].1))
+            .unwrap();
+        assert!(
+            current.plan_name.is_none(),
+            "the current CLI identity must not inherit the saved account's plan"
+        );
+        let mut unowned = local_payload();
+        let mut unidentified = snapshot(None, 200, 90);
+        unidentified.plan_name = Some("Google AI Pro".into());
+        attach_agy_snapshot(&mut unowned, Some(unidentified), None);
+        assert!(unowned.quotas.is_empty());
+    }
+
+    #[test]
     fn switching_codex_login_keeps_previous_workspace_out_of_current_gauges() {
         let mut payload = local_payload();
         let current = account("workspace-b", None);
         let saved = fetched_store::CodexFetched {
             fetched_at_ms: 200,
             workspaces: vec![crate::codex_usage::WorkspaceUsage {
+                email: None,
+                reset_credits: None,
                 account_id: "workspace-a".into(),
                 name: Some("Previous workspace".into()),
                 plan_type: None,
@@ -535,6 +725,116 @@ mod tests {
         );
         assert!(original.codex_workspaces[0].active);
         assert_eq!(original.quotas[0].h5.as_ref().unwrap().pct, 90);
+    }
+
+    #[test]
+    fn same_codex_workspace_for_two_emails_has_only_one_active_seat() {
+        use crate::codex_usage::{UsageWindow, WorkspaceUsage};
+        let mut current = account("shared-team", None);
+        current.email = Some("second@example.test".into());
+        let workspace = |email: &str, percent, resets| WorkspaceUsage {
+            account_id: "shared-team".into(),
+            email: Some(email.into()),
+            active: true, // saved flags from prior logins are not authoritative
+            windows: vec![UsageWindow {
+                label: "weekly".into(),
+                used_percent: percent,
+                reset_unix: None,
+                scope: None,
+            }],
+            reset_credits: Some(resets),
+            ..Default::default()
+        };
+        let saved = fetched_store::CodexFetched {
+            fetched_at_ms: 200,
+            workspaces: vec![
+                workspace("first@example.test", 90, 3),
+                workspace("SECOND@example.test", 12, 0),
+            ],
+        };
+        let mut payload = local_payload();
+        attach_codex_snapshot(&mut payload, Some(saved.clone()), Some(&current));
+        view::attach_accounts(&mut payload, &[("codex".into(), current.clone())]);
+        assert_eq!(
+            payload
+                .codex_workspaces
+                .iter()
+                .filter(|workspace| workspace.active)
+                .count(),
+            1
+        );
+        assert!(!payload.codex_workspaces[0].active);
+        assert!(payload.codex_workspaces[1].active);
+        assert_eq!(payload.quotas[0].account.as_ref(), Some(&current));
+        assert_eq!(payload.quotas[0].d7.as_ref().unwrap().pct, 12);
+        assert_eq!(payload.quotas[0].reset_credits, Some(0));
+        assert_eq!(payload.codex_workspaces[0].windows[0].used_percent, 90);
+        assert_eq!(payload.codex_workspaces[0].reset_credits, Some(3));
+
+        // A legacy/unknown current email is not proof of either seat.
+        current.email = None;
+        let mut unknown = local_payload();
+        attach_codex_snapshot(&mut unknown, Some(saved), Some(&current));
+        assert!(
+            unknown
+                .codex_workspaces
+                .iter()
+                .all(|workspace| !workspace.active)
+        );
+        assert!(
+            unknown
+                .quotas
+                .iter()
+                .all(|row| row.h5.is_none() && row.d7.is_none() && row.reset_credits.is_none())
+        );
+    }
+
+    #[test]
+    fn default_health_success_ignores_another_email_or_organization() {
+        let mut current = account("shared-workspace", None);
+        current.email = Some("default@example.test".into());
+        let mut payload = local_payload();
+        let mut cache = snapshot(Some("shared-workspace"), 100, 12);
+        cache.five_hour = None;
+        cache.reset_credits = Some(0);
+        view::attach_usage_cache(&mut payload, "codex", Some(&cache), "fetched");
+        view::attach_accounts(&mut payload, &[("codex".into(), current.clone())]);
+        let mut other = payload.quotas[0].clone();
+        other.cache_fetched_at_ms = Some(200);
+        other.account.as_mut().unwrap().email = Some("other@example.test".into());
+        payload.quotas.push(other);
+        assert_eq!(
+            provider_success_at(&payload.quotas, "codex", Some(&current)),
+            Some(100)
+        );
+        assert_eq!(
+            provider_success_at(&payload.quotas[1..], "codex", Some(&current)),
+            None
+        );
+
+        for row in &mut payload.quotas {
+            row.provider = "claude".into();
+        }
+        current.org_id = Some("personal".into());
+        payload.quotas[0].account = Some(current.clone());
+        payload.quotas[1].account = Some(accounts::AccountLabel {
+            org_id: Some("team".into()),
+            ..current.clone()
+        });
+        assert_eq!(
+            provider_success_at(&payload.quotas, "claude", Some(&current)),
+            Some(100)
+        );
+        assert_eq!(
+            provider_success_at(&payload.quotas[1..], "claude", Some(&current)),
+            None
+        );
+        assert_eq!(provider_success_at(&payload.quotas, "claude", None), None);
+
+        // Native Antigravity has an explicit, dated saved owner even without
+        // Gemini CLI identity; retain that independent behavior.
+        payload.quotas[1].provider = "agy".into();
+        assert_eq!(provider_success_at(&payload.quotas, "agy", None), Some(200));
     }
 
     #[test]
@@ -578,6 +878,9 @@ mod tests {
         let mut payload = local_payload();
         let claude = account("claude-default", None);
         let snapshot = usage_cache::CachedUsage {
+            org_id: None,
+            plan_name: None,
+            reset_credits: None,
             fetched_at_ms: 1_700_000_000_000,
             account_id: Some("claude-default".into()),
             five_hour: Some(usage_cache::CachedWindow {

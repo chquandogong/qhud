@@ -165,6 +165,8 @@ pub fn payload() -> Payload {
             max_5h_pct: Some(88),
         },
         quotas,
+        provider_health: Vec::new(),
+        configured_connections: Vec::new(),
         panes,
         account_placeholders: Vec::new(),
         workspace_names: std::collections::HashMap::new(),

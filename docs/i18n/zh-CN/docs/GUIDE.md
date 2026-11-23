@@ -23,20 +23,20 @@
 | Windows x64 | 解压 ZIP，运行解压目录内的 `qhud.exe`。 | Microsoft Edge WebView2 Runtime。见 [Windows 设置](05-ops/WINDOWS.md)。 |
 | Linux x86_64 | 解压 tarball，安装版本目录内的二进制。 | GTK/WebKitGTK；参考系统为 Ubuntu 24.04。见 [Linux 运维](05-ops/RUNBOOK.md)。 |
 
-Linux v0.7.4 下载两个文件后：
+Linux v0.8.0 下载两个文件后：
 
 ```sh
-sha256sum -c qhud-v0.7.4-linux-x86_64.tar.gz.sha256
-tar -xzf qhud-v0.7.4-linux-x86_64.tar.gz
-install -Dm755 qhud-v0.7.4-linux-x86_64/qhud "$HOME/.local/bin/qhud"
+sha256sum -c qhud-v0.8.0-linux-x86_64.tar.gz.sha256
+tar -xzf qhud-v0.8.0-linux-x86_64.tar.gz
+install -Dm755 qhud-v0.8.0-linux-x86_64/qhud "$HOME/.local/bin/qhud"
 "$HOME/.local/bin/qhud"
 ```
 
 Windows 下载后，将显示的摘要与 `.sha256` 文件比较：
 
 ```powershell
-Get-FileHash -Algorithm SHA256 .\qhud-v0.7.4-windows-x86_64.zip
-Get-Content .\qhud-v0.7.4-windows-x86_64.zip.sha256
+Get-FileHash -Algorithm SHA256 .\qhud-v0.8.0-windows-x86_64.zip
+Get-Content .\qhud-v0.8.0-windows-x86_64.zip.sha256
 ```
 
 当前 release workflow 发布的压缩包还带 GitHub 构建来源证明。安装 GitHub CLI，将文件名替换为实际下载文件，验证压缩包本身而非 `.sha256` 配套文件：
@@ -58,7 +58,7 @@ sha256sum -c qhud-vX.Y.Z-sbom.cdx.json.sha256
 gh attestation verify ./qhud-vX.Y.Z-sbom.cdx.json --repo chquandogong/qhud
 ```
 
-使用各供应商自身 CLI 登录。qhud 读取现有账户信息，不替代供应商登录流程。启动 qhud 后按 ⟳ 获取用量。便携包不注册快捷方式或自动启动。
+Codex 和 Claude Code 使用各自的 CLI 登录。在 Windows 上，打开已登录的 Antigravity 原生应用，或保持 `agy` CLI 运行。启动 qhud 后点击供应商旁的 ⟳ 获取用量。便携包不注册快捷方式或自动启动。
 
 <!-- qhud:anchor -->
 <a id="read-the-widget"></a>
@@ -74,6 +74,42 @@ gh attestation verify ./qhud-vX.Y.Z-sbom.cdx.json --repo chquandogong/qhud
 - **零窗格**表示没有可用的受支持终端来源；仍可显示账户用量。
 
 缺少模型配额不等于用量为零。例如，只有当前 Codex 账户响应含有 Spark 5H/7D 限额时才显示它。刷新另一账户不能证明当前账户的限额。
+
+**重置券 N张**标签显示供应商明确提供的次数。
+Codex 使用官方 `rateLimitResetCredits.availableCount`；明确的 `0` 是有效值，
+字段缺失则保留为不可用。这与额外用量金额及重置倒计时不同；qhud 只显示次数，
+不会消耗重置券。若 Claude 用量响应没有提供手动重置次数，展开详情会说明信息
+不可用。不会根据重置日期、用量百分比或不同类型的重置选项推算虚构的次数。
+该次数同样适用所属账户行的快照时间。
+
+Claude 旧版个人 `claude_max` 元数据与 `default_claude_max_20x` 组合，依据
+[官方 Max 20x 更名](https://support.claude.com/en/articles/17728952-what-is-the-ultra-plan)
+显示为 **Ultra**；`default_claude_max_5x` 显示为 **Max 5x**。对于
+Team/Enterprise，主要标签按上述两种已知的用户等级显示成员的用量等级：
+**Max 5x** 或 **Ultra**。单独的个人/团队范围及展开详情中的
+**组织套餐：Team/Enterprise** 保留真实组织套餐。不会用组织等级替代未知的
+成员等级；未识别用户等级时，标签保留 Team/Enterprise。显式套餐覆盖仍优先。
+精确的 `claude_ultra` 或 `ultra` 元数据也显示为 Ultra；未知组织值不会被猜测。缺少的
+5H 限额不会显示，包括新的 Ultra 响应不再提供该窗口的情况。
+
+选择已识别套餐或席位标签旁的**支持的模型**，即可展开供应商说明。
+这些内容是于 **2026-11-23** 核对的官方套餐参考信息，不是对该账户模型权限或
+剩余配额的实时查询结果。请在供应商自己的模型选择器中，以当前登录的账户和
+工作区为准确认实际可选模型：
+
+- **Codex：**在 Codex CLI 中运行 `/model`。可用模型取决于账户、工作区权限和
+  客户端版本；仅凭 Team/Business 套餐名称不能确定成员的席位类型。
+  参见[官方 Codex 模型说明](https://developers.openai.com/codex/models)。
+- **Claude Code：**在终端或 Claude Desktop 的 Code 标签页中运行 `/model`。
+  Max、Ultra 套餐和 Team Premium 席位在套餐限额内包含 Fable 用量；
+  Team Standard 席位使用 Fable 需要用量额度。显示的 **Max 5x** 成员用量等级
+  本身不能证明该成员拥有 Premium 席位。参见
+  [Claude Code 模型配置](https://code.claude.com/docs/en/model-config)及
+  [Fable 使用资格与限额](https://support.claude.com/en/articles/15424964-claude-fable-models-on-your-plan)。
+- **Antigravity：**使用其模型选择器。付费 Google AI Pro 与试用订阅的模型权限
+  可能不同；部分模型要求付费订阅或符合特定条件的试用订阅。工作账户遵循组织的
+  访问规则，包括合作伙伴模型所需的管理员批准。参见
+  [Antigravity 套餐与模型条件](https://antigravity.google/pricing)。
 
 受支持 Linux 环境的会话卡片另提供状态、上下文压力、模型、推理力度、分支、工作目录和冲突指示。本版本不原生观测 Windows Terminal、PowerShell 或 WezTerm 标签页。
 
@@ -134,6 +170,8 @@ Windows 使用可执行文件路径，例如 `& '.\qhud.exe' --refresh-all`。�
 以下诊断独立运行：
 
 ```sh
+qhud --provider-health
+qhud --refresh-health
 qhud --dump
 qhud --system-dump
 qhud --claude-usage
@@ -216,15 +254,100 @@ try {
 Claude 行区分**账户和组织**。两个目录登录同一账户及组织，不会产生独立配额池。Antigravity 多账户支持未实现。`known` 账户列表由操作者维护，qhud 不自动学习。忽略占位行不会隐藏实时账户。
 
 <!-- qhud:anchor -->
+<a id="windows-personal-and-team-profiles"></a>
+
+### Windows 个人与团队配置档案
+
+若要同时显示两个邮箱在 Codex 和 Claude 中的个人与团队范围，可在
+`accounts.json` 的 `profiles` 中登记八个目标连接。登记只创建待连接显示项，
+不会生成凭据、切换应用登录或编造账户 ID。将以下合成示例中的邮箱与私有目录
+替换为自己的值，并将条目合并到现有配置：
+
+```json
+{
+  "profiles": [
+    { "key": "codex-first-personal", "provider": "codex", "label": "First personal", "email": "first@example.com", "scope": "personal", "directory": "~/qhud-accounts/codex-first" },
+    { "key": "codex-first-team", "provider": "codex", "label": "First team", "email": "first@example.com", "scope": "team", "directory": "~/qhud-accounts/codex-first" },
+    { "key": "codex-second-personal", "provider": "codex", "label": "Second personal", "email": "second@example.com", "scope": "personal", "directory": "~/qhud-accounts/codex-second" },
+    { "key": "codex-second-team", "provider": "codex", "label": "Second team", "email": "second@example.com", "scope": "team", "directory": "~/qhud-accounts/codex-second" },
+    { "key": "claude-first-personal", "provider": "claude", "label": "First personal", "email": "first@example.com", "scope": "personal", "directory": "~/qhud-accounts/claude-first-personal" },
+    { "key": "claude-first-team", "provider": "claude", "label": "First team", "email": "first@example.com", "scope": "team", "directory": "~/qhud-accounts/claude-first-team" },
+    { "key": "claude-second-personal", "provider": "claude", "label": "Second personal", "email": "second@example.com", "scope": "personal", "directory": "~/qhud-accounts/claude-second-personal" },
+    { "key": "claude-second-team", "provider": "claude", "label": "Second team", "email": "second@example.com", "scope": "team", "directory": "~/qhud-accounts/claude-second-team" }
+  ]
+}
+```
+
+一次 Codex 登录可以枚举该邮箱有权访问的个人与团队工作区，因此它的两个
+配置档案可以共享一个隔离的 Codex 主目录。Claude 则需要为选定的个人/团队
+组织分别认证。Claude 登录时既要选择正确邮箱，也要选择目标组织。需要锁定
+确切组织时，将已验证的 `expected_org_id` 加入配置档案，不要猜测。即使两个
+邮箱共享同一 Codex 团队工作区，也会按邮箱加工作区 ID 分开显示。
+
+在解压后的 Windows 包内含有 `qhud.exe` 的目录或源码仓库根目录打开 PowerShell。[连接脚本](../../../../scripts/Connect-Account.ps1)的 `-List` 参数可列出已注册的档案。使用 `-AllPending` 进行连接，或用 `-Profile codex-first-personal` 选择示例中的单个档案。
+
+```powershell
+.\scripts\Connect-Account.ps1 -List
+.\scripts\Connect-Account.ps1 -AllPending
+```
+
+脚本处理待连接的配置档案，并按供应商/目录组合去重，因此不会对共享的 Codex
+主目录重复登录。登录仍由用户在供应商自身流程中完成。脚本使用隔离的配置档案
+目录，保留默认 `~/.codex` 和 `~/.claude` 登录，不覆盖它们。之后刷新 qhud。
+未连接项以**需要连接 qhud**显示且不带数值；凭据过期、邮箱不符、组织不符也会明确
+显示。出现匹配的真实账户/工作区行后会替代待连接项。添加配置档案不会授予账户
+原本没有的个人或团队工作区访问权。
+
+Codex 团队配置档案还可以保存从工作区管理员 Members 页面单独确认的席位
+信息。即使尚需连接 qhud，也会显示为 **Standard · 网页确认** 或
+**Premium · 网页确认**。这是带日期的手动确认记录，不是自动更新的 API 值，
+也不能证明 qhud 已连接。工具提示和展开详情会显示来源及确认时间。只有邮箱
+和工作区 ID 都匹配时才会附加到用量行；该信息不会替代供应商的 Business 等
+实际套餐，qhud 也不会从套餐推断席位类型。
+
+<!-- qhud:anchor -->
 <a id="network-and-freshness"></a>
 
 ## 网络与新旧程度
 
+<!-- qhud:anchor -->
+<a id="windows-provider-connection-status"></a>
+
+### Windows 供应商连接状态
+
+即使用量尚不可用，Codex、Claude 和 Antigravity 也会显示。**可查询**表示已找到
+本地连接条件；**查询成功**表示显式刷新成功。展开供应商状态可查看数据来源、最后
+尝试、最后成功快照、可用的凭据过期时间及恢复操作。凭据过期指本地登录令牌，
+不是订阅到期。刷新失败后保留旧读数及其时间；缺失用量绝不表示为零。
+
+Codex 为当前账户使用已安装 CLI 的 `app-server`，并支持 Windows 的
+`Programs/OpenAI/Codex/bin` 安装路径。Claude 使用 Claude Code 登录；Desktop
+应用的登录不会更新已过期的 CLI 凭据。根据提示执行 `claude auth login` 后刷新
+qhud。qhud 不自动操作登录，也不自行交换 refresh token。
+
+Antigravity 支持现有 `agy` 监听器及正在运行的 Windows 原生应用的本地守护进程
+注册。连接验证进程和环回端口，将用量绑定到应用返回的账户。此本地接口可能随
+Antigravity 版本变化。若当前 CLI 身份不匹配保存结果，则标为**上次查询账户**，
+不声称它是应用当前的登录账户。若本地服务不可用，请启动/打开 Antigravity 后刷新。
+
+Antigravity 套餐标签使用所查询账户原生的 `userTier.name`，例如
+**Google AI Pro**，并与该账户的用量快照一起保存。升级提示或配额形态不视为
+当前套餐。新响应缺少套餐名称时会清除旧标签；显式账户 `plans` 覆盖仍优先。
+若供应商未提供名称且没有覆盖值，则不显示标签。已保存的套餐名称与用量值具有
+相同的快照时间和账户归属。
+
+`qhud --provider-health` 输出不含邮箱、账户 ID、路径或凭据的有限本地连接诊断。
+`qhud --refresh-health` 通过与组件相同的命令显式刷新三个供应商后输出诊断，因此
+会发出供应商请求。两者均不打开额外窗口，常规后台观测保持被动。
+
+Windows 源码构建可用 `scripts/Build-Windows.ps1 -DependenciesRoot <path>` 指定
+单独的依赖目录，避免覆盖已有修改的 qmonster 检出。默认仍是相邻的 `qhud-deps`。
+
 | 供应商 | 被动观测 | 显式刷新 |
 | --- | --- | --- |
 | Claude | 可用时的本地身份、状态行和用量缓存。 | 将现有 OAuth access token 发往供应商用量端点。 |
-| Codex | 本地身份及受支持窗格状态行数据。 | 按保存凭据访问用量/账户端点，当前登录通过 `codex app-server` 回退。 |
-| Antigravity | 可用时的本地账户和窗格信息。 | 正在运行的 agy 进程提供环回 RPC。 |
+| Codex | 本地身份及受支持窗格状态行数据。 | 当前账户通过 `codex app-server`，回退及保存的凭据使用用量/账户端点。 |
+| Antigravity | 可用时的本地账户、原生守护进程就绪状态及窗格信息。 | 经验证的 Windows 原生守护进程或正在运行的 `agy` 进程提供环回 RPC。 |
 
 本地观测每 2 秒执行，不请求供应商 API。它可能从同时含凭据的文件中读取身份字段。显式刷新可能读取现有 access token；qhud 自身不执行 OAuth refresh grant。供应商 CLI 管理认证及任何委托的令牌轮换。
 

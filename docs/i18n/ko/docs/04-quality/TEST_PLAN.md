@@ -9,7 +9,7 @@
 
 # 테스트 계획
 
-> 상태: v0.7.4 게시 후 Windows 시각 근거 기록; 데스크톱 미검증 사항 유지 · 날짜: 2026-10-02 · 담당: chquandogong
+> 상태: 개발 빌드의 Windows 공급자 패널 확인 · 날짜: 2026-11-23 · 담당: chquandogong
 
 <!-- qhud:anchor -->
 <a id="automated-gates"></a>
@@ -22,7 +22,7 @@ CI는 `main` push와 pull request에서 실행합니다. `codex/**` 브랜치는
 cargo fmt --all --check
 cargo clippy --locked --all-targets -- -D warnings
 cargo test --locked --all-targets
-node --test tests/system-metrics.test.cjs
+node --test tests/*.test.cjs
 cargo build --locked --release
 ```
 
@@ -31,6 +31,7 @@ Windows MSVC는 빌드 스크립트를 통해 범위가 한정된 의존성 패�
 ```powershell
 ./scripts/Build-Windows.ps1 -Test -VisualStudioPath '<Visual Studio installation>'
 git diff --exit-code -- Cargo.toml Cargo.lock
+./tests/connect-account.test.ps1
 ```
 
 CI는 Node 22를 쓰는 별도의 Ubuntu `repository-integrity` 작업도 실행합니다.
@@ -41,7 +42,7 @@ node scripts/check-repository.mjs
 
 이 명령은 패키지·Tauri·lockfile 버전 일치, 한국어 README 사본의 바이트 단위 일치, 현재 릴리스 노트와 설치 예시, 영어·한국어·중국어 간체 문서 파일 집합과 릴리스 노트 언어 링크, 로컬 Markdown 링크 대상을 검사합니다. 문서만 바꿨다면 Rust를 컴파일하지 않고 로컬에서 이 명령을 실행할 수 있습니다. push 또는 pull request에서는 CI가 모든 작업을 실행합니다.
 
-`-Test`는 같은 의존성 환경에서 qhud Rust 테스트 후 빌드합니다. Node 22에서 `node --test tests/system-metrics.test.cjs`를 실행해 프런트엔드 시스템 지표 도우미도 검사합니다. 스크립트는 Windows 명령 후 기준 lockfile을 복원합니다. Linux 빌드에는 형제 checkout이나 Windows 패치가 필요하지 않습니다. Ubuntu와 Windows 테스트 및 빌드가 모두 성공해야 릴리스를 공개합니다.
+`-Test`는 같은 의존성 환경에서 qhud Rust 테스트 후 빌드합니다. Node 22 프런트엔드 테스트로 공급자 상태, 계정 식별, 모델 안내 및 시스템 지표를 검사합니다. 스크립트는 Windows 명령 후 기준 lockfile을 복원합니다. Linux 빌드에는 형제 checkout이나 Windows 패치가 필요하지 않습니다. Ubuntu와 Windows 테스트 및 빌드가 모두 성공해야 릴리스를 공개합니다.
 
 2026-09-07: `1514e09`의 [CI 34117359064](https://github.com/chquandogong/qhud/actions/runs/34117359064)가 통과했습니다. Ubuntu fmt/clippy, **98/98 테스트**, 릴리스 빌드; Windows **98/98 테스트**, 릴리스 빌드, 기준 의존성 파일 검사가 통과했습니다. 로컬 Windows 스크립트도 98/98 테스트와 릴리스 빌드를 통과했습니다.
 
@@ -118,6 +119,10 @@ node scripts/check-repository.mjs
 - 창을 줄이거나 계정/모델 행을 여러 개 사용합니다. 스크롤로 모든 사용 한도와 초기화 시간에 접근할 수 있고 창 및 푸터 조작부가 남아 있어야 합니다.
 - 읽을 수 있는 모델명과 초기화 카운트다운을 확인합니다. 서버에 없는 모델 한도는 표시하지 않으며 0 채우기나 다른 계정의 사용량 표시가 없어야 합니다.
 - 백그라운드 CLI 탐색이 콘솔 창을 열지 않는지 확인합니다. Windows 터미널 탭의 네이티브 모니터링은 현재 지원 범위 밖입니다.
+
+- 초기화권이 0인 응답과 해당 필드가 없는 응답을 확인합니다. 전자는 0, 후자는 정보 없음으로 표시해야 합니다. 같은 Codex 워크스페이스를 쓰는 두 로그인도 비교하고, Antigravity 앱의 계정을 조회 도중 바꿉니다. 소유 계정이 일치하는 값만 표시해야 합니다.
+
+2026-11-23 개발 빌드의 Rust 테스트 187개와 Node 테스트 50개가 통과했습니다. 네이티브 WebView2 위젯에서 저장된 Codex 팀 Standard 좌석의 **지원 모델**을 펼치자 모델 예시, 워크스페이스 권한 조건, 안내 기준 날짜가 표시되었습니다. 같은 행에 프로필 연결이 필요하다는 상태도 표시되었습니다. 이 검증은 모델 안내와 연결 대기 상태를 다룹니다. 해당 계정의 실제 사용량과 개별 모델 권한을 확인하려면 로그인이 필요합니다.
 
 2026-10-02, 공개된 v0.7.4 자산의 게시 후 Windows 시각 검증입니다. 내려받은
 `qhud-v0.7.4-windows-x86_64.zip`의 SHA-256은

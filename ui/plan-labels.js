@@ -27,5 +27,46 @@
     return codexPlanLabel(planType);
   }
 
-  return { codexPlanLabel, codexPlanDisplay };
+  // The native app supplies a display name from the queried user's tier.
+  // A complete newer response without that name clears the old snapshot;
+  // quota shapes and upgrade prompts are never subscription evidence.
+  function antigravityPlanDisplay(override, snapshot, freshUsage = null) {
+    if (typeof override === "string" && override.trim()) return override;
+    const name = (freshUsage || snapshot)?.plan_name;
+    if (typeof name !== "string" || /[\u0000-\u001f\u007f]/.test(name)) return null;
+    return name.trim() || null;
+  }
+
+  function claudeOrganizationPlanLabel(orgType) {
+    const type = typeof orgType === "string" ? orgType.trim().toLowerCase() : "";
+    if (type === "claude_team" || type === "team") return "Team";
+    if (type === "claude_enterprise" || type === "enterprise") return "Enterprise";
+    return null;
+  }
+
+  const claudeUsageGrade = (tier) => tier === "default_claude_max_5x" ? "Max 5x"
+    : tier === "default_claude_max_20x" ? "Ultra" : null;
+
+  // The badge describes the known usage grade. For Team/Enterprise this is
+  // the member's explicit user tier; the organization plan remains separate
+  // in details. Unknown member tiers never inherit an organization's tier.
+  function claudePlanDisplay(override, orgType, tiers = []) {
+    if (typeof override === "string" && override.trim()) return override;
+    if (typeof orgType !== "string") return null;
+    const type = orgType.trim().toLowerCase();
+    const knownTiers = Array.isArray(tiers) ? tiers : [];
+    const organizationPlan = claudeOrganizationPlanLabel(type);
+    if (organizationPlan) {
+      const userTier = knownTiers.find((item) => item?.kind === "user");
+      return claudeUsageGrade(userTier?.tier) || organizationPlan;
+    }
+    if (type === "claude_ultra" || type === "ultra") return "Ultra";
+    if (type === "claude_pro" || type === "pro") return "Pro";
+    if (type !== "claude_max" && type !== "max") return null;
+    const tier = knownTiers.find((item) => item?.kind === "org")
+      || knownTiers.find((item) => item?.kind === "user");
+    return claudeUsageGrade(tier?.tier) || "Max";
+  }
+
+  return { codexPlanLabel, codexPlanDisplay, antigravityPlanDisplay, claudePlanDisplay, claudeOrganizationPlanLabel };
 });

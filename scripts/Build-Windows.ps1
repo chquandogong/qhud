@@ -13,6 +13,7 @@ applies only to these Cargo commands; Cargo.lock is restored byte for byte.
 param(
     [string]$ToolsRoot,
     [string]$VisualStudioPath,
+    [string]$DependenciesRoot,
     [switch]$DebugBuild,
     [switch]$Test,
     [switch]$PrepareOnly,
@@ -32,7 +33,10 @@ if ($PrepareOnly -and ($Run -or $Test)) {
 
 $ProjectRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $WorkspaceRoot = Split-Path -Parent $ProjectRoot
-$DependenciesRoot = Join-Path $WorkspaceRoot 'qhud-deps'
+if (-not $DependenciesRoot) {
+    $DependenciesRoot = Join-Path $WorkspaceRoot 'qhud-deps'
+}
+$DependenciesRoot = [IO.Path]::GetFullPath($DependenciesRoot)
 $DependencyPath = Join-Path $DependenciesRoot 'qmonster'
 $PatchPath = Join-Path $ProjectRoot 'patches\qmonster-windows.patch'
 $ManifestPath = Join-Path $ProjectRoot 'src-tauri\Cargo.toml'

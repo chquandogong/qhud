@@ -164,6 +164,8 @@ jobs:
           Copy-Item -LiteralPath 'staged-binary/qhud.exe' -Destination (Join-Path $packageDir 'qhud.exe')
           Copy-Item -LiteralPath 'README.md', 'README.en.md', 'README.ko.md', 'README.zh-CN.md', 'LICENSE', 'CHANGELOG.md', 'CONTRIBUTING.md', 'SECURITY.md', 'SUPPORT.md', 'CODE_OF_CONDUCT.md' -Destination $packageDir
           Copy-Item -LiteralPath 'docs' -Destination (Join-Path $packageDir 'docs') -Recurse
+          $scriptsDir = New-Item -ItemType Directory -Path (Join-Path $packageDir 'scripts')
+          Copy-Item -LiteralPath 'scripts/Connect-Account.ps1' -Destination $scriptsDir.FullName
 
           $zip = "$packageDir.zip"
           Compress-Archive -LiteralPath $packageDir -DestinationPath $zip

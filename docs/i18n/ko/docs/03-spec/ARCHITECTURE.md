@@ -9,8 +9,8 @@
 
 # 아키텍처 — qhud
 
-> 상태: 지속 갱신(v0.7.1까지 반영) · 날짜: 2026-09-14 · 담당: chquandogong
-> SPEC(해야 하는 일) 및 DECISION_LOG(이렇게 구현한 이유)의 동반 문서입니다. 모듈 지도는 v0.7.1까지 반영하며 날짜별 검증은 TEST_PLAN에 보존합니다.
+> 상태: 지속 갱신(v0.8.0까지 반영) · 날짜: 2026-11-23 · 담당: chquandogong
+> SPEC(해야 하는 일) 및 DECISION_LOG(이렇게 구현한 이유)의 동반 문서입니다. 모듈 지도는 v0.8.0까지 반영하며 날짜별 검증은 TEST_PLAN에 보존합니다.
 
 <!-- qhud:anchor -->
 <a id="1-what-qhud-is-structurally"></a>
@@ -152,7 +152,8 @@ Schema 버전은 1이며 모든 릴리스에서 1을 유지했습니다. 필드�
 ```
 schema, source, backend, generated_at_ms, poll_secs
 quotas[]   provider, h5, d7, from_label, session, account?, origin?,
-           cache_fetched_at_ms?, scoped[]?, extra?
+           cache_fetched_at_ms?, scoped[]?, extra?, reset_credits?, plan_name?
+provider_health[], configured_connections[]
 panes[]    pane_id, label, session, provider, status, status_label,
            elapsed_secs, cli_version, update_hint, model, effort, branch,
            cwd, mem, cost_usd, flags[], gauges{ctx,h5,d7}, conflicts[]
@@ -244,8 +245,8 @@ v0.6.0부터는 선택적입니다. `--demo`가 필요하며 실시간 탐색도
 | | 수동 관찰, 2초마다 | 명시적 새로고침 | 자격 증명 관리 |
 | --- | --- | --- | --- |
 | Claude | qmonster를 통한 상태 표시줄; Claude Code 자체 디스크 사용량 캐시; `.claude.json`의 계정 정보 | 로그인한 설정 디렉터리마다 `GET https://api.anthropic.com/api/oauth/usage` 한 번 | qhud가 HTTP 요청에 기존 액세스 토큰을 사용 |
-| Codex | 활성 로그인의 창 상태 표시줄; `auth.json`의 계정 정보 | 저장된 자격 증명마다 `wham/accounts/check` 후 `wham/usage`; 활성 로그인 실패 시 짧게 실행한 `codex app-server` 자식이 stdio로 응답 | HTTP 경로는 qhud가 액세스 토큰을 읽고 대체 경로는 CLI가 모두 관리 |
-| agy | 창이 있으면 상태 표시줄; `google_accounts.json`의 계정 정보 | 실행 중인 agy 프로세스에 loopback Connect RPC; 토큰과 CSRF 없음 | agy 자체 — qhud는 자격 증명을 전혀 읽지 않음 |
+| Codex | 창 상태 표시줄과 로컬 로그인 정보 | 등록한 로그인마다 `codex app-server`로 조회한 뒤 `wham/accounts/check`와 `wham/usage`로 다른 워크스페이스와 누락된 값을 조회합니다. | CLI가 로그인을 관리하며 HTTP는 저장된 액세스 토큰을 사용합니다. |
+| agy | CLI 계정 정보 및 Windows 네이티브 데몬의 준비 상태 | CLI 리스너 또는 검증된 네이티브 데몬을 루프백 RPC로 조회합니다. | Windows 데몬은 로컬 CSRF 토큰을 사용하며 CLI 리스너에는 토큰이 필요 없습니다. |
 
 모든 공급자에 세 규칙을 적용합니다(D-014, D-016).
 
@@ -255,9 +256,9 @@ v0.6.0부터는 선택적입니다. `--demo`가 필요하며 실시간 탐색도
 
 **Claude.** 호출마다 최신 자격 증명에서 액세스 토큰만 읽고 옆의 refresh token은 사용하지 않습니다. User agent는 필수 조건입니다. 실제 `claude-code/<version>`이 없으면 이 endpoint는 재시도 정보 없는 429를 반환합니다. 응답에는 계정 UUID와 이메일이 있어 절대로 기록하지 않으므로 계정 정보는 응답 대신 설정 디렉터리 자체 파일에서 가져옵니다. 형식 변경 진단용 환경 변수도 `extra_usage`와 `spend` 필드의 존재 여부만 보고하고 값을 출력하지 않습니다. 새로고침 한 번에 기본 계정과 등록된 모든 추가 디렉터리를 조회하고 각 저장 키에 기록합니다. 부분 실패는 부분 실패로 유지하여 만료된 추가 계정이 기본 계정 수치를 숨기지 않게 합니다. 거부된 응답은 비식별 오류 범주와 JSON 위치만 보고합니다. 원본 serde 오류는 예상하지 못한 공급자 값을 인용할 수 있으므로 출력하지 않습니다(D-021, D-019의 진단 가정을 대체).
 
-**Codex.** 등록된 모든 홈의 `auth.json`과 보관된 형제 파일을 읽고 활성 파일을 먼저 정렬하여 우선하도록 계정 ID로 중복 제거합니다. 서버가 토큰 하나를 다른 작업 공간으로 재지정하지 않으므로 자격 증명마다 자체 작업 공간을 읽습니다. 요청 계정과 다른 계정을 설명하는 응답은 잘못 표시하지 않고 제외한 뒤 불일치를 기록합니다. 기간 이름은 primary/secondary 위치가 아니라 **길이**에서 가져옵니다. 활성 로그인의 HTTP 경로가 실패하면 읽기 전용, on-request 승인으로 `codex app-server` 자식을 실행하고 stdio로 3줄 JSON-RPC 초기 교환을 전달합니다. EOF에서 서버가 응답 전에 종료할 수도 있으므로 stdin은 의도적으로 열어 둡니다. 25초 후 종료합니다. v0.6.0부터 한도별 맵은 누락/null/빈 값이어도 되고 최상위 한도도 null일 수 있습니다. 하나만 있어도 충분하며 기본 한도는 정확히 한 번만 사용해 주간 기간을 중복 표시하지 않고 최상위 null이 실제 모델별 수치를 가리지 않게 합니다.
+**Codex.** 각 설정 홈에서 `codex app-server`가 stdio로 한도를 반환합니다. `CODEX_HOME`은 해당 자식 프로세스에서만 설정합니다. qhud는 호출 전후의 로그인 계정과 워크스페이스가 일치하는지 확인합니다. 이어서 저장된 자격 증명으로 다른 워크스페이스를 찾고, 다른 워크스페이스의 응답은 요청한 ID가 일치해야 사용합니다. 확인 가능한 이메일과 워크스페이스 ID를 함께 사용해 중복을 제거합니다. 한도별 맵은 누락·null·빈 값일 수 있습니다. v0.6.0부터 최상위 한도와 모델별 맵 중 하나만 있어도 되며 각 기본 한도는 한 번 표시합니다.
 
-**agy.** 실행 중인 agy는 토큰과 CSRF 없이 한도 요약에 응답하는 loopback listener를 엽니다. 포트는 운영체제 자체 테이블에서 찾습니다. Linux에서는 agy 프로세스 소켓 inode와 `/proc/net/tcp`의 loopback listener를 결합하고 Windows에서는 포트 번호만 반환하는 숨겨진 PowerShell 쿼리를 사용합니다. 후보를 순서대로 시도하며 HTTPS listener는 일반 HTTP를 거부하므로 스스로 제외됩니다. 응답은 기본값을 생략하는 proto3 JSON입니다. 남은 비율이 없으면 “알 수 없으니 정상”이 아니라 남은 것이 없다는 뜻입니다. 새로고침 시작 시점의 계정 정보를 결과에 붙여 이후 로그인이 저장 스냅샷의 이름을 바꾸지 못하게 합니다.
+**Antigravity.** Windows 네이티브 데몬은 PID, 루프백 포트, 로컬 CSRF 토큰을 등록합니다. qhud는 실행 파일과 포트 소유권을 검증한 뒤 토큰을 보내며, 같은 프로세스에서 한도 조회 전후의 계정을 확인합니다. 도중에 계정 또는 요금제가 바뀌면 결과를 버립니다. 해당 계정의 `userTier.name`이 있으면 네이티브 요금제 이름으로 표시합니다. agy CLI 리스너는 토큰이 필요 없으며, Linux는 `/proc/net/tcp`에서 소켓 inode를 대조합니다. CLI 스냅샷은 조회 시점의 계정 정보를 유지합니다.
 
 <!-- qhud:anchor -->
 <a id="15-parsing-and-the-snapshot-shape"></a>
@@ -349,7 +350,9 @@ qhud는 qmonster 자체 디렉터리에 아무것도 쓰지 않습니다. TUI가
 | `src-tauri/src/registry.rs` | 운영자 registry, 자리 표시자 규칙, 제거 항목 저장 |
 | `src-tauri/src/usage_cache.rs` | 스냅샷 구조, Claude 디스크 캐시, 유연한 응답 숫자 처리, 최신 여부 |
 | `src-tauri/src/claude_usage.rs` | 설정 디렉터리별 Claude 명시적 새로고침 |
-| `src-tauri/src/codex_usage.rs` | Codex 작업 공간, 범위 검사, 기간 레이블, app-server 대체 경로 |
+| `src-tauri/src/codex_usage.rs` | 워크스페이스 탐색, 범위 검사, 기간 레이블 및 홈별 app-server 조회 |
+| `src-tauri/src/connections.rs` | 프로필 일치 검사, 날짜가 있는 좌석 정보 검증 및 로컬 준비 상태 |
+| `src-tauri/src/provider_health.rs` | 로컬 연결 상태 및 명시적 조회 결과 진단 |
 | `src-tauri/src/agy_usage.rs` | 두 플랫폼의 agy loopback RPC와 포트 탐색 |
 | `src-tauri/src/fetched_store.rs` | 새로고침 저장, 원자적 쓰기, 동시 쓰기 잠금 |
 | `src-tauri/src/frame_guard.rs` | 픽셀 샘플링과 단계별 복구(Linux) |
@@ -360,6 +363,8 @@ qhud는 qmonster 자체 디렉터리에 아무것도 쓰지 않습니다. TUI가
 | `ui/app.js` | 전체 프런트엔드: 렌더링 파이프라인, 사용량 영역, 타일, 조회 상태, 추적 로그, 기하, 확대/축소 |
 | `ui/style.css` | 위젯 스타일, 계기 심각도, 스크롤, 오래됨 표식 |
 | `ui/index.html` | 기본 구조 |
+
+수동 관찰은 공급자의 로컬 조회 조건도 확인합니다. 등록한 프로필에 일치하는 자격 증명이 없으면 사용량 없이 연결 상태만 표시할 수 있습니다. `ui/model-guide.js`에는 확인 날짜가 있는 모델 안내를 포함합니다. 안내를 펼치면 로컬의 요금제 및 좌석 정보를 읽으며 공급자에게 요청을 보내지 않습니다.
 
 문제가 생겼을 때 먼저 볼 위치:
 

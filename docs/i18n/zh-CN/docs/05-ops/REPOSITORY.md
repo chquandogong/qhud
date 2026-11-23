@@ -61,7 +61,7 @@ GitHub 目前仅允许 squash 合并，提供自动合并及分支更新，并�
 
 ## PR、issue 与发布
 
-创建 PR 前先搜索已有 issue，并使变更范围明确。[PR 模板](../../../../../.github/PULL_REQUEST_TEMPLATE.md)要求填写相关 issue 或无需 issue 的原因、变更后的行为、实际验证、未经验证的行为、隐私与安全检查，以及同步三种语言的文档。解决审核对话并为严格检查更新分支，七项状态全部通过后才能 squash 合并。自动合并同样不能绕过门禁。普通问题、功能建议和支持问题使用收集版本及环境的三个 [issue 表单](../../../../../.github/ISSUE_TEMPLATE/)；空白 issue 被禁用，选择页面链接文档和私密安全报告。Issues 已启用，Wiki、Projects、Discussions 已关闭。发布前对凭据、账户数据、本地路径和截图脱敏。根据可复现性、支持版本、平台，以及问题属于 qhud 还是上游服务商，对公开 issue 分类；渠道选择见 [SUPPORT.md](../../../../../SUPPORT.md)。
+创建 PR 前先搜索已有 issue，并使变更范围明确。[PR 模板](../../../../../.github/PULL_REQUEST_TEMPLATE.md)要求填写相关 issue 或无需 issue 的原因、变更后的行为、实际验证、未经验证的行为、隐私与安全检查，以及同步三种语言的文档。解决审核对话并为严格检查更新分支，八项必需检查全部通过后才能 squash 合并。自动合并同样不能绕过门禁。普通问题、功能建议和支持问题使用收集版本及环境的三个 [issue 表单](../../../../../.github/ISSUE_TEMPLATE/)；空白 issue 被禁用，选择页面链接文档和私密安全报告。Issues 和[用户 Wiki](https://github.com/chquandogong/qhud/wiki) 已启用。Projects 和 Discussions 已关闭。发布前对凭据、账户数据、本地路径和截图脱敏。根据可复现性、支持版本、平台，以及问题属于 qhud 还是上游服务商，对公开 issue 分类；渠道选择见 [SUPPORT.md](../../../../../SUPPORT.md)。
 
 [发布工作流](../../../../../.github/workflows/release.yml)由 `v*` 标签触发。预检只接受稳定的 `vX.Y.Z` 标签，并要求 Cargo 与 Tauri 版本匹配、对应版本的发布说明非空、CHANGELOG 有条目、标签提交已包含在 `origin/main`。它调用完整 CI 品质门禁，打包 Linux x86_64 和 Windows x86_64，用精确版本的 `cargo-cyclonedx` 从打标签的锁定源码树生成 CycloneDX SBOM，为这三个文件生成 SHA-256 文件和构建来源证明，再验证恰好六项资产及其校验和。发布经过 `release` 环境，先创建草稿。标签查询不返回草稿，因此通过列出 release 查找草稿。已公开的 release 不会被替换，也不会在重复草稿之间擅自选择；若现有草稿资产的字节不同，也不会覆盖。资产验证后才公开草稿。最后确认的 `release` 环境要求维护者作为审批人，并允许这个单人仓库自行批准。**发布不可变设置于 2026-09-14 启用，适用于之后的新 release；既有 `v0.7.1` 不会追溯改变，其 API `immutable` 值为 `false`。** 标签保护已经禁止修改 `v*` 引用。操作顺序见[运行手册](RUNBOOK.md#release-procedure)。
 

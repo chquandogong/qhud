@@ -9,7 +9,7 @@
 
 # 规格 — qhud
 
-> 状态：持续维护（已更新至 v0.7.1） · 日期：2026-09-14 · 负责人：chquandogong
+> 状态：持续维护（已更新至 v0.8.0） · 日期：2026-11-23 · 负责人：chquandogong
 > qhud 必须做什么。ARCHITECTURE 说明如何构建，DECISION_LOG 说明原因。现有需求编号保持稳定，后续版本追加新行。
 
 <!-- qhud:anchor -->
@@ -91,7 +91,7 @@
 | FR-22 | 通过注册表配置目录同时显示多个 Claude 账户，每账户一行，各有自己的快照和刷新；局部获取失败保持局部 | 已完成，D-015 |
 | FR-27 | 行身份为（账户、组织）：同一登录的团队席位和个人组织显示为两行，配额池独立；刷新结果按配置目录和账户 id 匹配行 | 已完成，v0.5.2、D-018；真实第二组织行仍未现场验证 |
 | FR-34 | 保存快照仅用于当前登录账户；先检查归属再比较时间，避免上一登录较新读数掩盖当前登录较旧读数 | 已完成，v0.6.0 |
-| FR-35 | 本地 Codex ID 令牌有邮箱时自动显示；操作者标签优先，邮箱缺失或格式错误时回退到账户 ID，账户/工作区身份继续以 ID 为准。 | 完成（v0.6.2） |
+| FR-35 | Codex 显示名称优先使用操作者自定义标签，再使用本地 ID 令牌中的邮箱或账户 ID。每次登录的用量读数保留工作区 ID 和可取得的邮箱。 | 已完成 (v0.6.2, v0.8.0) |
 
 自 D-015 沿用的已知限制：无法归属窗格的账户，因此窗格提供的仪表始终属于默认账户行。
 
@@ -107,9 +107,12 @@
 | FR-19 | Claude 用量点数支出在账户行显示，金额为最小货币单位，严重程度取自供应商，无此功能的套餐隐藏 | 已完成，v0.5.0 |
 | FR-20 | 显式刷新结果重启后保留，显示真实来源和时间；实时窗格数据始终优先 | 已完成，v0.5.0 |
 | FR-21 | 一个控件并发刷新所有供应商，并反映它们状态的并集；保留各供应商控件；`--refresh-all` 可从快捷方式转发 | 已完成，v0.5.0 |
-| FR-23 | agy 显式刷新通过 CLI 自身环回 RPC 完成，无令牌、仅本机，从操作系统发现端口；保存最后读数 | 已完成，v0.5.0 |
-| FR-24 | 当前 Codex 登录的直接获取失败时，由短生命周期 `codex app-server` 子进程回答，令牌轮换由 CLI 管理，qhud 自身在此路径不使用令牌 | 已完成，v0.5.0、D-016 |
+| FR-23 | 显式刷新时，agy 使用本机 CLI 监听器或经验证的 Windows 原生应用守护进程。保存的读数保留原生应用返回的账户。 | 已完成 (v0.5.0, v0.8.0) |
+| FR-24 | Codex 先为每个已配置的登录查询 `codex app-server`，再通过已保存的凭据查询其他工作区或缺失的结果。跨工作区响应必须标明所请求的工作区。 | 已完成 (v0.5.0, v0.8.0, D-016) |
 | FR-33 | 同时运行的供应商刷新保留彼此保存结果 | 已完成，v0.6.0 |
+| FR-41 | 显示本机就绪状态、显式刷新结果和可读取的凭据到期时间。注册的个人或团队连接会保留在列表中，身份匹配后才显示用量。 | 已完成 (v0.8.0) |
+| FR-42 | 供应商返回剩余重置次数时才显示，包括零。该数量和原生应用返回的套餐名称与账户快照及其读取时间一起保存。 | 已完成 (v0.8.0) |
+| FR-43 | 区分组织套餐、成员使用等级与带核实日期的席位信息。已识别套餐的模型说明标出核对日期和使用条件。 | 已完成 (v0.8.0) |
 
 <!-- qhud:anchor -->
 <a id="being-trustworthy-about-it"></a>
@@ -129,7 +132,7 @@
 
 **仅观测。** 对 qmonster 自身目录的任何位置零写入，零通知。状态和告警由 TUI 管理（D-004）。
 
-**默认被动；网络仅按请求执行**（D-013、D-014、D-016）。2 s 循环读取本地文件和多路复用器，不请求供应商 API，选择本地身份字段（包括用于显示的 Codex ID 令牌邮箱），不向供应商发送凭据。其他工作仅为每约 30 s 的窗口几何检查点，以及 Linux 上每约 28 s 的像素采样。所有更进一步的操作均来自操作者显式手势或对应命令行入口，绝不执行 OAuth refresh grant。在获取路径中，qhud 为 Claude 和 Codex 读取 access token；agy 无需凭据，Codex 回退将认证委托给 CLI。
+**默认被动；网络仅按请求执行**（D-013、D-014、D-016）。2 s 循环读取本地文件和多路复用器，不请求供应商 API，选择本地身份字段（包括用于显示的 Codex ID 令牌邮箱），不向供应商发送凭据。其他工作仅为每约 30 s 的窗口几何检查点，以及 Linux 上每约 28 s 的像素采样。所有更进一步的操作均来自操作者显式手势或对应命令行入口，绝不执行 OAuth refresh grant。显式刷新时，Claude 和 Codex 的 HTTP 请求使用已有的访问令牌，Codex CLI 管理自身认证。原生 Antigravity 仅在经过验证的环回连接上使用已注册守护进程的本机 CSRF 令牌。
 
 **选择不是获取。** 自 v0.5.1 起，选择、展开及点击行均不执行网络操作。只有刷新控件和转发标志会执行。
 
@@ -153,6 +156,8 @@
   "backend": "herdr",      // "herdr" | "tmux" | null
   "generated_at_ms": 1788790282397,
   "poll_secs": 2,
+  "provider_health": [],
+  "configured_connections": [],
 
   "quotas": [{             // one row per (provider, account, organization)
     "provider": "claude",  // claude | codex | agy | gemini
@@ -161,9 +166,9 @@
     "d7": { "pct": 7, "source": "providercache",
             "reset_unix": 1788976799, "of_tokens": null },
     "from_label": "claude:1:main",   // pane whose reading won; "" if synthesized
-    "session": "dogu-3d-studio",
+    "session": "demo-session",
     "account": {
-      "display": "chquan@dogu.xyz", // precomputed label → email → id
+      "display": "member@example.test", // precomputed label → email → id
       "label": null, "email": "…", "account_id": "…",
       "org": "…", "org_type": "claude_team", "org_id": "…",
       "tiers": [{ "kind": "org", "tier": "max_5x" }],
@@ -240,6 +245,8 @@
   }
 }
 ```
+
+`provider_health` 描述本机就绪状态和上一次显式刷新。`configured_connections` 列出所请求的登录、范围和带核实日期的席位信息。各 `quotas` 项可携带供应商报告的剩余重置次数 `reset_credits` 及套餐名称 `plan_name`。缺失的次数视为未知，明确返回的零仍然显示。
 
 通常为空的字段省略而非发送 null：`account`、`origin`、`cache_fetched_at_ms`、`scoped`、`extra`、`account_placeholders`、`workspace_names`、`workspace_plans`、`codex_workspaces`、`codex_fetched_at_ms`。系统样本以 null 表示不可用读数。`qhud --system-dump` 不读取账户、不打开窗口，只输出经过两次采样的系统快照；`qhud --dump` 输出组合载荷。
 
