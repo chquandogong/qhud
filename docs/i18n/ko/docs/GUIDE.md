@@ -23,20 +23,20 @@ qhud 설치, 기존 CLI 계정 연결, 저장된 스냅샷과 현재 응답을 �
 | Windows x64 | ZIP을 풀고 추출된 디렉터리 안의 `qhud.exe`를 실행합니다. | Microsoft Edge WebView2 Runtime. [Windows 설정](05-ops/WINDOWS.md)을 참조하세요. |
 | Linux x86_64 | tarball을 풀고 버전 디렉터리 안의 바이너리를 설치합니다. | GTK/WebKitGTK. 기준 시스템은 Ubuntu 24.04입니다. [Linux 운영](05-ops/RUNBOOK.md)을 참조하세요. |
 
-Linux v0.8.1에서 두 파일을 모두 다운로드한 뒤 실행합니다.
+Linux v0.8.2에서 두 파일을 모두 다운로드한 뒤 실행합니다.
 
 ```sh
-sha256sum -c qhud-v0.8.1-linux-x86_64.tar.gz.sha256
-tar -xzf qhud-v0.8.1-linux-x86_64.tar.gz
-install -Dm755 qhud-v0.8.1-linux-x86_64/qhud "$HOME/.local/bin/qhud"
+sha256sum -c qhud-v0.8.2-linux-x86_64.tar.gz.sha256
+tar -xzf qhud-v0.8.2-linux-x86_64.tar.gz
+install -Dm755 qhud-v0.8.2-linux-x86_64/qhud "$HOME/.local/bin/qhud"
 "$HOME/.local/bin/qhud"
 ```
 
 Windows 다운로드는 표시된 해시를 `.sha256` 파일과 비교합니다.
 
 ```powershell
-Get-FileHash -Algorithm SHA256 .\qhud-v0.8.1-windows-x86_64.zip
-Get-Content .\qhud-v0.8.1-windows-x86_64.zip.sha256
+Get-FileHash -Algorithm SHA256 .\qhud-v0.8.2-windows-x86_64.zip
+Get-Content .\qhud-v0.8.2-windows-x86_64.zip.sha256
 ```
 
 현재 release workflow로 게시한 아카이브에는 GitHub 빌드 출처 증명도 있습니다. GitHub CLI를 설치하고 실제 다운로드한 파일명으로 바꿔 `.sha256` 제공 파일이 아닌 아카이브 자체를 검증합니다.
@@ -66,6 +66,20 @@ Codex와 Claude Code는 각 공급자의 CLI로 로그인합니다. Windows에�
 ## 위젯 읽기
 
 공급자별로 **이메일 주소** 아래에 **개인**, **팀** 순서로 행을 표시합니다. 플랜, 기간별 사용량, 초기화 시각은 각 작업공간이나 조직에 속합니다. 연결을 기다리는 프로필도 해당 이메일 아래에 표시합니다.
+
+**월 정가 칩**
+
+요금제 옆 금액은 미국 월 정가이며, 팀에서는 좌석당 금액입니다. 눈에 잘 띄는 색으로 $200당 한 칸을 채웁니다. $100은 반 칸, $500은 2.5칸이며, 확인된 Free 요금제는 채움 없이 $0입니다. 5H·7D 막대는 각 기간의 한도 대비 사용률을 나타냅니다.
+
+Codex Business 또는 Claude Team 요금제가 확인되면 좌석 유형이 없어도 **$20–125**를 표시합니다. Standard와 Premium의 연 결제 월 환산액부터 월 결제 가격까지 포함한 좌석당 범위입니다. Codex에서 좌석까지 확인되면 Standard는 **$20–25**, Premium은 **$100–125**로 좁혀집니다. Claude 팀의 **Max 5x**는 구성원 사용 등급이므로 팀 가격 범위와 함께 표시할 수 있습니다. 행을 펼치면 가격 기준을 볼 수 있습니다. 정가 확인일은 **2026-11-24**이며, 실제 결제액은 청구서에서 확인하세요.
+별도의 연결 상태 행에 확인된 요금제가 없으면 가격 칩을 생략할 수 있습니다. 개별 계약 요금제는 공개된 금액이 없습니다.
+[ChatGPT Pro 가격](https://help.openai.com/en/articles/9793128-about-chatgpt-pro-tiers) ·
+[ChatGPT Business 좌석](https://help.openai.com/en/articles/8792828-chatgpt-business-overview) ·
+[Claude Team 좌석](https://support.claude.com/en/articles/9266767-what-is-the-team-plan)
+
+Claude 개인 Pro와 Antigravity가 보고한 Google AI Pro에는 월 약 $17–20을
+표시합니다. 연 결제 정가를 12로 나눈 월 환산액부터 월 결제 정가까지의 범위입니다.
+[Claude 가격](https://claude.com/pricing) · [Google AI Pro 가격](https://one.google.com/about/google-ai-plans/?gl=US)
 
 - **5H / 7D**는 초기화까지 남은 시간이 아니라 기간의 길이입니다.
 - **오른쪽 시간**은 초기화까지 남은 시간입니다. 마우스를 올리면 정확한 현지 날짜와 시간을 볼 수 있습니다.

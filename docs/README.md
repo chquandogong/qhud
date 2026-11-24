@@ -10,7 +10,7 @@
 qhud's complete documentation is available in all three languages, from first
 installation to architecture, decisions, and release history.
 
-Codex and Claude now group **Personal** and **Team** under each email. Plans, usage windows and resets stay attached to each workspace or organization. A web-confirmed Claude personal **Free** plan without a quota shows **Usage unavailable**. [v0.8.1 release notes](05-ops/releases/v0.8.1.md)
+Compare US monthly list prices beside each plan. $200 fills one unit and $500 fills 2.5. Codex Business and Claude Team show the published seat-price range when the workspace plan is known. [v0.8.2 release notes](05-ops/releases/v0.8.2.md)
 
 ## Start using qhud
 
@@ -62,6 +62,7 @@ product behavior. Start with the specification and dashboard for the current sta
 | [v0.7.4 release notes](05-ops/releases/v0.7.4.md) | Narrow system-strip fix, Tauri 2.12.1, `sysinfo` 0.38.4 and Rust 1.90 as the declared minimum. |
 | [v0.8.0 release notes](05-ops/releases/v0.8.0.md) | Connection status, multiple accounts, reset credits, and the supported-model guide. |
 | [v0.8.1 release notes](05-ops/releases/v0.8.1.md) | Personal and team rows grouped by email, and the Claude Free usage state. |
+| [v0.8.2 release notes](05-ops/releases/v0.8.2.md) | Monthly list-price chips and published team-seat ranges. |
 
 ## Languages and source fidelity
 

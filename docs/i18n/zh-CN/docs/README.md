@@ -12,7 +12,7 @@
 
 qhud 全部文档均提供三种语言，涵盖首次安装、架构、决策和发布历史。
 
-Codex 和 Claude 在每个邮箱下先列**个人**，再列**团队**。各工作区或组织分别显示自己的套餐、各时段用量和重置时间。在 Claude 网页确认为 **Free** 的个人档案没有配额数据时显示**不提供用量**。 [v0.8.1 发布说明](05-ops/releases/v0.8.1.md)
+每个套餐名称旁会显示美国月度标价，$200 填充一格，$500 填充 2.5 格。确认工作区使用 Codex Business 或 Claude Team 后，即可显示公开的席位价格范围。 [v0.8.2 发布说明](05-ops/releases/v0.8.2.md)
 
 <!-- qhud:anchor -->
 <a id="start-using-qhud"></a>
@@ -71,6 +71,7 @@ Codex 和 Claude 在每个邮箱下先列**个人**，再列**团队**。各工�
 | [v0.7.4 发布说明](05-ops/releases/v0.7.4.md) | 窄系统条修复、Tauri 2.12.1、`sysinfo` 0.38.4，以及声明最低 Rust 1.90。 |
 | [v0.8.0 发布说明](05-ops/releases/v0.8.0.md) | 连接状态、多账户、重置券及支持模型指南。 |
 | [v0.8.1 发布说明](05-ops/releases/v0.8.1.md) | 按邮箱分组的个人与团队行，以及 Claude Free 的用量状态。 |
+| [v0.8.2 发布说明](05-ops/releases/v0.8.2.md) | 月费标签和团队套餐的公开席位价格范围。 |
 
 <!-- qhud:anchor -->
 <a id="languages-and-source-fidelity"></a>

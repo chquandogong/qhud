@@ -6,10 +6,10 @@
 
 # ARCHITECTURE — qhud
 
-> Status: living (updated through v0.8.1) · Date: 2026-11-23 · Owner:
+> Status: living (updated through v0.8.2) · Date: 2026-11-24 · Owner:
 > chquandogong
 > Companion to SPEC (what it must do) and DECISION_LOG (why it is built this
-> way). The module map is updated through v0.8.1; dated verification stays in
+> way). The module map is updated through v0.8.2; dated verification stays in
 > TEST_PLAN.
 
 ## 1. What qhud is, structurally
@@ -528,6 +528,8 @@ strings. Codex `prolite`, `pro`, and `promax` display as Pro 100, Pro 200, and
 Pro 500, matching the current upstream status labels. Operator `plans` and
 `workspace_plans` values take precedence. An unknown wire value stays in the
 expanded detail or tooltip and does not become a visible badge.
+
+The monthly price chip reads provider plan metadata for the same workspace. `ui/plan-prices.js` selects a dated US list price or a published team range. A matched Codex seat annotation narrows that range. The renderer in `ui/price-chip.js` scales the fill at $200 per unit and keeps the dollar label readable at $0. Account aliases and Claude team member grades supply no billing evidence.
 
 ## 17. Registry and placeholders
 

@@ -158,8 +158,11 @@ implementation (synthetic-input evidence in DECISION_LOG D-008).
 - Test a returned reset count of zero and a response without that field. Verify that the former displays zero and the latter stays unavailable. Compare two logins sharing a Codex workspace and switch the native Antigravity account during a refresh. Only readings with matching ownership may appear.
 - Refresh with both personal and team profiles. Check that each email groups its own rows with Personal first, including pending profiles. Check each workspace’s usage and reset times after restart.
 - Check a web-confirmed Claude Free personal profile with no quota alongside a paid team. The personal row shows **Usage unavailable** without a gauge. A matching provider usage row takes precedence over the plan observation.
+- Exercise known team plans with an unverified seat, verified Codex Standard and Premium seats, custom pricing, a Free plan and a separate status-only profile. Check the displayed range and billing details, and keep usage percentages attached to their original windows.
 
 On 2026-11-23, a local Windows build showed personal and team rows together for Codex. For Claude, the same email displayed a personal Free row without a gauge and a separate paid team row with usage.
+
+On 2026-11-24, a local Windows build displayed price chips on individual, team and Free account rows. A separate browser check using synthetic accounts at 361px and 394px window widths measured 64px for $200 and 160px for $500 at both widths.
 
 In the development build tested on 2026-11-23, 187 Rust tests and 50 Node tests passed. In the native WebView2 widget, opening **Supported models** for a saved Codex Standard team seat displayed model examples, workspace constraints and the guide date. The row still showed that the profile needed to connect. This check covered the guide and pending status. The account’s live usage and individual model permissions still require a signed-in check.
 

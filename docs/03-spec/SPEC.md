@@ -6,7 +6,7 @@
 
 # SPEC — qhud
 
-> Status: living (updated through v0.8.1) · Date: 2026-11-23 · Owner:
+> Status: living (updated through v0.8.2) · Date: 2026-11-24 · Owner:
 > chquandogong
 > What qhud must do. ARCHITECTURE says how it is built, DECISION_LOG says why.
 > Existing requirement numbers remain stable; later releases append new rows.
@@ -101,6 +101,7 @@ pane-fed gauges always belong to the default account's row.
 | FR-42 | Show reset credits only when a provider supplies a count, including zero. Attach the count and any native plan name to that account’s dated snapshot. | done (v0.8.0) |
 | FR-43 | Distinguish the organization plan, member usage grade and dated seat verification. A model guide for recognized plans discloses its review date and access conditions. | done (v0.8.0) |
 | FR-44 | Group Codex and Claude profiles by email within each provider, with personal rows before teams. Show a verified Claude Free personal plan with unavailable usage when no quota is reported. | done (v0.8.1) |
+| FR-45 | Show the recognized plan’s US monthly list price, using $200 as one unit of fill. For Codex Business and Claude Team, use the published seat range when seat type is unknown and narrow it when a seat is verified. | done (v0.8.2) |
 
 ### Being trustworthy about it
 
