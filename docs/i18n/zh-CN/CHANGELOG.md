@@ -21,6 +21,7 @@
 
 - 在已识别套餐旁显示对比度更高的美国月费标签。$200 填充一格，$500 填充 2.5 格，Free 显示 $0。
 - 已识别为 Codex Business 或 Claude Team、席位类型未知时，显示每席每月 $20–125 的公开范围。Codex Standard 与 Premium 席位经核实后显示相应席位的年付月均价和月付价范围。
+- 根据 RustSec 安全公告，将 Rust 依赖 `cookie` 更新至 0.18.3。 [RUSTSEC-2026-0594](https://rustsec.org/advisories/RUSTSEC-2026-0594)
 
 ## [0.8.1] — 2026-11-23
 

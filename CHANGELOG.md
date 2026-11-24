@@ -14,6 +14,7 @@ All notable changes to qhud. Format: [Keep a Changelog](https://keepachangelog.c
 
 - Show each recognized plan’s US monthly list price in a higher-contrast chip. $200 fills one unit, $500 fills 2.5 units, and Free shows $0.
 - Show the published $20–125 per-seat range for Codex Business and Claude Team when the plan is known and the seat type is unavailable. Verified Codex Standard and Premium seats show their narrower billing-cycle ranges.
+- Updated the Rust dependency `cookie` to 0.18.3 to address the security advisory. [RUSTSEC-2026-0594](https://rustsec.org/advisories/RUSTSEC-2026-0594)
 
 ## [0.8.1] — 2026-11-23
 

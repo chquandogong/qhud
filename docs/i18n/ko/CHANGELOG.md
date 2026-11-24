@@ -20,6 +20,7 @@ qhud의 모든 주요 변경 사항을 기록합니다. 형식: [Keep a Changelo
 
 - 요금제 옆에 눈에 잘 띄는 칩으로 미국 월 정가를 표시합니다. $200은 한 칸, $500은 2.5칸이며 Free는 $0입니다.
 - Codex Business와 Claude Team은 좌석 유형이 없어도 요금제가 확인되면 좌석당 월 정가 범위 $20–125를 표시합니다. 확인된 Codex Standard와 Premium 좌석은 해당 좌석의 결제 주기별 범위를 표시합니다.
+- RustSec 보안 공지를 반영해 Rust 의존성 `cookie`를 0.18.3으로 갱신했습니다. [RUSTSEC-2026-0594](https://rustsec.org/advisories/RUSTSEC-2026-0594)
 
 ## [0.8.1] — 2026-11-23
 
