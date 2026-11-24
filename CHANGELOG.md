@@ -10,6 +10,11 @@ All notable changes to qhud. Format: [Keep a Changelog](https://keepachangelog.c
 
 ## [Unreleased]
 
+## [0.8.2] — 2026-11-24
+
+- Show each recognized plan’s US monthly list price in a higher-contrast chip. $200 fills one unit, $500 fills 2.5 units, and Free shows $0.
+- Show the published $20–125 per-seat range for Codex Business and Claude Team when the plan is known and the seat type is unavailable. Verified Codex Standard and Premium seats show their narrower billing-cycle ranges.
+
 ## [0.8.1] — 2026-11-23
 
 - Each provider now groups workspaces by account email, with Personal first and Team next. Each workspace keeps its own plan, usage windows and reset times.

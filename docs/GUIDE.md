@@ -20,20 +20,20 @@ contains a versioned directory and comes with a separate SHA-256 file.
 | Windows x64 | Extract the ZIP; run `qhud.exe` inside the extracted directory. | Microsoft Edge WebView2 Runtime. See [Windows setup](05-ops/WINDOWS.md). |
 | Linux x86_64 | Extract the tarball; install the binary inside its versioned directory. | GTK/WebKitGTK; Ubuntu 24.04 is the reference system. See [Linux operations](05-ops/RUNBOOK.md). |
 
-For Linux v0.8.1, after downloading both files:
+For Linux v0.8.2, after downloading both files:
 
 ```sh
-sha256sum -c qhud-v0.8.1-linux-x86_64.tar.gz.sha256
-tar -xzf qhud-v0.8.1-linux-x86_64.tar.gz
-install -Dm755 qhud-v0.8.1-linux-x86_64/qhud "$HOME/.local/bin/qhud"
+sha256sum -c qhud-v0.8.2-linux-x86_64.tar.gz.sha256
+tar -xzf qhud-v0.8.2-linux-x86_64.tar.gz
+install -Dm755 qhud-v0.8.2-linux-x86_64/qhud "$HOME/.local/bin/qhud"
 "$HOME/.local/bin/qhud"
 ```
 
 For a Windows download, compare the displayed digest with the `.sha256` file:
 
 ```powershell
-Get-FileHash -Algorithm SHA256 .\qhud-v0.8.1-windows-x86_64.zip
-Get-Content .\qhud-v0.8.1-windows-x86_64.zip.sha256
+Get-FileHash -Algorithm SHA256 .\qhud-v0.8.2-windows-x86_64.zip
+Get-Content .\qhud-v0.8.2-windows-x86_64.zip.sha256
 ```
 
 Archives published by the current release workflow also carry GitHub build
@@ -74,6 +74,21 @@ Each provider groups rows by **email address**.
 Under an address, **Personal** comes before **Team**. Each workspace or
 organization keeps its own plan, usage windows and reset times. Configured
 profiles awaiting a connection appear under the same address.
+
+**Monthly price chip**
+
+The amount beside a plan is its US monthly list price, per seat for teams. The higher-contrast fill measures $200 per unit. A $100 plan fills half a unit, $500 fills 2.5 units, and a confirmed Free plan shows $0 with an empty fill. The 5H and 7D bars measure the share of each usage limit consumed.
+
+When Codex Business or Claude Team is identified and the seat type is unknown, the chip shows **$20–125** per seat per month. This covers Standard and Premium seats on annual and monthly billing. A verified Codex Standard seat narrows the range to **$20–25**, and a verified Premium seat to **$100–125**. Claude’s **Max 5x** member usage grade can appear alongside the team range. Open the row to check the basis. Prices were reviewed on **2026-11-24**. The invoice gives the actual charge.
+A separate connection-status row without a recognized plan can omit the price chip. Plans with custom pricing have no public dollar amount.
+[ChatGPT Pro prices](https://help.openai.com/en/articles/9793128-about-chatgpt-pro-tiers) ·
+[ChatGPT Business seats](https://help.openai.com/en/articles/8792828-chatgpt-business-overview) ·
+[Claude Team seats](https://support.claude.com/en/articles/9266767-what-is-the-team-plan)
+
+For personal Claude Pro and a Google AI Pro plan reported by Antigravity,
+the chip shows approximately $17–20 per month. The range covers the annual
+price divided by twelve and the monthly rate. [Claude pricing](https://claude.com/pricing) ·
+[Google AI Pro pricing](https://one.google.com/about/google-ai-plans/?gl=US)
 
 - **5H / 7D** describe the window duration, not the time left until reset.
 - **The time at the right** is the remaining time until reset. Hover for the exact local date and time.

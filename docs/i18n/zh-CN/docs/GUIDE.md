@@ -23,20 +23,20 @@
 | Windows x64 | 解压 ZIP，运行解压目录内的 `qhud.exe`。 | Microsoft Edge WebView2 Runtime。见 [Windows 设置](05-ops/WINDOWS.md)。 |
 | Linux x86_64 | 解压 tarball，安装版本目录内的二进制。 | GTK/WebKitGTK；参考系统为 Ubuntu 24.04。见 [Linux 运维](05-ops/RUNBOOK.md)。 |
 
-Linux v0.8.1 下载两个文件后：
+Linux v0.8.2 下载两个文件后：
 
 ```sh
-sha256sum -c qhud-v0.8.1-linux-x86_64.tar.gz.sha256
-tar -xzf qhud-v0.8.1-linux-x86_64.tar.gz
-install -Dm755 qhud-v0.8.1-linux-x86_64/qhud "$HOME/.local/bin/qhud"
+sha256sum -c qhud-v0.8.2-linux-x86_64.tar.gz.sha256
+tar -xzf qhud-v0.8.2-linux-x86_64.tar.gz
+install -Dm755 qhud-v0.8.2-linux-x86_64/qhud "$HOME/.local/bin/qhud"
 "$HOME/.local/bin/qhud"
 ```
 
 Windows 下载后，将显示的摘要与 `.sha256` 文件比较：
 
 ```powershell
-Get-FileHash -Algorithm SHA256 .\qhud-v0.8.1-windows-x86_64.zip
-Get-Content .\qhud-v0.8.1-windows-x86_64.zip.sha256
+Get-FileHash -Algorithm SHA256 .\qhud-v0.8.2-windows-x86_64.zip
+Get-Content .\qhud-v0.8.2-windows-x86_64.zip.sha256
 ```
 
 当前 release workflow 发布的压缩包还带 GitHub 构建来源证明。安装 GitHub CLI，将文件名替换为实际下载文件，验证压缩包本身而非 `.sha256` 配套文件：
@@ -66,6 +66,20 @@ Codex 和 Claude Code 使用各自的 CLI 登录。在 Windows 上，打开已�
 ## 阅读组件
 
 各供应商按**邮箱地址**分组，每个地址下先列**个人**，再列**团队**。每个工作区或组织分别显示自己的套餐、各时段用量和重置时间。等待连接的配置档案也列在相应的邮箱下。
+
+**月费标签**
+
+套餐旁的金额为美国月度标价，团队套餐按席位计算。标签使用更醒目的填充色，以 $200 为一格。$100 填充半格，$500 填充 2.5 格，已确认的 Free 套餐显示 $0，填充为空。5H 和 7D 用量条显示各周期已用额度的百分比。
+
+工作区已确认为 Codex Business 或 Claude Team、席位类型未知时，显示每席每月 **$20–125**。此范围包括 Standard 与 Premium 席位的年付月均价和月付标价。若 Codex 席位已核实，Standard 显示 **$20–25**，Premium 显示 **$100–125**。Claude 团队的 **Max 5x** 是成员用量等级，可与团队价格范围同时显示。展开该行可查看计价依据。标价核对日期为 **2026-11-24**，实际收费以账单为准。
+仅显示连接状态且未识别出套餐的行可以省略价格标签。单独议价的套餐没有公开金额。
+[ChatGPT Pro 价格](https://help.openai.com/en/articles/9793128-about-chatgpt-pro-tiers) ·
+[ChatGPT Business 席位](https://help.openai.com/en/articles/8792828-chatgpt-business-overview) ·
+[Claude Team 席位](https://support.claude.com/en/articles/9266767-what-is-the-team-plan)
+
+Claude 个人 Pro 和 Antigravity 报告的 Google AI Pro 显示为每月约 $17–20。
+范围从年费除以 12 后的月均价，到按月结算的标价。
+[Claude 价格](https://claude.com/pricing) · [Google AI Pro 价格](https://one.google.com/about/google-ai-plans/?gl=US)
 
 - **5H / 7D** 表示窗口持续时长，不是距重置的剩余时间。
 - **右侧时间**是距重置的剩余时间；悬停可看准确本地日期和时间。

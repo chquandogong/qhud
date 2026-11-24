@@ -37,7 +37,8 @@ qhud는 여러 명령행 인터페이스에 흩어진 계정 할당량과 세션
 | --- | --- |
 | **사용량과 초기화** | 계정별 기간, 제공되는 모델별 풀, 초기화 카운트다운, 정확한 초기화 타임스탬프. |
 | **계정 맥락** | 구분된 계정/작업공간 행과 재시작 후에도 시점이 표시되는 스냅샷. Codex는 로컬 로그인에 이메일이 있으면 표시하고, 운영자 레이블을 우선하며, 이메일이 없으면 계정 ID를 표시합니다. |
-| **연결과 요금제** | 공급자 이름을 펼치면 연결 상태를 볼 수 있습니다. 개인·팀 사용량은 각 계정 행에 표시되며, 확인된 요금제를 누르면 지원 모델이 열립니다. |
+| **연결과 요금제** | 공급자 이름을 펼치면 연결 상태를 볼 수 있습니다. 이메일 아래에 개인·팀 사용량을 묶습니다. 확인된 Claude 개인 Free 요금제에 한도 정보가 없으면 ‘사용량 미제공’으로 표시합니다. 확인된 요금제를 누르면 지원 모델이 열립니다. |
+| **월 요금** | 요금제 옆 칩에 미국 정가를 표시합니다. 행을 펼치면 가격 기준과 결제 주기를 확인할 수 있습니다. |
 | **세션 활동** | 지원하는 Linux 환경에서 상태, 컨텍스트 사용 정도, 모델, 추론 노력, 브랜치, 작업 디렉터리, 충돌 표시. |
 | **최신성** | 2초마다 로컬 관찰. 공급자 사용량 요청은 명시적으로 새로고침할 때 실행. |
 | **시스템 사용량과 정보** | CPU·메모리·지원되는 GPU·디스크·네트워크의 작은 기록 그래프. 항목을 선택하면 상세 정보가, About에는 빌드 버전·제작자 Chenghao Quan·[홈페이지](https://chquandogong.github.io/CHENGHAO-QUAN/)가 표시됩니다. |
@@ -83,15 +84,15 @@ qhud는 여러 명령행 인터페이스에 흩어진 계정 할당량과 세션
 
 ## 설치
 
-**현재 릴리스: [v0.8.1](https://github.com/chquandogong/qhud/releases/tag/v0.8.1).**
+**현재 릴리스: [v0.8.2](https://github.com/chquandogong/qhud/releases/tag/v0.8.2).**
 두 플랫폼의 빌드/테스트 작업을 통과해야 공개합니다. 각 아카이브에는 SHA-256 파일이 있습니다.
 
 | 다운로드 | 검증 |
 | --- | --- |
-| [Windows x64 ZIP](https://github.com/chquandogong/qhud/releases/download/v0.8.1/qhud-v0.8.1-windows-x86_64.zip) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.8.1/qhud-v0.8.1-windows-x86_64.zip.sha256) |
-| [Linux x86_64 tarball](https://github.com/chquandogong/qhud/releases/download/v0.8.1/qhud-v0.8.1-linux-x86_64.tar.gz) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.8.1/qhud-v0.8.1-linux-x86_64.tar.gz.sha256) |
+| [Windows x64 ZIP](https://github.com/chquandogong/qhud/releases/download/v0.8.2/qhud-v0.8.2-windows-x86_64.zip) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.8.2/qhud-v0.8.2-windows-x86_64.zip.sha256) |
+| [Linux x86_64 tarball](https://github.com/chquandogong/qhud/releases/download/v0.8.2/qhud-v0.8.2-linux-x86_64.tar.gz) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.8.2/qhud-v0.8.2-linux-x86_64.tar.gz.sha256) |
 
-Codex와 Claude는 이메일마다 **개인**, **팀** 순서로 표시합니다. 요금제, 기간별 사용량, 초기화 시각은 각 워크스페이스나 조직에서 확인할 수 있습니다. Claude 웹에서 **Free**로 확인한 개인 프로필에 한도 정보가 없으면 **사용량 미제공**으로 표시합니다. [v0.8.1 릴리스 노트](docs/i18n/ko/docs/05-ops/releases/v0.8.1.md)
+요금제 옆에서 미국 월 정가를 비교할 수 있습니다. $200은 한 칸, $500은 2.5칸입니다. Codex Business와 Claude Team은 워크스페이스 요금제가 확인되면 공식 좌석 가격 범위를 표시합니다. [v0.8.2 릴리스 노트](docs/i18n/ko/docs/05-ops/releases/v0.8.2.md)
 
 현재 release workflow로 게시한 아카이브는 GitHub 빌드 출처 증명도 제공합니다. GitHub CLI에서 실제 다운로드한 아카이브 경로를 사용해 확인하세요. `.sha256` 파일이 아닌 아카이브 자체를 검증합니다.
 
@@ -110,9 +111,9 @@ ZIP을 풀고 버전 디렉터리 안의 `qhud.exe`를 실행합니다. Microsof
 아카이브와 SHA-256 파일을 같은 디렉터리에 다운로드한 뒤 실행합니다.
 
 ```sh
-sha256sum -c qhud-v0.8.1-linux-x86_64.tar.gz.sha256
-tar -xzf qhud-v0.8.1-linux-x86_64.tar.gz
-install -Dm755 qhud-v0.8.1-linux-x86_64/qhud "$HOME/.local/bin/qhud"
+sha256sum -c qhud-v0.8.2-linux-x86_64.tar.gz.sha256
+tar -xzf qhud-v0.8.2-linux-x86_64.tar.gz
+install -Dm755 qhud-v0.8.2-linux-x86_64/qhud "$HOME/.local/bin/qhud"
 "$HOME/.local/bin/qhud"
 ```
 

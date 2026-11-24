@@ -9,7 +9,7 @@
 
 # 项目看板 — qhud
 
-> 状态：v0.8.1 · 更新：2026-11-23 · 负责人：chquandogong
+> 状态：v0.8.2 · 更新：2026-11-24 · 负责人：chquandogong
 > 公开项目快照。Git 历史、带标签发布及 workflow 运行是权威记录；下方带日期观察保留其原始验证范围。
 
 <!-- qhud:anchor -->
@@ -19,7 +19,7 @@
 
 | 项目 | 值 |
 | --- | --- |
-| 当前版本 | [v0.8.1](https://github.com/chquandogong/qhud/releases/tag/v0.8.1) · 按邮箱分组的个人与团队行，以及 Claude Free 的用量状态。 |
+| 当前版本 | [v0.8.2](https://github.com/chquandogong/qhud/releases/tag/v0.8.2) · 月费标签和团队套餐的公开席位价格范围。 |
 | 发布内容 | Windows ZIP 包含连接额外配置的 PowerShell 脚本。同一版本还提供 Linux 归档和 CycloneDX SBOM。 |
 | 方案标签自动检查 | **v0.7.3 本地源码树，2026-10-01：**8/8 项 Node 测试通过。两项方案标签测试覆盖 `prolite` / `pro` / `promax` 映射、规范化、显式 override 优先级和未知值隐藏。这是使用合成输入的自动化证据，不是实时供应商或桌面显示验证。 |
 | 流水线依赖 | qmonster @ `6a21c44`；Linux 使用规范 Git 依赖，Windows 使用命令级补丁并恢复 lockfile。 |

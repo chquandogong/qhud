@@ -291,6 +291,13 @@
 
   // ---- provider quota strip (account-scoped facts, D-011) ---------
 
+  function patchPlanInfo(chip, facts) {
+    const price = facts ? window.QhudPlanPrices.priceFor(facts, healthLocale) : null;
+    window.QhudPriceChip.patch(chip, price);
+    patchModelGuide(chip, { ...facts, seatType: facts?.seatAnnotation?.seat_type });
+    return price?.detail;
+  }
+
   function patchModelGuide(anchor, facts) {
     const guide = window.QhudModelGuide.lookup(facts, healthLocale);
     let panel = anchor.nextElementSibling;
@@ -321,6 +328,7 @@
       el("span", "q-scope"),
       el("span", "q-plan"),
       el("span", "q-seat-annotation"),
+      el("span", "q-price"),
       el("span", "q-extra"),
       el("span", "q-reset-credits"),
       el("span", "q-age"),
@@ -552,7 +560,7 @@
     const connectionSig = (state.payload?.configured_connections || [])
       .filter((profile) => profile.provider === "codex")
       .map((profile) => [profile.key, profile.email, profile.account_id, profile.scope, profile.state, profile.has_row, profile.expires_at_ms, profile.seat_annotation]);
-    const sig = JSON.stringify([stored, at, visible.map(identities.workspaceKey), connectionSig]);
+    const sig = JSON.stringify([stored, at, visible.map((w) => [identities.workspaceKey(w), w.plan_type]), connectionSig]);
     if (sig === codexRowsSig) return; // same rows; only the caption moved
     codexRowsSig = sig;
     clearRows();
@@ -597,7 +605,9 @@
         badge.title = seat.detail;
         row.append(badge);
       }
-      patchModelGuide(row.lastElementChild, { provider: "codex", planType: w.plan_type, seatType: annotation?.seat_type });
+      const priceChip = el("span", "q-price");
+      row.append(priceChip);
+      const priceDetail = patchPlanInfo(priceChip, { provider: "codex", planType: w.plan_type, seatAnnotation: annotation });
       const resetCredits = providerHealth.resetCreditsView(w, null, healthLocale);
       if (resetCredits.label) {
         const badge = el("span", "q-reset-credits", resetCredits.label);
@@ -639,6 +649,7 @@
       if (w.plan_type) meta.push(`plan_type (wire): ${w.plan_type}`);
       if (w.credits_balance) meta.push(`credits ${w.credits_balance}`);
       if (seat) meta.push(seat.detail);
+      meta.push(priceDetail);
       meta.push(resetCredits.detail);
       for (const profile of identities.connectionsForAccount(state.payload?.configured_connections, "codex", w)) {
         meta.push(providerHealth.configuredConnectionDetail(profile, healthLocale));
@@ -923,7 +934,7 @@
       if (!row) {
         row = el("div", "q-row q-connection");
         row.dataset.connectionKey = key;
-        row.append(el("span", "q-acct"), el("span", "q-scope"), el("span", "q-plan"), el("span", "q-seat-annotation"), el("span", "q-connection-state"), el("div", "q-detail"));
+        row.append(el("span", "q-acct"), el("span", "q-scope"), el("span", "q-plan"), el("span", "q-seat-annotation"), el("span", "q-price"), el("span", "q-connection-state"), el("div", "q-detail"));
         quotasEl.append(row);
       }
       row.dataset.connectionState = model.state;
@@ -937,9 +948,13 @@
       badge.textContent = seat?.label || "";
       badge.title = seat?.detail || "";
       badge.hidden = !seat;
-      patchModelGuide(badge, { provider: model.provider, seatType: annotation?.seat_type });
+      // A connection-only row can coexist with a dated usage row for this
+      // workspace. Show a price here only when the profile supplies plan evidence.
+      const observedPlan = model.state === "usage_unavailable" ? profile.observed_plan : null;
+      const priceDetail = patchPlanInfo(row.querySelector(".q-price"), annotation || observedPlan
+        ? { provider: model.provider, seatAnnotation: annotation, observedPlan } : null);
       row.querySelector(".q-connection-state").textContent = model.label;
-      const detail = [model.detail, seat?.detail].filter(Boolean).join("\n");
+      const detail = [model.detail, seat?.detail, priceDetail].filter(Boolean).join("\n");
       row.querySelector(".q-detail").textContent = detail;
       row.title = detail;
     }
@@ -1125,7 +1140,8 @@
           activeWs.name
         : null;
       acctEl.hidden = !acctEl.textContent;
-      const annotation = identities.seatAnnotationForAccount(state.payload?.configured_connections, q.provider, q.account);
+      const annotation = identities.seatAnnotationForAccount(state.payload?.configured_connections, q.provider, q.account)
+        || (activeWs && identities.seatAnnotationForAccount(state.payload?.configured_connections, q.provider, activeWs));
       const seat = providerHealth.seatAnnotationView(annotation, healthLocale);
       const scopeEl = row.querySelector(".q-scope");
       const matchedProfiles = identities.connectionsForAccount(state.payload?.configured_connections, q.provider, q.account);
@@ -1171,11 +1187,12 @@
 
       planEl.textContent = bits.join(" ");
       planEl.hidden = bits.length === 0;
-      patchModelGuide(seatEl, {
+      const priceDetail = patchPlanInfo(row.querySelector(".q-price"), {
         provider: q.provider,
-        planType: activeWs?.plan_type,
-        seatType: annotation?.seat_type,
+        planType: q.provider === "codex" ? type : null,
+        seatAnnotation: annotation,
         orgType: q.account?.org_type,
+        tiers: q.account?.tiers,
         planName: q.provider === "agy" ? antigravityPlanDisplay(null, q, liveUsage)
           : claudePlanDisplay(null, q.account?.org_type, q.account?.tiers),
       });
@@ -1241,6 +1258,7 @@
 
       const lines = [];
       if (seat) lines.push(seat.detail);
+      lines.push(priceDetail);
       if (["codex", "claude"].includes(q.provider) || resetCredits.count != null) lines.push(resetCredits.detail);
       for (const profile of matchedProfiles) {
         lines.push(providerHealth.configuredConnectionDetail(profile, healthLocale));
