@@ -9,7 +9,7 @@
 
 # 대시보드 — qhud
 
-> 상태: v0.8.2 · 갱신: 2026-11-24 · 담당: chquandogong
+> 상태: v0.8.3 · 갱신: 2026-11-24 · 담당: chquandogong
 > 공개 프로젝트 현황입니다. Git 이력, 태그가 붙은 릴리스, workflow 실행이 기준 기록이며 아래 날짜별 관찰은 당시 검증 범위를 유지합니다.
 
 <!-- qhud:anchor -->
@@ -19,7 +19,7 @@
 
 | 항목 | 값 |
 | --- | --- |
-| 현재 릴리스 | [v0.8.2](https://github.com/chquandogong/qhud/releases/tag/v0.8.2) · 월 정가 칩과 팀 요금제의 공식 좌석 가격 범위. |
+| 현재 릴리스 | [v0.8.3](https://github.com/chquandogong/qhud/releases/tag/v0.8.3) · 월 기준 단일 가격, 결제 주기 표기, Google AI Pro 한국 정가. |
 | 배포 내용 | Windows ZIP에는 추가 프로필 연결용 PowerShell 스크립트가 포함됩니다. 같은 릴리스에서 Linux 압축 파일과 CycloneDX SBOM도 받을 수 있습니다. |
 | 요금제 레이블 자동 검사 | **v0.7.3 로컬 소스 트리, 2026-10-01:** Node 테스트 8/8 통과. 요금제 레이블 테스트 2개가 `prolite` / `pro` / `promax` 매핑, 정규화, 명시적 override 우선순위, 알 수 없는 값 숨김을 다룹니다. 이는 합성 입력을 사용한 자동화 근거이며 실제 공급자나 데스크톱 표시 검증이 아닙니다. |
 | 파이프라인 의존성 | qmonster @ `6a21c44`; Linux 기준 Git 의존성, Windows 명령 범위 패치 및 lockfile 복원. |

@@ -1125,8 +1125,8 @@ mod tests {
     fn usage_is_dropped_when_the_body_describes_another_workspace() {
         // The server may ignore chatgpt-account-id and answer with the default
         // context. Accepting that would render one workspace's numbers under
-        // another's label — verified live: asking for 3f13fa37 returned a body
-        // for 04090c67, with reset timestamps 1s apart instead of days.
+        // another's label. A live response had a different workspace ID
+        // and reset timestamps one second apart instead of days.
         let body = r#"{"account_id":"other","plan_type":"team",
           "rate_limit":{"primary_window":{"used_percent":0,
             "limit_window_seconds":604800,"reset_at":1786698607}}}"#;

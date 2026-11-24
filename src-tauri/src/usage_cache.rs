@@ -386,12 +386,12 @@ pub fn detect() -> Option<CachedUsage> {
 mod tests {
     use super::*;
 
-    // Trimmed verbatim from the real ~/.claude.json (2026-08-07),
-    // including the `limits[]` array the statusLine feed lacks.
+    // Example cache with a synthetic account ID and the `limits[]` array
+    // the statusLine feed lacks.
     const REAL_CACHE: &str = r#"{
       "cachedUsageUtilization": {
         "fetchedAtMs": 1785996526168,
-        "accountUuid": "67c22197-ede6-4221-b095-4c89789546dd",
+        "accountUuid": "00000000-0000-4000-8000-000000000001",
         "utilization": {
           "five_hour": {"utilization": 20, "resets_at": "2026-08-06T10:20:00.661169+00:00"},
           "seven_day": {"utilization": 3, "resets_at": "2026-08-12T18:00:00.661188+00:00"},
@@ -549,7 +549,7 @@ mod tests {
         assert_eq!(u.fetched_at_ms, 1785996526168);
         assert_eq!(
             u.account_id.as_deref(),
-            Some("67c22197-ede6-4221-b095-4c89789546dd")
+            Some("00000000-0000-4000-8000-000000000001")
         );
         assert_eq!(
             u.five_hour,

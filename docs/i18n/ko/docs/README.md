@@ -12,7 +12,7 @@
 
 qhud의 전체 문서를 최초 설치부터 아키텍처, 결정, 릴리스 이력까지 세 언어 모두로 제공합니다.
 
-요금제 옆에서 미국 월 정가를 비교할 수 있습니다. $200은 한 칸, $500은 2.5칸입니다. Codex Business와 Claude Team은 워크스페이스 요금제가 확인되면 공식 좌석 가격 범위를 표시합니다. [v0.8.2 릴리스 노트](05-ops/releases/v0.8.2.md)
+v0.8.3은 요금제마다 월 기준 금액 하나를 표시합니다. 팀 Standard 좌석은 월 결제면 **$25 m**, 연 결제면 월 환산액 **$20 y**로 표시합니다. 한국어 화면에서는 Google AI Pro 가격을 원화로 볼 수 있습니다. [v0.8.3 릴리스 노트](05-ops/releases/v0.8.3.md)
 
 <!-- qhud:anchor -->
 <a id="start-using-qhud"></a>
@@ -72,6 +72,7 @@ qhud의 전체 문서를 최초 설치부터 아키텍처, 결정, 릴리스 이
 | [v0.8.0 릴리스 노트](05-ops/releases/v0.8.0.md) | 연결 상태, 다중 계정, 초기화권, 지원 모델 안내. |
 | [v0.8.1 릴리스 노트](05-ops/releases/v0.8.1.md) | 이메일별 개인·팀 묶음과 Claude Free의 사용량 미제공 표시. |
 | [v0.8.2 릴리스 노트](05-ops/releases/v0.8.2.md) | 월 정가 칩과 팀 요금제의 공식 좌석 가격 범위. |
+| [v0.8.3 릴리스 노트](05-ops/releases/v0.8.3.md) | 월 기준 단일 가격, 결제 주기 표기, Google AI Pro 한국 정가. |
 
 <!-- qhud:anchor -->
 <a id="languages-and-source-fidelity"></a>

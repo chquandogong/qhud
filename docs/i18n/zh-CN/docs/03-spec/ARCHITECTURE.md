@@ -9,8 +9,8 @@
 
 # 架构 — qhud
 
-> 状态：持续维护（已更新至 v0.8.2） · 日期：2026-11-24 · 负责人：chquandogong
-> 与 SPEC（必须做什么）及 DECISION_LOG（为何这样构建）配套。模块地图已更新至 v0.8.2；带日期验证保存在 TEST_PLAN。
+> 状态：持续维护（已更新至 v0.8.3） · 日期：2026-11-24 · 负责人：chquandogong
+> 与 SPEC（必须做什么）及 DECISION_LOG（为何这样构建）配套。模块地图已更新至 v0.8.3；带日期验证保存在 TEST_PLAN。
 
 <!-- qhud:anchor -->
 <a id="1-what-qhud-is-structurally"></a>
@@ -289,7 +289,7 @@ Claude Code 自有缓存和 qhud 最近刷新均存在时，较新者优先；�
 
 显示名称依次选择操作者的注册表标签、本地邮箱、账户 ID。注册表位于仓库之外，在邮箱可用时仍可用于自选显示覆盖。套餐显示采用一份小型、已审查的展示映射，不直接暴露任意供应商字符串。Codex 的 `prolite`、`pro`、`promax` 按当前上游状态名称显示为 Pro 100、Pro 200、Pro 500。操作者的 `plans` 与 `workspace_plans` 值优先。未知传输值只保留在展开详情或工具提示中，不会成为可见标签。
 
-月费标签读取同一工作区的供应商套餐信息。`ui/plan-prices.js` 选择注明核实日期的美国标价或团队套餐的公开价格范围。匹配的 Codex 席位记录可缩小该范围。`ui/price-chip.js` 以 $200 为一格绘制填充，$0 时仍能读出金额。账户别名和 Claude 团队成员的用量等级均不能作为计费依据。
+`ui/plan-prices.js` 选择一个月均标价。匹配的 Codex 席位记录或 Claude Team 的 `seatTier` 决定席位费率。本地账户注册表的 `billing_cycles` 按供应商、电子邮件、工作区 ID 和套餐保存带核实时间的记录。匹配后显示月付（`m`）或年付（`y`，年费除以 12）。周期未知时只显示公开月付标价。官方仅提供月付的付费套餐可标注 `m`。未指定团队席位时显示起价，详情列出席位选项。已识别的 Claude 特殊或折扣席位缺少公开费率时显示价格未确认。韩语界面的 Google AI Pro 以韩元显示，填充长度采用美国相同结算周期的月均标价。`ui/price-chip.js` 每 $200 填充一格蓝色。
 
 <!-- qhud:anchor -->
 <a id="17-registry-and-placeholders"></a>

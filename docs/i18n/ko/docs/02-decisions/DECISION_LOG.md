@@ -161,7 +161,7 @@
 - **표시 이름**: `~/.config/qhud/accounts.json`의 선택적 운영자 목록을 사용하며, 키는 `<provider>:<account_id-or-email>`이다. qhud는 공개 저장소이고 이 키들은 개인 식별자이므로 의도적으로 저장소 **밖에** 둔다. 매핑되지 않은 계정은 이메일, 그다음 계정 id로 대체한다.
 - **페이로드**: 스키마 v1에 추가 — `quotas[].account`, 알 수 없으면 생략.
 - **알려진 제약**: *활성* 계정에만 레이블을 붙인다. 모든 계정의 잔여 할당량을 동시에 보려면 계정별 조회가 필요하고, 보관된 자격 증명은 refresh grant 실행이 필요하다. 이는 보류하며 명시적인 운영자 승인을 요구한다. Codex 갱신 토큰은 일회용이고 회전하므로 저장 실패 시 `codex login`이 깨지기 때문이다. Codex는 평문 이메일을 노출하지 않으므로 목록 키는 UUID다.
-- **증거**: `cargo test` 17개 통과. 실기 `--dump`에 두 등급을 포함한 `claude → dogu/team <chquan@dogu.xyz> DOGU (claude_team)`과 `codex → 3f13fa37…`가 표시된다.
+- **증거**: `cargo test` 17개 통과. 실기 `--dump`에 두 등급을 포함한 `claude → example/team <user@example.com> Example (claude_team)`과 `codex → 00000001…`가 표시된다.
 
 <!-- qhud:anchor -->
 <a id="d-014--binary-budget-20-mb--25-mb-network-is-opt-in-not-ambient"></a>

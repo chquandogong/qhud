@@ -6,10 +6,10 @@
 
 # ARCHITECTURE — qhud
 
-> Status: living (updated through v0.8.2) · Date: 2026-11-24 · Owner:
+> Status: living (updated through v0.8.3) · Date: 2026-11-24 · Owner:
 > chquandogong
 > Companion to SPEC (what it must do) and DECISION_LOG (why it is built this
-> way). The module map is updated through v0.8.2; dated verification stays in
+> way). The module map is updated through v0.8.3; dated verification stays in
 > TEST_PLAN.
 
 ## 1. What qhud is, structurally
@@ -529,7 +529,7 @@ Pro 500, matching the current upstream status labels. Operator `plans` and
 `workspace_plans` values take precedence. An unknown wire value stays in the
 expanded detail or tooltip and does not become a visible badge.
 
-The monthly price chip reads provider plan metadata for the same workspace. `ui/plan-prices.js` selects a dated US list price or a published team range. A matched Codex seat annotation narrows that range. The renderer in `ui/price-chip.js` scales the fill at $200 per unit and keeps the dollar label readable at $0. Account aliases and Claude team member grades supply no billing evidence.
+`ui/plan-prices.js` selects a single monthly list price. A matched Codex seat annotation or a recognized Claude Team `seatTier` selects the seat. The local account registry stores dated `billing_cycles` observations scoped by provider, email, workspace ID and plan. A matching observation selects monthly billing (`m`) or annual billing (`y`, the annual price divided by twelve). With no cycle evidence, the public monthly rate serves as a reference without a suffix. A monthly-only paid plan can show `m` from its published terms. An unspecified team seat shows a starting price and lists options in the details. A recognized special or discounted Claude seat with no published rate shows an unknown price. Google AI Pro uses Korean prices in the Korean UI and the US monthly equivalent for the same cycle to set the fill. `ui/price-chip.js` uses one blue fill at $200 per unit.
 
 ## 17. Registry and placeholders
 

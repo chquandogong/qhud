@@ -38,7 +38,7 @@ backend and a lightweight webview. No Node.js or npm is required to build it.
 | **Usage and resets** | Account windows, model-specific pools when available, reset countdowns, and exact reset timestamps. |
 | **Account context** | Separate account/workspace rows and dated snapshots after restart. Codex displays an email from its local login when available; an operator label overrides it, and an unavailable email falls back to the account ID. |
 | **Connections and plans** | Expand a provider to see its connection status. Personal and team usage are grouped by email. A verified Claude personal Free plan shows “Usage unavailable” when no quota is reported. Select a recognized plan to open its model guide. |
-| **Monthly plan prices** | A chip beside each plan shows its US list price. Open the row for the price basis and billing intervals. |
+| **Monthly plan prices** | A single amount shows the monthly list price or its annual-plan equivalent. `m` marks monthly billing and `y` marks annual billing. The Korean UI shows Google AI Pro in won. |
 | **Session activity** | On supported Linux setups: status, context pressure, model, effort, branch, working directory, and conflict indicators. |
 | **Freshness** | Local observation every 2 seconds. Provider usage requests run when you explicitly refresh. |
 | **System usage and About** | A quiet CPU, memory, optional GPU, disk and network history strip; select a metric for detail. About shows the build version, maker Chenghao Quan and [homepage](https://chquandogong.github.io/CHENGHAO-QUAN/). |
@@ -83,15 +83,15 @@ Example data is available only with `--demo`.
 
 ## Install
 
-**Current release: [v0.8.2](https://github.com/chquandogong/qhud/releases/tag/v0.8.2).**
+**Current release: [v0.8.3](https://github.com/chquandogong/qhud/releases/tag/v0.8.3).**
 Both platform build/test jobs gate publication. Each archive has a SHA-256 file.
 
 | Download | Verify |
 | --- | --- |
-| [Windows x64 ZIP](https://github.com/chquandogong/qhud/releases/download/v0.8.2/qhud-v0.8.2-windows-x86_64.zip) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.8.2/qhud-v0.8.2-windows-x86_64.zip.sha256) |
-| [Linux x86_64 tarball](https://github.com/chquandogong/qhud/releases/download/v0.8.2/qhud-v0.8.2-linux-x86_64.tar.gz) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.8.2/qhud-v0.8.2-linux-x86_64.tar.gz.sha256) |
+| [Windows x64 ZIP](https://github.com/chquandogong/qhud/releases/download/v0.8.3/qhud-v0.8.3-windows-x86_64.zip) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.8.3/qhud-v0.8.3-windows-x86_64.zip.sha256) |
+| [Linux x86_64 tarball](https://github.com/chquandogong/qhud/releases/download/v0.8.3/qhud-v0.8.3-linux-x86_64.tar.gz) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.8.3/qhud-v0.8.3-linux-x86_64.tar.gz.sha256) |
 
-Compare US monthly list prices beside each plan. $200 fills one unit and $500 fills 2.5. Codex Business and Claude Team show the published seat-price range when the workspace plan is known. [v0.8.2 release notes](docs/05-ops/releases/v0.8.2.md)
+v0.8.3 shows one monthly amount per plan. A Standard team seat shows **$25 m** when billed monthly or **$20 y** when billed annually. The Korean UI shows Google AI Pro in won. [v0.8.3 release notes](docs/05-ops/releases/v0.8.3.md)
 
 Archives published by the current release workflow also carry GitHub build
 provenance. With GitHub CLI, substitute the path of the archive you downloaded;
@@ -117,9 +117,9 @@ for prerequisites, source builds, and configuration.
 After downloading the archive and its SHA-256 file into the same directory:
 
 ```sh
-sha256sum -c qhud-v0.8.2-linux-x86_64.tar.gz.sha256
-tar -xzf qhud-v0.8.2-linux-x86_64.tar.gz
-install -Dm755 qhud-v0.8.2-linux-x86_64/qhud "$HOME/.local/bin/qhud"
+sha256sum -c qhud-v0.8.3-linux-x86_64.tar.gz.sha256
+tar -xzf qhud-v0.8.3-linux-x86_64.tar.gz
+install -Dm755 qhud-v0.8.3-linux-x86_64/qhud "$HOME/.local/bin/qhud"
 "$HOME/.local/bin/qhud"
 ```
 

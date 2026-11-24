@@ -10,6 +10,12 @@ All notable changes to qhud. Format: [Keep a Changelog](https://keepachangelog.c
 
 ## [Unreleased]
 
+## [0.8.3] — 2026-11-24
+
+- Show one monthly price with a blue fill. Confirmed billing cycles use `m` for monthly billing or `y` for the monthly equivalent of annual billing. An unknown cycle uses the published monthly reference without a suffix.
+- Recognize Claude Team’s regular seat type from Claude Code. Match dated billing records by provider, email, workspace and plan. Show a starting price for an unspecified team seat.
+- Display Google AI Pro in Korean won in the Korean UI. Use the US monthly equivalent for the same billing cycle to scale the bar.
+
 ## [0.8.2] — 2026-11-24
 
 - Show each recognized plan’s US monthly list price in a higher-contrast chip. $200 fills one unit, $500 fills 2.5 units, and Free shows $0.
@@ -615,7 +621,7 @@ expired token, extra-usage spend, and readings that survive a restart.
   pane statusline on the account row IS the active login's workspace,
   so the fetched copy of that workspace now merges into the account row
   (pane wins, holes fill, per-model pools become chips) and the row
-  names the workspace it shows (`chquan17@gmail.com · personal`, plan
+  names the workspace it shows (`user@example.com · personal`, plan
   and credits in the tooltip). `↳` rows render only for OTHER
   workspaces, where a differing value means something.
 - **CI was red on main since e6e31ed**: clippy `-D warnings` tripped

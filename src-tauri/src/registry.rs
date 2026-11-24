@@ -85,6 +85,48 @@ pub struct ObservedPlan {
     pub verified_at_ms: u64,
 }
 
+/// Billing page observation for one member, workspace and plan. Kept
+/// separately from login profiles so native Google accounts can use it too.
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+pub struct BillingCycleObservation {
+    pub provider: String,
+    pub email: String,
+    pub workspace_id: String,
+    pub plan: String,
+    pub cycle: String,
+    pub verified_at_ms: u64,
+}
+
+impl BillingCycleObservation {
+    fn valid_at(&self, now_ms: u64) -> bool {
+        let clean_id = |id: &str, limit| {
+            !id.is_empty()
+                && id.len() <= limit
+                && !id.chars().any(|c| c.is_control() || c.is_whitespace())
+        };
+        let valid_email = clean_id(&self.email, 320)
+            && self.email.split_once('@').is_some_and(|(local, domain)| {
+                !local.is_empty() && !domain.is_empty() && !domain.contains('@')
+            });
+        let valid_workspace = match self.provider.as_str() {
+            "agy" => self.workspace_id.eq_ignore_ascii_case(&self.email),
+            "codex" | "claude" => clean_id(&self.workspace_id, 128),
+            _ => false,
+        };
+        valid_email
+            && valid_workspace
+            && !self.plan.is_empty()
+            && self.plan.len() <= 64
+            && self.plan.trim() == self.plan
+            && self.plan.bytes().all(|b| {
+                b.is_ascii_lowercase() || b.is_ascii_digit() || matches!(b, b' ' | b'_' | b'-')
+            })
+            && matches!(self.cycle.as_str(), "monthly" | "annual")
+            && self.verified_at_ms > 0
+            && self.verified_at_ms <= now_ms
+    }
+}
+
 fn deserialize_optional_note<'de, D, T>(deserializer: D) -> Result<Option<T>, D::Error>
 where
     D: serde::Deserializer<'de>,
@@ -119,6 +161,7 @@ pub struct Registry {
     /// Desired connections are separate from verified account identities.
     /// Adding a profile never activates its credential directory by itself.
     pub profiles: Vec<ConnectionProfile>,
+    pub billing_cycles: Vec<BillingCycleObservation>,
 }
 
 /// Expands a single leading `~/` (or bare `~`) against the given home.
@@ -169,8 +212,23 @@ pub fn parse(json: &str) -> Registry {
         codex_homes: Vec<String>,
         #[serde(default)]
         profiles: Vec<ConnectionProfile>,
+        #[serde(default)]
+        billing_cycles: serde_json::Value,
     }
     let raw: Raw = serde_json::from_str(json).unwrap_or_default();
+    // Preserve usable settings and sibling notes if an optional entry was
+    // mistyped in this operator-owned file.
+    let billing_cycles = match raw.billing_cycles {
+        serde_json::Value::Array(entries) => {
+            let now_ms = crate::view::now_ms();
+            entries
+                .into_iter()
+                .filter_map(|entry| serde_json::from_value::<BillingCycleObservation>(entry).ok())
+                .filter(|note| note.valid_at(now_ms))
+                .collect()
+        }
+        _ => Vec::new(),
+    };
     Registry {
         labels: raw.labels,
         workspace_names: raw.workspace_names,
@@ -180,6 +238,7 @@ pub fn parse(json: &str) -> Registry {
         claude_config_dirs: raw.claude_config_dirs,
         codex_homes: raw.codex_homes,
         profiles: raw.profiles,
+        billing_cycles,
     }
 }
 
@@ -304,6 +363,57 @@ mod tests {
         assert!(parse("{}").forgotten.is_empty());
         assert!(parse("{}").claude_config_dirs.is_empty());
         assert!(parse("{}").profiles.is_empty());
+        assert!(parse("{}").billing_cycles.is_empty());
+    }
+
+    #[test]
+    fn billing_cycle_notes_keep_their_scope_and_ignore_malformed_siblings() {
+        use serde_json::json;
+        let note = json!({
+            "provider":"codex", "email":"one@example.com", "workspace_id":"workspace-1",
+            "plan":"business", "cycle":"annual", "verified_at_ms":123
+        });
+        let mut dirty = vec![note.clone(), json!(null), json!({"plan":"business"})];
+        for (key, bad) in [
+            ("verified_at_ms", json!(-1)),
+            ("verified_at_ms", json!(0)),
+            ("verified_at_ms", json!(u64::MAX)),
+            ("cycle", json!("year")),
+            ("provider", json!("elsewhere")),
+            ("email", json!("a@@b")),
+            ("workspace_id", json!("a\nb")),
+            ("workspace_id", json!("w".repeat(129))),
+            ("plan", json!("Business")),
+        ] {
+            let mut invalid = note.clone();
+            invalid[key] = bad;
+            dirty.push(invalid);
+        }
+        let load_notes = |value| {
+            let reg = parse(&json!({"billing_cycles":value,"labels":{"x":"keep"}}).to_string());
+            assert_eq!(reg.labels["x"], "keep");
+            reg.billing_cycles
+        };
+        assert_eq!(
+            serde_json::to_value(load_notes(json!(dirty))).unwrap(),
+            json!([note])
+        );
+        assert!(load_notes(json!("annual")).is_empty());
+    }
+
+    #[test]
+    fn google_billing_cycle_is_bound_to_the_account_email_without_a_profile() {
+        use serde_json::json;
+        let mut note = json!({
+            "provider":"agy", "email":"one@example.com", "workspace_id":"One@Example.com",
+            "plan":"google ai pro", "cycle":"monthly", "verified_at_ms":123
+        });
+        let input = |note: &serde_json::Value| json!({"billing_cycles":[note]}).to_string();
+        let reg = parse(&input(&note));
+        assert_eq!(reg.billing_cycles.len(), 1);
+        assert!(reg.profiles.is_empty());
+        note["workspace_id"] = json!("two@example.com");
+        assert!(parse(&input(&note)).billing_cycles.is_empty());
     }
 
     #[test]

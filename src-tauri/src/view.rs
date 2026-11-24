@@ -41,6 +41,8 @@ pub struct Payload {
     /// Explicitly configured personal/team logins, including pending profiles.
     #[serde(default)]
     pub configured_connections: Vec<crate::connections::ConnectionStatus>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub billing_cycles: Vec<crate::registry::BillingCycleObservation>,
     pub panes: Vec<PaneView>,
     pub summary: Summary,
     /// Accounts that have connected before but have no live credential
@@ -200,6 +202,7 @@ pub fn payload(reports: &[PaneReport]) -> Payload {
         quotas,
         provider_health: Vec::new(),
         configured_connections: Vec::new(),
+        billing_cycles: Vec::new(),
         panes,
         summary,
         account_placeholders: Vec::new(),
@@ -479,6 +482,7 @@ pub fn attach_placeholders(
     payload.account_placeholders = crate::registry::placeholders(reg, &keys);
     payload.workspace_names = reg.workspace_names.clone();
     payload.workspace_plans = reg.workspace_plans.clone();
+    payload.billing_cycles = reg.billing_cycles.clone();
 }
 
 /// Stamps each quota row with the account that owns it. Kept out of
@@ -750,6 +754,7 @@ mod tests {
             quotas: provider_quotas(&panes),
             provider_health: Vec::new(),
             configured_connections: Vec::new(),
+            billing_cycles: Vec::new(),
             panes,
             summary: Summary::default(),
             account_placeholders: Vec::new(),
@@ -759,6 +764,18 @@ mod tests {
             codex_fetched_at_ms: None,
             system: None,
         }
+    }
+
+    #[test]
+    fn registry_billing_cycles_reach_the_payload_without_creating_accounts() {
+        let mut p = payload_of(Vec::new());
+        let notes = serde_json::json!([{"provider":"claude","email":"one@example.com",
+            "workspace_id":"team-org","plan":"team","cycle":"monthly","verified_at_ms":123}]);
+        let config = serde_json::json!({"billing_cycles":notes});
+        let reg = crate::registry::parse(&config.to_string());
+        attach_placeholders(&mut p, &reg, &[]);
+        assert_eq!(serde_json::to_value(&p).unwrap()["billing_cycles"], notes);
+        assert!(p.account_placeholders.is_empty() && p.quotas.is_empty());
     }
 
     #[test]

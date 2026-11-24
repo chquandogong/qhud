@@ -35,6 +35,10 @@ pub struct AccountLabel {
     pub org: Option<String>,
     /// Provider's own plan/seat words, e.g. `claude_team`, `prolite`.
     pub org_type: Option<String>,
+    /// Claude Team seat for this account and organization. `other` means
+    /// the provider supplied a SKU outside the regular public price catalog.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub seat_type: Option<&'static str>,
     pub tiers: Vec<TierScope>,
     /// Operator-supplied plan for a LIVE account whose provider does not
     /// report one (agy exposes no plan locally at all). Mirrors the
@@ -90,10 +94,33 @@ struct ClaudeOauthAccount {
     organization_name: Option<String>,
     #[serde(default)]
     organization_type: Option<String>,
+    // A malformed optional seat hint must not discard the account identity.
+    #[serde(default)]
+    seat_tier: serde_json::Value,
     #[serde(default)]
     organization_rate_limit_tier: Option<String>,
     #[serde(default)]
     user_rate_limit_tier: Option<String>,
+}
+
+impl ClaudeOauthAccount {
+    fn team_seat_type(&self) -> Option<&'static str> {
+        if self.organization_type.as_deref() != Some("claude_team")
+            || self.account_uuid.as_deref()?.trim().is_empty()
+            || self.organization_uuid.as_deref()?.trim().is_empty()
+        {
+            return None;
+        }
+        // Anthropic's Claude Code 2.1.319 maps oauthAccount.seatTier to
+        // anthropic.seat_type in its published Windows npm package. The two
+        // regular Team SKUs below are priced separately from its discounted SKUs.
+        match self.seat_tier.as_str()? {
+            "team_standard" => Some("standard"),
+            "team_tier_1" => Some("premium"),
+            sku if !sku.trim().is_empty() => Some("other"),
+            _ => None,
+        }
+    }
 }
 
 /// Parses `~/.claude.json`. Claude Code stores the signed-in identity
@@ -102,6 +129,7 @@ struct ClaudeOauthAccount {
 pub fn claude_account(config_json: &str) -> Option<AccountLabel> {
     let cfg: ClaudeConfig = serde_json::from_str(config_json).ok()?;
     let acct = cfg.oauth_account?;
+    let seat_type = acct.team_seat_type();
     let mut tiers = Vec::new();
     if let Some(t) = acct.organization_rate_limit_tier {
         tiers.push(TierScope {
@@ -121,6 +149,7 @@ pub fn claude_account(config_json: &str) -> Option<AccountLabel> {
         account_id: acct.account_uuid,
         org: acct.organization_name,
         org_type: acct.organization_type,
+        seat_type,
         tiers,
         plan: None,
         display_name: None,
@@ -382,12 +411,12 @@ pub fn detect_all() -> Vec<(String, AccountLabel)> {
 mod tests {
     use super::*;
 
-    // Trimmed from the real ~/.claude.json (2026-08-07): a team seat,
-    // which is the case that carries two distinct rate-limit tiers.
+    // Synthetic account with the two distinct rate-limit tiers of a team seat.
     const CLAUDE_TEAM_SEAT: &str = r#"{
       "oauthAccount": {
-        "accountUuid": "67c22197-ede6-4221-b095-4c89789546dd",
+        "accountUuid": "00000000-0000-4000-8000-000000000001",
         "emailAddress": "user@example.com",
+        "organizationUuid": "org-example",
         "organizationName": "EXAMPLECO",
         "organizationType": "claude_team",
         "seatTier": "team_tier_1",
@@ -403,6 +432,7 @@ mod tests {
         assert_eq!(acct.email.as_deref(), Some("user@example.com"));
         assert_eq!(acct.org.as_deref(), Some("EXAMPLECO"));
         assert_eq!(acct.org_type.as_deref(), Some("claude_team"));
+        assert_eq!(acct.seat_type, Some("premium"));
         // The operator's "team vs personal on one login" distinction is
         // exactly this pair; collapsing it to one tier loses a pool.
         assert_eq!(
@@ -418,6 +448,45 @@ mod tests {
                 },
             ]
         );
+    }
+
+    #[test]
+    fn claude_prices_only_regular_seats_within_the_identified_team() {
+        use serde_json::{Value, json};
+        let config: Value = serde_json::from_str(CLAUDE_TEAM_SEAT).unwrap();
+        let check = |key: &str, value: Value, expected: Option<&str>| {
+            let mut example = config.clone();
+            if value.is_null() {
+                example["oauthAccount"].as_object_mut().unwrap().remove(key);
+            } else {
+                example["oauthAccount"][key] = value;
+            }
+            let account = claude_account(&example.to_string()).expect("identity retained");
+            assert_eq!(account.seat_type, expected);
+            let exported = serde_json::to_value(&account).unwrap();
+            assert_eq!(
+                exported.get("seat_type"),
+                expected.map(|s| json!(s)).as_ref()
+            );
+        };
+        check("seatTier", json!("team_standard"), Some("standard"));
+        for value in [Value::Null, json!({}), json!(" ")] {
+            check("seatTier", value, None);
+        }
+        for sku in [
+            "premium",
+            "team_labs_premium",
+            "team_bendep_nonprofit_standard",
+        ] {
+            check("seatTier", json!(sku), Some("other"));
+        }
+        for org in ["claude_enterprise", "claude_max", "claude_pro", ""] {
+            check("organizationType", json!(org), None);
+        }
+        for key in ["accountUuid", "organizationUuid"] {
+            check(key, Value::Null, None);
+            check(key, json!(" "), None);
+        }
     }
 
     #[test]
@@ -442,14 +511,14 @@ mod tests {
     fn codex_account_keeps_the_account_id_when_the_id_token_is_unreadable() {
         let json = r#"{"auth_mode":"chatgpt","tokens":{
           "id_token":"REDACTED","access_token":"REDACTED","refresh_token":"REDACTED",
-          "account_id":"3f13fa37-2915-46b3-b975-6f982c7e3c36"},
+          "account_id":"00000001-0000-4000-8000-000000000002"},
           "last_refresh":"2026-08-06T01:32:09Z"}"#;
 
         let acct = codex_account(json).expect("codex auth parses");
 
         assert_eq!(
             acct.account_id.as_deref(),
-            Some("3f13fa37-2915-46b3-b975-6f982c7e3c36")
+            Some("00000001-0000-4000-8000-000000000002")
         );
         assert!(acct.email.is_none());
         assert_eq!(acct.display().as_deref(), acct.account_id.as_deref());
@@ -721,14 +790,14 @@ mod tests {
     fn inventory_labels_are_keyed_by_provider_and_account_id_or_email() {
         // Operator-maintained names override the detected id or email.
         let inv = r#"{"schema":1,"labels":{
-          "claude:67c22197-ede6-4221-b095-4c89789546dd":"work",
-          "codex:3f13fa37-2915-46b3-b975-6f982c7e3c36":"personal",
+          "claude:00000000-0000-4000-8000-000000000001":"work",
+          "codex:00000001-0000-4000-8000-000000000002":"personal",
           "agy:person@gmail.com":"personal"
         }}"#;
         let labels = parse_inventory(inv);
 
         let mut claude = claude_account(CLAUDE_TEAM_SEAT).unwrap();
-        claude.account_id = Some("67c22197-ede6-4221-b095-4c89789546dd".into());
+        claude.account_id = Some("00000000-0000-4000-8000-000000000001".into());
         apply_labels("claude", &mut claude, &labels);
         assert_eq!(claude.display().as_deref(), Some("work"));
 

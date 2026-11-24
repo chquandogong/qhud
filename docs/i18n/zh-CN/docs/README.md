@@ -12,7 +12,7 @@
 
 qhud 全部文档均提供三种语言，涵盖首次安装、架构、决策和发布历史。
 
-每个套餐名称旁会显示美国月度标价，$200 填充一格，$500 填充 2.5 格。确认工作区使用 Codex Business 或 Claude Team 后，即可显示公开的席位价格范围。 [v0.8.2 发布说明](05-ops/releases/v0.8.2.md)
+v0.8.3 为每个套餐显示一个月均金额。团队 Standard 席位按月结算时显示 **$25 m**，按年结算时显示折合月价 **$20 y**。韩语界面的 Google AI Pro 价格以韩元显示。 [v0.8.3 发布说明](05-ops/releases/v0.8.3.md)
 
 <!-- qhud:anchor -->
 <a id="start-using-qhud"></a>
@@ -72,6 +72,7 @@ qhud 全部文档均提供三种语言，涵盖首次安装、架构、决策和
 | [v0.8.0 发布说明](05-ops/releases/v0.8.0.md) | 连接状态、多账户、重置券及支持模型指南。 |
 | [v0.8.1 发布说明](05-ops/releases/v0.8.1.md) | 按邮箱分组的个人与团队行，以及 Claude Free 的用量状态。 |
 | [v0.8.2 发布说明](05-ops/releases/v0.8.2.md) | 月费标签和团队套餐的公开席位价格范围。 |
+| [v0.8.3 发布说明](05-ops/releases/v0.8.3.md) | 单一月均价格、结算周期标记和 Google AI Pro 韩国定价。 |
 
 <!-- qhud:anchor -->
 <a id="languages-and-source-fidelity"></a>

@@ -23,20 +23,20 @@ qhud 설치, 기존 CLI 계정 연결, 저장된 스냅샷과 현재 응답을 �
 | Windows x64 | ZIP을 풀고 추출된 디렉터리 안의 `qhud.exe`를 실행합니다. | Microsoft Edge WebView2 Runtime. [Windows 설정](05-ops/WINDOWS.md)을 참조하세요. |
 | Linux x86_64 | tarball을 풀고 버전 디렉터리 안의 바이너리를 설치합니다. | GTK/WebKitGTK. 기준 시스템은 Ubuntu 24.04입니다. [Linux 운영](05-ops/RUNBOOK.md)을 참조하세요. |
 
-Linux v0.8.2에서 두 파일을 모두 다운로드한 뒤 실행합니다.
+Linux v0.8.3에서 두 파일을 모두 다운로드한 뒤 실행합니다.
 
 ```sh
-sha256sum -c qhud-v0.8.2-linux-x86_64.tar.gz.sha256
-tar -xzf qhud-v0.8.2-linux-x86_64.tar.gz
-install -Dm755 qhud-v0.8.2-linux-x86_64/qhud "$HOME/.local/bin/qhud"
+sha256sum -c qhud-v0.8.3-linux-x86_64.tar.gz.sha256
+tar -xzf qhud-v0.8.3-linux-x86_64.tar.gz
+install -Dm755 qhud-v0.8.3-linux-x86_64/qhud "$HOME/.local/bin/qhud"
 "$HOME/.local/bin/qhud"
 ```
 
 Windows 다운로드는 표시된 해시를 `.sha256` 파일과 비교합니다.
 
 ```powershell
-Get-FileHash -Algorithm SHA256 .\qhud-v0.8.2-windows-x86_64.zip
-Get-Content .\qhud-v0.8.2-windows-x86_64.zip.sha256
+Get-FileHash -Algorithm SHA256 .\qhud-v0.8.3-windows-x86_64.zip
+Get-Content .\qhud-v0.8.3-windows-x86_64.zip.sha256
 ```
 
 현재 release workflow로 게시한 아카이브에는 GitHub 빌드 출처 증명도 있습니다. GitHub CLI를 설치하고 실제 다운로드한 파일명으로 바꿔 `.sha256` 제공 파일이 아닌 아카이브 자체를 검증합니다.
@@ -69,17 +69,35 @@ Codex와 Claude Code는 각 공급자의 CLI로 로그인합니다. Windows에�
 
 **월 정가 칩**
 
-요금제 옆 금액은 미국 월 정가이며, 팀에서는 좌석당 금액입니다. 눈에 잘 띄는 색으로 $200당 한 칸을 채웁니다. $100은 반 칸, $500은 2.5칸이며, 확인된 Free 요금제는 채움 없이 $0입니다. 5H·7D 막대는 각 기간의 한도 대비 사용률을 나타냅니다.
+가격 칩에는 월 기준 금액 하나를 표시합니다. 파란 채움 한 칸은 $200입니다. $100은 반 칸, $500은 2.5칸이고 Free는 빈 막대입니다. 월·연 결제를 모두 제공하는 요금제에서 월 결제를 확인하면 금액 옆에 `m`을, 연 결제를 확인하면 연 정가를 12로 나눈 금액 옆에 `y`를 붙입니다. 주기를 모르면 월 결제 정가만 표시합니다. 공식적으로 월 결제만 제공하는 유료 요금제에도 `m`을 붙입니다. 5H·7D 막대는 각 기간의 한도 대비 사용률입니다.
 
-Codex Business 또는 Claude Team 요금제가 확인되면 좌석 유형이 없어도 **$20–125**를 표시합니다. Standard와 Premium의 연 결제 월 환산액부터 월 결제 가격까지 포함한 좌석당 범위입니다. Codex에서 좌석까지 확인되면 Standard는 **$20–25**, Premium은 **$100–125**로 좁혀집니다. Claude 팀의 **Max 5x**는 구성원 사용 등급이므로 팀 가격 범위와 함께 표시할 수 있습니다. 행을 펼치면 가격 기준을 볼 수 있습니다. 정가 확인일은 **2026-11-24**이며, 실제 결제액은 청구서에서 확인하세요.
-별도의 연결 상태 행에 확인된 요금제가 없으면 가격 칩을 생략할 수 있습니다. 개별 계약 요금제는 공개된 금액이 없습니다.
+Codex Business와 Claude Team은 좌석당 월 정가입니다. 예를 들어 Standard는 월 결제면 **$25 m**, 연 결제면 **$20 y**입니다. Premium은 각각 **$125 m**, **$100 y**입니다. 좌석 종류가 지정되지 않았으면 **$25+**처럼 공개 시작 가격에 더하기 기호를 붙입니다. 할인·특수 Claude Team 좌석으로 확인됐지만 요금을 알 수 없으면 **가격 미확인**으로 표시합니다. 행을 펼치면 좌석별 정가를 볼 수 있습니다. Claude의 **Max 5x**는 구성원의 사용 등급입니다. 정가 확인일은 **2026-11-24**입니다.
+로컬 `accounts.json`의 `billing_cycles`에는 결제 화면에서 확인한 주기와 확인 시각을 저장합니다. 이 기록은 공급자, 이메일, 워크스페이스, 요금제가 모두 일치하는 행에만 적용합니다. 별도의 연결 상태 행에 확인된 요금제가 없으면 가격 칩을 생략할 수 있습니다. 개별 계약 요금제는 공개된 금액이 없습니다.
+
+결제 화면에서 직접 확인한 주기는 기존 계정 설정 파일의 최상위 `billing_cycles` 배열에 기록할 수 있습니다. Codex Business 팀은 `provider`에 `codex`, `plan`에 `business`, `workspace_id`에 Codex 워크스페이스 ID를 사용합니다. Claude Team은 `claude`, `team`, 조직 ID를 사용합니다. Google AI Pro는 `agy`, `google ai pro`, 계정 이메일을 사용합니다. `email`은 구독 계정 이메일, `cycle`은 `monthly` 또는 `annual`, `verified_at_ms`는 확인 시각의 Unix 밀리초 값입니다.
+
+아래는 가상 계정 예시입니다. 직접 확인한 구독 정보로 값을 바꿔 기존 `billing_cycles` 배열에 항목을 추가하고 다른 설정은 보존하세요. qhud는 이 로컬 기록을 읽습니다. 청구서를 가져오지는 않습니다.
+
+```json
+{
+  "billing_cycles": [
+    {
+      "provider": "codex",
+      "email": "member@example.com",
+      "workspace_id": "ws-example",
+      "plan": "business",
+      "cycle": "annual",
+      "verified_at_ms": 1795478400000
+    }
+  ]
+}
+```
+
 [ChatGPT Pro 가격](https://help.openai.com/en/articles/9793128-about-chatgpt-pro-tiers) ·
 [ChatGPT Business 좌석](https://help.openai.com/en/articles/8792828-chatgpt-business-overview) ·
 [Claude Team 좌석](https://support.claude.com/en/articles/9266767-what-is-the-team-plan)
 
-Claude 개인 Pro와 Antigravity가 보고한 Google AI Pro에는 월 약 $17–20을
-표시합니다. 연 결제 정가를 12로 나눈 월 환산액부터 월 결제 정가까지의 범위입니다.
-[Claude 가격](https://claude.com/pricing) · [Google AI Pro 가격](https://one.google.com/about/google-ai-plans/?gl=US)
+한국어 화면의 Google AI Pro는 월 결제가 확인되면 **₩29,000 m**, 연 결제가 확인되면 **₩24,167 y**로 표시합니다(연 290,000원). 막대 길이는 같은 결제 주기의 미국 월 환산 정가를 기준으로 합니다. 영어·중국어 화면은 미국 정가를 표시합니다. [한국 Google One](https://one.google.com/about/plans?hl=ko&gl=KR) · [미국 Google One](https://one.google.com/about/google-ai-plans/?gl=US) · [Claude 가격](https://claude.com/pricing)
 
 - **5H / 7D**는 초기화까지 남은 시간이 아니라 기간의 길이입니다.
 - **오른쪽 시간**은 초기화까지 남은 시간입니다. 마우스를 올리면 정확한 현지 날짜와 시간을 볼 수 있습니다.
@@ -121,7 +139,8 @@ Team/Enterprise로 유지합니다. 명시적 플랜 재정의를 우선합니�
 - **Claude Code:** 터미널 또는 Claude Desktop의 Code 탭에서 `/model`을 실행합니다.
   Max·Ultra 플랜과 Team Premium 좌석은 한도 내 Fable 사용을 포함하지만,
   Team Standard 좌석에서 Fable을 사용하려면 사용 크레딧이 필요합니다.
-  표시된 **Max 5x** 구성원 사용량 등급만으로 Premium 좌석을 확인한 것은 아닙니다.
+  Claude Code에서 해당 조직의 구성원 좌석을 확인하면 모델 가이드에 반영합니다.
+  **Max 5x**는 별도로 표시되는 구성원 사용 등급입니다.
   [Claude Code 모델 설정](https://code.claude.com/docs/en/model-config)과
   [Fable 이용 자격 및 한도](https://support.claude.com/en/articles/15424964-claude-fable-models-on-your-plan)를 참고하세요.
 - **Antigravity:** 앱의 모델 선택기를 사용합니다. 유료 Google AI Pro와 체험 구독은
