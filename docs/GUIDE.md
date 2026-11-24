@@ -20,20 +20,20 @@ contains a versioned directory and comes with a separate SHA-256 file.
 | Windows x64 | Extract the ZIP; run `qhud.exe` inside the extracted directory. | Microsoft Edge WebView2 Runtime. See [Windows setup](05-ops/WINDOWS.md). |
 | Linux x86_64 | Extract the tarball; install the binary inside its versioned directory. | GTK/WebKitGTK; Ubuntu 24.04 is the reference system. See [Linux operations](05-ops/RUNBOOK.md). |
 
-For Linux v0.8.2, after downloading both files:
+For Linux v0.8.3, after downloading both files:
 
 ```sh
-sha256sum -c qhud-v0.8.2-linux-x86_64.tar.gz.sha256
-tar -xzf qhud-v0.8.2-linux-x86_64.tar.gz
-install -Dm755 qhud-v0.8.2-linux-x86_64/qhud "$HOME/.local/bin/qhud"
+sha256sum -c qhud-v0.8.3-linux-x86_64.tar.gz.sha256
+tar -xzf qhud-v0.8.3-linux-x86_64.tar.gz
+install -Dm755 qhud-v0.8.3-linux-x86_64/qhud "$HOME/.local/bin/qhud"
 "$HOME/.local/bin/qhud"
 ```
 
 For a Windows download, compare the displayed digest with the `.sha256` file:
 
 ```powershell
-Get-FileHash -Algorithm SHA256 .\qhud-v0.8.2-windows-x86_64.zip
-Get-Content .\qhud-v0.8.2-windows-x86_64.zip.sha256
+Get-FileHash -Algorithm SHA256 .\qhud-v0.8.3-windows-x86_64.zip
+Get-Content .\qhud-v0.8.3-windows-x86_64.zip.sha256
 ```
 
 Archives published by the current release workflow also carry GitHub build
@@ -77,18 +77,35 @@ profiles awaiting a connection appear under the same address.
 
 **Monthly price chip**
 
-The amount beside a plan is its US monthly list price, per seat for teams. The higher-contrast fill measures $200 per unit. A $100 plan fills half a unit, $500 fills 2.5 units, and a confirmed Free plan shows $0 with an empty fill. The 5H and 7D bars measure the share of each usage limit consumed.
+Each chip shows one monthly amount. The blue fill measures $200 per unit, so $100 fills half a unit, $500 fills 2.5 and Free has an empty track. For plans offering both billing cycles, a verified monthly subscription shows `m` and a verified annual subscription shows `y` alongside the annual price divided by twelve. If the cycle is unknown, the chip shows the published monthly rate without a suffix. A paid plan offered only monthly can show `m` from its published terms. The 5H and 7D bars continue to show quota usage.
 
-When Codex Business or Claude Team is identified and the seat type is unknown, the chip shows **$20–125** per seat per month. This covers Standard and Premium seats on annual and monthly billing. A verified Codex Standard seat narrows the range to **$20–25**, and a verified Premium seat to **$100–125**. Claude’s **Max 5x** member usage grade can appear alongside the team range. Open the row to check the basis. Prices were reviewed on **2026-11-24**. The invoice gives the actual charge.
-A separate connection-status row without a recognized plan can omit the price chip. Plans with custom pricing have no public dollar amount.
+Codex Business and Claude Team prices are per seat. For example, Standard shows **$25 m** with monthly billing or **$20 y** with annual billing. Premium shows **$125 m** or **$100 y**. If the seat type is unspecified, a plus sign marks the public starting price, such as **$25+**. A recognized discounted or special Claude Team seat shows **Price unknown** when its rate is unavailable. Expand the row for the published seat rates. The Claude **Max 5x** label describes the member’s usage grade. List prices were reviewed on **2026-11-24**.
+The local `accounts.json` registry keeps dated billing-page observations in `billing_cycles`. A record applies only to the matching provider, email, workspace and plan. A separate connection-status row without a recognized plan can omit the price chip. Plans with custom pricing have no public dollar amount.
+
+To record a cycle you have checked in a billing portal, add an entry to the top-level `billing_cycles` array in your existing registry. For a Codex Business team, use `provider` = `codex`, `plan` = `business` and the Codex workspace ID as `workspace_id`. For Claude Team, use `claude`, `team` and the organization ID. For Google AI Pro, use `agy`, `google ai pro` and the account email as `workspace_id`. Set `email` to the subscription login, `cycle` to `monthly` or `annual`, and `verified_at_ms` to the observation time in Unix milliseconds.
+
+The following example contains a synthetic account. Replace the example values with your verified subscription details and merge the entry into your existing `billing_cycles` array, preserving your other settings. qhud reads this local record. It does not retrieve invoices.
+
+```json
+{
+  "billing_cycles": [
+    {
+      "provider": "codex",
+      "email": "member@example.com",
+      "workspace_id": "ws-example",
+      "plan": "business",
+      "cycle": "annual",
+      "verified_at_ms": 1795478400000
+    }
+  ]
+}
+```
+
 [ChatGPT Pro prices](https://help.openai.com/en/articles/9793128-about-chatgpt-pro-tiers) ·
 [ChatGPT Business seats](https://help.openai.com/en/articles/8792828-chatgpt-business-overview) ·
 [Claude Team seats](https://support.claude.com/en/articles/9266767-what-is-the-team-plan)
 
-For personal Claude Pro and a Google AI Pro plan reported by Antigravity,
-the chip shows approximately $17–20 per month. The range covers the annual
-price divided by twelve and the monthly rate. [Claude pricing](https://claude.com/pricing) ·
-[Google AI Pro pricing](https://one.google.com/about/google-ai-plans/?gl=US)
+In the Korean UI, Google AI Pro shows **₩29,000 m** for confirmed monthly billing or **₩24,167 y** for confirmed annual billing (₩290,000 a year). The fill uses the US monthly equivalent for the same cycle. English and Chinese use US list prices. [Google One Korea](https://one.google.com/about/plans?hl=ko&gl=KR) · [Google One US](https://one.google.com/about/google-ai-plans/?gl=US) · [Claude pricing](https://claude.com/pricing)
 
 - **5H / 7D** describe the window duration, not the time left until reset.
 - **The time at the right** is the remaining time until reset. Hover for the exact local date and time.
@@ -133,8 +150,9 @@ quota. Check the signed-in account and workspace in the provider's own picker:
   does not establish a member's seat type. See [official Codex models](https://developers.openai.com/codex/models).
 - **Claude Code:** run `/model` in the terminal or Claude Desktop's Code tab.
   Max and Ultra plans and Team Premium seats include Fable usage within their
-  limits; Team Standard seats require usage credits for Fable. A displayed
-  **Max 5x** member usage grade does not independently verify a Premium seat.
+  limits. Team Standard seats require usage credits for Fable. When Claude Code
+  reports the member’s seat for the same organization, qhud uses it in the model
+  guide. **Max 5x** describes the member’s usage grade.
   See [Claude Code model configuration](https://code.claude.com/docs/en/model-config)
   and [Fable eligibility and limits](https://support.claude.com/en/articles/15424964-claude-fable-models-on-your-plan).
 - **Antigravity:** use its model picker. Paid Google AI Pro and trial

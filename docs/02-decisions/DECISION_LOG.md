@@ -284,8 +284,8 @@ Format: context → options → decision → rationale → residual risk.
   single-use and rotated (a failed write-back breaks `codex login`).
   Codex exposes no cleartext email, so its inventory key is a UUID.
 - **Evidence**: `cargo test` 17 pass; live `--dump` shows
-  `claude → dogu/team <chquan@dogu.xyz> DOGU (claude_team)` with both
-  tiers, and `codex → 3f13fa37…`.
+  `claude → example/team <user@example.com> Example (claude_team)` with both
+  tiers, and `codex → 00000001…`.
 
 ## D-014 · Binary budget 20 MB → 25 MB; network is opt-in, not ambient
 

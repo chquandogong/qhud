@@ -38,7 +38,7 @@ qhud 将分散在各个命令行界面的账户配额和会话状态集中到小
 | **用量与重置** | 账户时间窗口、可用时的模型独立配额池、重置倒计时和准确重置时刻。 |
 | **账户信息** | 独立账户/工作区行及重启后仍标注时间的快照。Codex 在本地登录含邮箱时自动显示邮箱；操作者标签优先，缺少邮箱则回退到账户 ID。 |
 | **连接和方案** | 展开供应商名称可查看连接状态。每个邮箱下按个人和团队分别展示用量。已确认的 Claude 个人 Free 套餐没有配额时显示“不提供用量”。点击已识别的套餐可展开模型指南。 |
-| **套餐月费** | 套餐旁的标签显示美国标价。展开该行可查看计价依据和结算周期。 |
+| **套餐月费** | 每个标签显示一个金额，即月付标价或年付折合的月均价。`m` 表示月付，`y` 表示年付。韩语界面的 Google AI Pro 以韩元显示。 |
 | **会话活动** | 在受支持的 Linux 环境中：状态、上下文压力、模型、推理力度、分支、工作目录和冲突指示。 |
 | **新旧程度** | 每 2 秒本地观测；只有显式刷新时才请求供应商用量。 |
 | **系统用量与关于** | 低调显示 CPU、内存、受支持 GPU、磁盘和网络历史；选择指标查看详情。About 显示构建版本、作者 Chenghao Quan 和[主页](https://chquandogong.github.io/CHENGHAO-QUAN/)。 |
@@ -84,14 +84,14 @@ qhud 将分散在各个命令行界面的账户配额和会话状态集中到小
 
 ## 安装
 
-**当前版本：[v0.8.2](https://github.com/chquandogong/qhud/releases/tag/v0.8.2)。** 两平台构建/测试均为发布门槛，每份压缩包都有 SHA-256 文件。
+**当前版本：[v0.8.3](https://github.com/chquandogong/qhud/releases/tag/v0.8.3)。** 两平台构建/测试均为发布门槛，每份压缩包都有 SHA-256 文件。
 
 | 下载 | 校验 |
 | --- | --- |
-| [Windows x64 ZIP](https://github.com/chquandogong/qhud/releases/download/v0.8.2/qhud-v0.8.2-windows-x86_64.zip) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.8.2/qhud-v0.8.2-windows-x86_64.zip.sha256) |
-| [Linux x86_64 tarball](https://github.com/chquandogong/qhud/releases/download/v0.8.2/qhud-v0.8.2-linux-x86_64.tar.gz) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.8.2/qhud-v0.8.2-linux-x86_64.tar.gz.sha256) |
+| [Windows x64 ZIP](https://github.com/chquandogong/qhud/releases/download/v0.8.3/qhud-v0.8.3-windows-x86_64.zip) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.8.3/qhud-v0.8.3-windows-x86_64.zip.sha256) |
+| [Linux x86_64 tarball](https://github.com/chquandogong/qhud/releases/download/v0.8.3/qhud-v0.8.3-linux-x86_64.tar.gz) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.8.3/qhud-v0.8.3-linux-x86_64.tar.gz.sha256) |
 
-每个套餐名称旁会显示美国月度标价，$200 填充一格，$500 填充 2.5 格。确认工作区使用 Codex Business 或 Claude Team 后，即可显示公开的席位价格范围。 [v0.8.2 发布说明](docs/i18n/zh-CN/docs/05-ops/releases/v0.8.2.md)
+v0.8.3 为每个套餐显示一个月均金额。团队 Standard 席位按月结算时显示 **$25 m**，按年结算时显示折合月价 **$20 y**。韩语界面的 Google AI Pro 价格以韩元显示。 [v0.8.3 发布说明](docs/i18n/zh-CN/docs/05-ops/releases/v0.8.3.md)
 
 当前 release workflow 发布的压缩包还带 GitHub 构建来源证明。使用 GitHub CLI 时，将文件名替换为实际下载的压缩包路径；验证压缩包本身，而非其 `.sha256` 配套文件。
 
@@ -110,9 +110,9 @@ v0.7.2 之后的发布还包含 CycloneDX SBOM `qhud-vX.Y.Z-sbom.cdx.json`、其
 将压缩包及 SHA-256 文件下载到同一目录后：
 
 ```sh
-sha256sum -c qhud-v0.8.2-linux-x86_64.tar.gz.sha256
-tar -xzf qhud-v0.8.2-linux-x86_64.tar.gz
-install -Dm755 qhud-v0.8.2-linux-x86_64/qhud "$HOME/.local/bin/qhud"
+sha256sum -c qhud-v0.8.3-linux-x86_64.tar.gz.sha256
+tar -xzf qhud-v0.8.3-linux-x86_64.tar.gz
+install -Dm755 qhud-v0.8.3-linux-x86_64/qhud "$HOME/.local/bin/qhud"
 "$HOME/.local/bin/qhud"
 ```
 

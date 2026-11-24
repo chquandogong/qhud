@@ -10,7 +10,7 @@
 qhud's complete documentation is available in all three languages, from first
 installation to architecture, decisions, and release history.
 
-Compare US monthly list prices beside each plan. $200 fills one unit and $500 fills 2.5. Codex Business and Claude Team show the published seat-price range when the workspace plan is known. [v0.8.2 release notes](05-ops/releases/v0.8.2.md)
+v0.8.3 shows one monthly amount per plan. A Standard team seat shows **$25 m** when billed monthly or **$20 y** when billed annually. The Korean UI shows Google AI Pro in won. [v0.8.3 release notes](05-ops/releases/v0.8.3.md)
 
 ## Start using qhud
 
@@ -63,6 +63,7 @@ product behavior. Start with the specification and dashboard for the current sta
 | [v0.8.0 release notes](05-ops/releases/v0.8.0.md) | Connection status, multiple accounts, reset credits, and the supported-model guide. |
 | [v0.8.1 release notes](05-ops/releases/v0.8.1.md) | Personal and team rows grouped by email, and the Claude Free usage state. |
 | [v0.8.2 release notes](05-ops/releases/v0.8.2.md) | Monthly list-price chips and published team-seat ranges. |
+| [v0.8.3 release notes](05-ops/releases/v0.8.3.md) | Single monthly prices, billing cycle indicators and Korean Google AI Pro prices. |
 
 ## Languages and source fidelity
 

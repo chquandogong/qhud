@@ -743,42 +743,44 @@ body {
 }
 .q-price {
   --price-unit: 64px;
-  --price-fill: #284bb6;
-  --price-track: #101a32;
-  --price-edge: #a4bdff;
+  --price-fill-width: calc(var(--price-unit) * var(--price-units, 0));
+  --price-track: #223858;
+  --price-fill: #355e9c;
   position: relative;
   flex: none;
-  width: calc(var(--price-unit) * var(--price-units, 1));
+  width: max(var(--price-unit), var(--price-fill-width));
+  min-width: max-content;
   max-width: 100%;
   padding: 2px 5px;
   border-radius: 3px;
   background-color: var(--price-track);
-  box-shadow: inset 0 0 0 1px #728fcd;
-  /* The bright edge follows the solid amount. Only the uncertain portion
-     above it is hatched. The inset outline also identifies an empty $0 chip. */
-  background-image:
-    linear-gradient(var(--price-edge), var(--price-edge)),
-    linear-gradient(to right, var(--price-fill) var(--price-min), transparent var(--price-min)),
-    repeating-linear-gradient(120deg, #3651ac 0 2px, var(--price-track) 2px 4px);
-  background-size: var(--price-min) 2px, 100% 100%, var(--price-max) 100%;
+  /* Keep the scale even when a localized label needs a wider chip. */
+  background-image: linear-gradient(var(--price-fill), var(--price-fill));
+  background-size: var(--price-fill-width) 100%;
   background-repeat: no-repeat;
   color: #fff;
   font: 700 11px/14px var(--mono);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
-.q-price[data-above-base]::after {
+.q-price[data-cycle]::after {
+  content: attr(data-cycle);
+  margin-inline-start: 3px;
+  color: #e2ecfc;
+  font-size: 10px;
+  font-weight: 500;
+}
+.q-price[data-above-base]::before {
   content: "";
   position: absolute;
   inset: 2px auto 2px var(--price-unit);
   width: 1px;
-  background: var(--price-edge);
+  background: rgb(255 255 255 / 32%);
 }
 .q-price[data-kind="unknown"] {
   width: auto;
   padding-inline: 0;
   background: none;
-  box-shadow: none;
   color: var(--tx-mut);
   font-weight: 400;
 }

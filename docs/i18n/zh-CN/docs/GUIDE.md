@@ -23,20 +23,20 @@
 | Windows x64 | 解压 ZIP，运行解压目录内的 `qhud.exe`。 | Microsoft Edge WebView2 Runtime。见 [Windows 设置](05-ops/WINDOWS.md)。 |
 | Linux x86_64 | 解压 tarball，安装版本目录内的二进制。 | GTK/WebKitGTK；参考系统为 Ubuntu 24.04。见 [Linux 运维](05-ops/RUNBOOK.md)。 |
 
-Linux v0.8.2 下载两个文件后：
+Linux v0.8.3 下载两个文件后：
 
 ```sh
-sha256sum -c qhud-v0.8.2-linux-x86_64.tar.gz.sha256
-tar -xzf qhud-v0.8.2-linux-x86_64.tar.gz
-install -Dm755 qhud-v0.8.2-linux-x86_64/qhud "$HOME/.local/bin/qhud"
+sha256sum -c qhud-v0.8.3-linux-x86_64.tar.gz.sha256
+tar -xzf qhud-v0.8.3-linux-x86_64.tar.gz
+install -Dm755 qhud-v0.8.3-linux-x86_64/qhud "$HOME/.local/bin/qhud"
 "$HOME/.local/bin/qhud"
 ```
 
 Windows 下载后，将显示的摘要与 `.sha256` 文件比较：
 
 ```powershell
-Get-FileHash -Algorithm SHA256 .\qhud-v0.8.2-windows-x86_64.zip
-Get-Content .\qhud-v0.8.2-windows-x86_64.zip.sha256
+Get-FileHash -Algorithm SHA256 .\qhud-v0.8.3-windows-x86_64.zip
+Get-Content .\qhud-v0.8.3-windows-x86_64.zip.sha256
 ```
 
 当前 release workflow 发布的压缩包还带 GitHub 构建来源证明。安装 GitHub CLI，将文件名替换为实际下载文件，验证压缩包本身而非 `.sha256` 配套文件：
@@ -69,17 +69,35 @@ Codex 和 Claude Code 使用各自的 CLI 登录。在 Windows 上，打开已�
 
 **月费标签**
 
-套餐旁的金额为美国月度标价，团队套餐按席位计算。标签使用更醒目的填充色，以 $200 为一格。$100 填充半格，$500 填充 2.5 格，已确认的 Free 套餐显示 $0，填充为空。5H 和 7D 用量条显示各周期已用额度的百分比。
+每个价格标签只显示一个月均金额。蓝色填充每格代表 $200，$100 填半格，$500 填 2.5 格，Free 为空。对于提供两种结算周期的套餐，确认月付时在价格后显示 `m`，确认年付时将年费除以 12 并标注 `y`。周期未知时只显示公开月付标价。官方仅提供月付的付费套餐也会显示 `m`。5H、7D 用量条显示各周期已用额度的百分比。
 
-工作区已确认为 Codex Business 或 Claude Team、席位类型未知时，显示每席每月 **$20–125**。此范围包括 Standard 与 Premium 席位的年付月均价和月付标价。若 Codex 席位已核实，Standard 显示 **$20–25**，Premium 显示 **$100–125**。Claude 团队的 **Max 5x** 是成员用量等级，可与团队价格范围同时显示。展开该行可查看计价依据。标价核对日期为 **2026-11-24**，实际收费以账单为准。
-仅显示连接状态且未识别出套餐的行可以省略价格标签。单独议价的套餐没有公开金额。
+Codex Business 和 Claude Team 显示每席位月费。例如，Standard 月付显示 **$25 m**，年付显示 **$20 y**。Premium 分别为 **$125 m** 和 **$100 y**。未指定席位类型时，以加号表示公开起价，例如 **$25+**。已识别的折扣或特殊 Claude Team 席位在费率未知时显示**价格未确认**。展开该行可查看各席位的公开价格。Claude 的 **Max 5x** 表示成员用量等级。标价核对日期为 **2026-11-24**。
+本地 `accounts.json` 的 `billing_cycles` 保存从结算页面核实的周期和核实时间。记录仅适用于供应商、电子邮件、工作区和套餐均匹配的行。仅显示连接状态且未识别出套餐的行可以省略价格标签。单独议价的套餐没有公开金额。
+
+在结算页面核实周期后，可在现有账户配置的顶层 `billing_cycles` 数组中添加记录。对于 Codex Business 团队，`provider` 为 `codex`，`plan` 为 `business`，`workspace_id` 为 Codex 工作区 ID。对于 Claude Team，这三个值依次为 `claude`、`team` 和组织 ID。对于 Google AI Pro，依次为 `agy`、`google ai pro` 和账户邮箱。`email` 为订阅登录邮箱，`cycle` 为 `monthly` 或 `annual`，`verified_at_ms` 为核实时刻的 Unix 毫秒数。
+
+以下例子使用模拟账户。请以已核实的订阅详情替换示例值，将条目合并到现有 `billing_cycles` 数组，保留其他配置。qhud 读取这条本地记录，不会获取账单。
+
+```json
+{
+  "billing_cycles": [
+    {
+      "provider": "codex",
+      "email": "member@example.com",
+      "workspace_id": "ws-example",
+      "plan": "business",
+      "cycle": "annual",
+      "verified_at_ms": 1795478400000
+    }
+  ]
+}
+```
+
 [ChatGPT Pro 价格](https://help.openai.com/en/articles/9793128-about-chatgpt-pro-tiers) ·
 [ChatGPT Business 席位](https://help.openai.com/en/articles/8792828-chatgpt-business-overview) ·
 [Claude Team 席位](https://support.claude.com/en/articles/9266767-what-is-the-team-plan)
 
-Claude 个人 Pro 和 Antigravity 报告的 Google AI Pro 显示为每月约 $17–20。
-范围从年费除以 12 后的月均价，到按月结算的标价。
-[Claude 价格](https://claude.com/pricing) · [Google AI Pro 价格](https://one.google.com/about/google-ai-plans/?gl=US)
+韩语界面中的 Google AI Pro 在确认月付后显示 **₩29,000 m**，确认年付后显示 **₩24,167 y**（年费 ₩290,000）。填充长度按美国同一结算周期的月均标价计算。英语和中文界面显示美国标价。[Google One 韩国](https://one.google.com/about/plans?hl=ko&gl=KR) · [Google One 美国](https://one.google.com/about/google-ai-plans/?gl=US) · [Claude 价格](https://claude.com/pricing)
 
 - **5H / 7D** 表示窗口持续时长，不是距重置的剩余时间。
 - **右侧时间**是距重置的剩余时间；悬停可看准确本地日期和时间。
@@ -116,8 +134,8 @@ Team/Enterprise，主要标签按上述两种已知的用户等级显示成员�
   参见[官方 Codex 模型说明](https://developers.openai.com/codex/models)。
 - **Claude Code：**在终端或 Claude Desktop 的 Code 标签页中运行 `/model`。
   Max、Ultra 套餐和 Team Premium 席位在套餐限额内包含 Fable 用量；
-  Team Standard 席位使用 Fable 需要用量额度。显示的 **Max 5x** 成员用量等级
-  本身不能证明该成员拥有 Premium 席位。参见
+  Team Standard 席位使用 Fable 需要用量额度。Claude Code 报告该成员在同一组织的
+  席位时，qhud 会在模型指南中使用该信息。**Max 5x** 表示成员用量等级。参见
   [Claude Code 模型配置](https://code.claude.com/docs/en/model-config)及
   [Fable 使用资格与限额](https://support.claude.com/en/articles/15424964-claude-fable-models-on-your-plan)。
 - **Antigravity：**使用其模型选择器。付费 Google AI Pro 与试用订阅的模型权限

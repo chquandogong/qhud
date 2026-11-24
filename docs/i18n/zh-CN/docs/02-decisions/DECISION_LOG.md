@@ -164,7 +164,7 @@
 - **显示名称**：可选操作者清单 `~/.config/qhud/accounts.json`，键为 `<provider>:<account_id-or-email>`。刻意放在仓库**外**，因为 qhud 是公开仓库，这些键是个人标识。无映射时回退到邮箱，再到账户 id。
 - **载荷**：schema v1 新增 `quotas[].account`，未知时省略。
 - **已知限制**：仅标记**当前**账户。同时显示每个账户剩余配额需要逐账户获取；停放凭据需要执行 refresh grant，已延后，并要求操作者明确批准，因为 Codex refresh token 单次使用并轮换，写回失败会破坏 `codex login`。Codex 不提供明文邮箱，因此清单键为 UUID。
-- **证据**：`cargo test` 17 项通过；实机 `--dump` 显示 `claude → dogu/team <chquan@dogu.xyz> DOGU (claude_team)` 及两层等级，还有 `codex → 3f13fa37…`。
+- **证据**：`cargo test` 17 项通过；实机 `--dump` 显示 `claude → example/team <user@example.com> Example (claude_team)` 及两层等级，还有 `codex → 00000001…`。
 
 <!-- qhud:anchor -->
 <a id="d-014--binary-budget-20-mb--25-mb-network-is-opt-in-not-ambient"></a>

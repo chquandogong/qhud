@@ -39,7 +39,7 @@
       profileLoginRequired: "qhud 연결 필요",
       seatWebVerified: "웹 확인", seatLabel: "좌석 유형", seatVerifiedAt: "확인 시각",
       seatSource: "출처: 관리자 Members 페이지", seatHistorical: "웹에서 확인한 기록입니다. 자동으로 최신 상태를 확인하지 않습니다.",
-      organizationPlan: "조직 플랜",
+      organizationPlan: "조직 플랜", claudeSeatSource: "Claude Code에 저장된 이 조직의 멤버 좌석",
       profileConnect: "로컬 계정 연결 스크립트에서 이 계정과 조직에 로그인한 뒤 ⟳를 누르세요.",
       profileWrongAccount: "저장된 로그인이 등록한 이메일과 다릅니다. 이 항목에는 해당 사용량을 표시하지 않습니다.",
       profileWrongScope: "저장된 로그인의 조직이 등록한 개인/팀 구분과 다릅니다. 이 항목에는 해당 사용량을 표시하지 않습니다.",
@@ -79,7 +79,7 @@
       profileLoginRequired: "Connect to qhud",
       seatWebVerified: "Web verified", seatLabel: "Seat type", seatVerifiedAt: "Verified at",
       seatSource: "Source: admin Members page", seatHistorical: "A dated web observation; it is not refreshed automatically.",
-      organizationPlan: "Organization plan",
+      organizationPlan: "Organization plan", claudeSeatSource: "Member seat saved by Claude Code for this organization",
       profileConnect: "Use the local account connection script to sign in to this account and organization, then press ⟳.",
       profileWrongAccount: "The stored login uses a different email. Its usage is not assigned to this entry.",
       profileWrongScope: "The stored login belongs to a different personal/team organization. Its usage is not assigned to this entry.",
@@ -119,7 +119,7 @@
       profileLoginRequired: "需要连接 qhud",
       seatWebVerified: "网页确认", seatLabel: "席位类型", seatVerifiedAt: "确认时间",
       seatSource: "来源：管理员 Members 页面", seatHistorical: "这是网页确认记录，不会自动检查最新状态。",
-      organizationPlan: "组织套餐",
+      organizationPlan: "组织套餐", claudeSeatSource: "Claude Code 为此组织保存的成员席位",
       profileConnect: "使用本地账户连接脚本登录此账户与组织，然后点击 ⟳。",
       profileWrongAccount: "已存登录的邮箱与登记邮箱不同，不会将其用量归入此项。",
       profileWrongScope: "已存登录的个人/团队组织与登记组织不同，不会将其用量归入此项。",
@@ -198,6 +198,12 @@
     return `${t.profileStatus}${model.scope ? ` (${model.scope})` : ""}: ${model.label}\n${model.detail}`;
   }
 
+  function claudeSeatView(type, locale = "ko") {
+    if (type !== "standard" && type !== "premium") return null;
+    const label = type === "standard" ? "Standard" : "Premium";
+    return { label, detail: `${strings(locale).claudeSeatSource} · ${label}` };
+  }
+
   function age(at, now, locale) {
     const t = strings(locale);
     if (!timestamp(at) || at > now + 60_000) return t.ageUnknown;
@@ -272,5 +278,5 @@
     };
   }
 
-  return { PROVIDERS, NAMES, strings, validPercent, hasQuota, resetCreditsView, configuredConnectionView, configuredConnectionDetail, seatAnnotationView, age, errorState, view };
+  return { PROVIDERS, NAMES, strings, validPercent, hasQuota, resetCreditsView, configuredConnectionView, configuredConnectionDetail, seatAnnotationView, claudeSeatView, age, errorState, view };
 });

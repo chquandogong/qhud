@@ -291,10 +291,13 @@
 
   // ---- provider quota strip (account-scoped facts, D-011) ---------
 
-  function patchPlanInfo(chip, facts) {
-    const price = facts ? window.QhudPlanPrices.priceFor(facts, healthLocale) : null;
+  function patchPlanInfo(chip, facts, account) {
+    const note = identities.billingForAccount(state.payload?.billing_cycles, facts, account);
+    const price = facts ? window.QhudPlanPrices.priceFor({
+      ...facts, billingCycle: note?.cycle, billingVerifiedAt: note?.verified_at_ms,
+    }, healthLocale) : null;
     window.QhudPriceChip.patch(chip, price);
-    patchModelGuide(chip, { ...facts, seatType: facts?.seatAnnotation?.seat_type });
+    patchModelGuide(chip, { ...facts, seatType: facts?.seatType ?? facts?.seatAnnotation?.seat_type });
     return price?.detail;
   }
 
@@ -560,7 +563,8 @@
     const connectionSig = (state.payload?.configured_connections || [])
       .filter((profile) => profile.provider === "codex")
       .map((profile) => [profile.key, profile.email, profile.account_id, profile.scope, profile.state, profile.has_row, profile.expires_at_ms, profile.seat_annotation]);
-    const sig = JSON.stringify([stored, at, visible.map((w) => [identities.workspaceKey(w), w.plan_type]), connectionSig]);
+    const billing = state.payload?.billing_cycles?.filter((note) => note.provider === "codex");
+    const sig = JSON.stringify([stored, at, visible.map((w) => [identities.workspaceKey(w), w.plan_type]), connectionSig, billing]);
     if (sig === codexRowsSig) return; // same rows; only the caption moved
     codexRowsSig = sig;
     clearRows();
@@ -607,7 +611,7 @@
       }
       const priceChip = el("span", "q-price");
       row.append(priceChip);
-      const priceDetail = patchPlanInfo(priceChip, { provider: "codex", planType: w.plan_type, seatAnnotation: annotation });
+      const priceDetail = patchPlanInfo(priceChip, { provider: "codex", planType: w.plan_type, seatAnnotation: annotation }, w);
       const resetCredits = providerHealth.resetCreditsView(w, null, healthLocale);
       if (resetCredits.label) {
         const badge = el("span", "q-reset-credits", resetCredits.label);
@@ -952,7 +956,8 @@
       // workspace. Show a price here only when the profile supplies plan evidence.
       const observedPlan = model.state === "usage_unavailable" ? profile.observed_plan : null;
       const priceDetail = patchPlanInfo(row.querySelector(".q-price"), annotation || observedPlan
-        ? { provider: model.provider, seatAnnotation: annotation, observedPlan } : null);
+        ? { provider: model.provider, seatAnnotation: annotation, observedPlan } : null,
+        annotation && { email: annotation.email, account_id: annotation.workspace_id });
       row.querySelector(".q-connection-state").textContent = model.label;
       const detail = [model.detail, seat?.detail, priceDetail].filter(Boolean).join("\n");
       row.querySelector(".q-detail").textContent = detail;
@@ -1142,7 +1147,9 @@
       acctEl.hidden = !acctEl.textContent;
       const annotation = identities.seatAnnotationForAccount(state.payload?.configured_connections, q.provider, q.account)
         || (activeWs && identities.seatAnnotationForAccount(state.payload?.configured_connections, q.provider, activeWs));
-      const seat = providerHealth.seatAnnotationView(annotation, healthLocale);
+      const nativeSeatType = q.provider === "claude" ? q.account?.seat_type : null;
+      const seat = providerHealth.claudeSeatView(nativeSeatType, healthLocale)
+        || providerHealth.seatAnnotationView(annotation, healthLocale);
       const scopeEl = row.querySelector(".q-scope");
       const matchedProfiles = identities.connectionsForAccount(state.payload?.configured_connections, q.provider, q.account);
       const type = q.provider === "codex" ? activeWs?.plan_type || q.account?.org_type : q.account?.org_type;
@@ -1191,11 +1198,12 @@
         provider: q.provider,
         planType: q.provider === "codex" ? type : null,
         seatAnnotation: annotation,
+        seatType: nativeSeatType,
         orgType: q.account?.org_type,
         tiers: q.account?.tiers,
         planName: q.provider === "agy" ? antigravityPlanDisplay(null, q, liveUsage)
           : claudePlanDisplay(null, q.account?.org_type, q.account?.tiers),
-      });
+      }, activeWs || q.account);
 
       // Reset credits are a remaining count, separate from money and the
       // quota-window countdown. Display only; no consumption action exists.

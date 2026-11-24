@@ -6,6 +6,28 @@ const health = require("../ui/provider-health.js");
 const a = { email: "first@example.com", account_id: "shared-team", active: true, reset_credits: 3 };
 const b = { email: "second@example.com", account_id: "shared-team", active: false, reset_credits: 0 };
 
+test("billing observations apply only to the same provider, login, workspace and plan", () => {
+  const facts = { provider: "codex", planType: "team" };
+  const note = { provider: "codex", email: a.email, workspace_id: a.account_id, plan: "business",
+    cycle: "annual", verified_at_ms: 100 };
+  const lookup = (notes, input = facts, account = a) => identities.billingForAccount(notes, input, account, 200);
+  assert.equal(lookup([note]), note);
+  for (const patch of [{ workspace_id: "other" }, { email: b.email }, { plan: "pro" }, { provider: "claude" },
+    { cycle: "weekly" }, { verified_at_ms: 201 }]) assert.equal(lookup([{ ...note, ...patch }]), null);
+  const newer = { ...note, cycle: "monthly", verified_at_ms: 150 };
+  assert.equal(lookup([newer, note]), newer);
+  assert.equal(lookup([newer, { ...newer, cycle: "annual" }]), null);
+  assert.equal(lookup(undefined), null);
+  const claude = { ...note, provider: "claude", plan: "team", workspace_id: "team-org" };
+  const team = { provider: "claude", orgType: "claude_team", planName: "Max 5x" };
+  assert.equal(lookup([claude], team, { ...a, org_id: "team-org" }), claude);
+  assert.equal(lookup([claude], team, { ...a, org_id: "personal-org" }), null);
+  const google = { ...note, provider: "agy", plan: "google ai pro", workspace_id: a.email };
+  const aiPro = { provider: "agy", planName: "Google AI Pro" };
+  assert.equal(lookup([google], aiPro, { email: a.email.toUpperCase(), account_id: a.email }), google);
+  assert.equal(lookup([google], aiPro, { email: a.email, account_id: b.email }), null);
+});
+
 test("account groups keep each login's personal, team, and unclassified rows in order", () => {
   const firstTeam = Object.freeze({ ...a, email: " FIRST@EXAMPLE.COM ", scope: "team" });
   const secondTeam = Object.freeze({ ...b, scope: "team" });

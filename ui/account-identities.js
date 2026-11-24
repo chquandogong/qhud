@@ -106,6 +106,47 @@
       .sort((a, b) => b.verified_at_ms - a.verified_at_ms)[0] || null;
   }
 
+  // Billing belongs to a subscription, even when two rows share an email.
+  // Use provider-reported plans and IDs, never the operator's display alias.
+  function billingForAccount(observations, facts, account, now = Date.now()) {
+    const login = email(account?.email);
+    if (!login || !Array.isArray(observations)) return null;
+    let workspace, plan;
+    switch (facts?.provider) {
+      case "codex":
+        workspace = text(account.account_id);
+        plan = text(facts.planType).toLowerCase();
+        if (plan === "team" || (!plan && facts.seatAnnotation)) plan = "business";
+        break;
+      case "claude":
+        workspace = text(account.org_id);
+        plan = text(facts.orgType).toLowerCase().replace(/^claude_/, "");
+        if (plan === "max") plan = text(facts.planName).toLowerCase();
+        break;
+      case "agy":
+        if (account.account_id && email(account.account_id) !== login) return null;
+        workspace = login;
+        plan = text(facts.planName).toLowerCase();
+        break;
+      default: return null;
+    }
+    if (!workspace || !plan) return null;
+    let latest = null, conflict = false;
+    for (const note of observations) {
+      if (note?.provider !== facts.provider || email(note.email) !== login || note.plan !== plan ||
+          (facts.provider === "agy" ? email(note.workspace_id) : note.workspace_id) !== workspace ||
+          !["monthly", "annual"].includes(note.cycle) || !Number.isSafeInteger(note.verified_at_ms) ||
+          note.verified_at_ms <= 0 || note.verified_at_ms > now) continue;
+      if (!latest || note.verified_at_ms > latest.verified_at_ms) {
+        latest = note;
+        conflict = false;
+      } else if (note.verified_at_ms === latest.verified_at_ms && note.cycle !== latest.cycle) {
+        conflict = true;
+      }
+    }
+    return conflict ? null : latest;
+  }
+
   function codexSource(fetch, payload) {
     const fetchedAt = Number.isFinite(fetch?.at) ? fetch.at : 0;
     const storedAt = Number.isFinite(payload?.codex_fetched_at_ms) ? payload.codex_fetched_at_ms : 0;
@@ -165,5 +206,5 @@
     return org;
   }
 
-  return { email, workspaceKey, accountKey, distinctWorkspaces, activeWorkspace, claudeUsageForAccount, antigravityUsageForAccount, connectionsForAccount, seatAnnotationForProfile, seatAnnotationForAccount, codexSource, accountScope, groupAccountRows, organizationLabel };
+  return { email, workspaceKey, accountKey, distinctWorkspaces, activeWorkspace, claudeUsageForAccount, antigravityUsageForAccount, connectionsForAccount, seatAnnotationForProfile, seatAnnotationForAccount, billingForAccount, codexSource, accountScope, groupAccountRows, organizationLabel };
 });

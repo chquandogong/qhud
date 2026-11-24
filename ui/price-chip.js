@@ -10,7 +10,7 @@
   const rendered = new WeakMap();
 
   function patch(chip, price) {
-    const key = price ? JSON.stringify([price.kind, price.min, price.max, price.label, price.detail]) : null;
+    const key = price ? JSON.stringify([price.kind, price.max, price.label, price.cycle, price.detail]) : null;
     if (rendered.get(chip) === key) return;
     rendered.set(chip, key);
     chip.hidden = !price;
@@ -20,10 +20,9 @@
       chip.removeAttribute("role");
       chip.removeAttribute("aria-label");
       delete chip.dataset.kind;
+      delete chip.dataset.cycle;
       delete chip.dataset.aboveBase;
       chip.style.removeProperty("--price-units");
-      chip.style.removeProperty("--price-min");
-      chip.style.removeProperty("--price-max");
       return;
     }
 
@@ -31,13 +30,11 @@
     chip.setAttribute("role", "img");
     chip.setAttribute("aria-label", price.detail);
     chip.dataset.kind = price.kind;
-    // A small price still gets a full-width track for its text. Only the
-    // coloured part measures dollars. Above the reference, the track grows.
-    const scale = Math.max(BASE_USD, price.max ?? 0);
-    chip.toggleAttribute("data-above-base", scale > BASE_USD);
-    chip.style.setProperty("--price-units", String(scale / BASE_USD));
-    chip.style.setProperty("--price-min", `${100 * (price.min ?? 0) / scale}%`);
-    chip.style.setProperty("--price-max", `${100 * (price.max ?? 0) / scale}%`);
+    if (price.cycle === "m" || price.cycle === "y") chip.dataset.cycle = price.cycle;
+    else delete chip.dataset.cycle;
+    const usd = price.max ?? 0;
+    chip.toggleAttribute("data-above-base", usd > BASE_USD);
+    chip.style.setProperty("--price-units", String(usd / BASE_USD));
   }
 
   return { patch };
