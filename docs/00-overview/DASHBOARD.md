@@ -6,7 +6,7 @@
 
 # DASHBOARD — qhud
 
-> Status: v0.8.3 · Updated: 2026-11-24 · Owner: chquandogong
+> Status: v0.8.4 · Updated: 2026-11-25 · Owner: chquandogong
 > Public project snapshot. Git history, tagged releases, and workflow runs are
 > the authoritative records; dated observations below keep their original scope.
 
@@ -14,8 +14,9 @@
 
 | Item | Value |
 | --- | --- |
-| Current release | [v0.8.3](https://github.com/chquandogong/qhud/releases/tag/v0.8.3) · Single monthly prices, billing cycle indicators and Korean Google AI Pro prices. |
+| Current release | [v0.8.4](https://github.com/chquandogong/qhud/releases/tag/v0.8.4) · Windows sign-in for the selected account and workspace, and dated Claude reset credits. |
 | Release contents | The Windows ZIP includes the PowerShell helper for connecting additional profiles. The release also provides a Linux archive and a CycloneDX SBOM. |
+| Account reconnection on Windows | **2026-11-25, local pre-release build.** Repaired a Claude team profile that was signed in under the wrong email. The widget verified the registered member and organization and displayed fresh five-hour and weekly usage. PowerShell tests covered wrong-account, wrong-workspace and cancelled sign-ins for Codex and Claude. |
 | Plan-label automated checks | **v0.7.3 local source tree, 2026-10-01:** 8/8 Node tests passed. Two plan-label tests cover the `prolite` / `pro` / `promax` mappings, normalization, explicit-override precedence, and suppression of unknown values. This is synthetic automated evidence, not a live provider or desktop-display pass. |
 | Pipeline dependency | qmonster @ `6a21c44`; canonical Git dependency on Linux, command-scoped Windows patch with lockfile restoration. |
 | Supported platforms | Ubuntu 24.04 / GNOME and native Windows x64 / WebView2. Native Windows terminal-tab observation remains outside the supported scope. |

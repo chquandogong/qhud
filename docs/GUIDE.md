@@ -20,20 +20,20 @@ contains a versioned directory and comes with a separate SHA-256 file.
 | Windows x64 | Extract the ZIP; run `qhud.exe` inside the extracted directory. | Microsoft Edge WebView2 Runtime. See [Windows setup](05-ops/WINDOWS.md). |
 | Linux x86_64 | Extract the tarball; install the binary inside its versioned directory. | GTK/WebKitGTK; Ubuntu 24.04 is the reference system. See [Linux operations](05-ops/RUNBOOK.md). |
 
-For Linux v0.8.3, after downloading both files:
+For Linux v0.8.4, after downloading both files:
 
 ```sh
-sha256sum -c qhud-v0.8.3-linux-x86_64.tar.gz.sha256
-tar -xzf qhud-v0.8.3-linux-x86_64.tar.gz
-install -Dm755 qhud-v0.8.3-linux-x86_64/qhud "$HOME/.local/bin/qhud"
+sha256sum -c qhud-v0.8.4-linux-x86_64.tar.gz.sha256
+tar -xzf qhud-v0.8.4-linux-x86_64.tar.gz
+install -Dm755 qhud-v0.8.4-linux-x86_64/qhud "$HOME/.local/bin/qhud"
 "$HOME/.local/bin/qhud"
 ```
 
 For a Windows download, compare the displayed digest with the `.sha256` file:
 
 ```powershell
-Get-FileHash -Algorithm SHA256 .\qhud-v0.8.3-windows-x86_64.zip
-Get-Content .\qhud-v0.8.3-windows-x86_64.zip.sha256
+Get-FileHash -Algorithm SHA256 .\qhud-v0.8.4-windows-x86_64.zip
+Get-Content .\qhud-v0.8.4-windows-x86_64.zip.sha256
 ```
 
 Archives published by the current release workflow also carry GitHub build
@@ -117,15 +117,11 @@ A missing model quota is not the same as zero usage. For example, Spark 5H/7D
 is displayed only if the current Codex account's response contains those limits.
 Refreshing another account does not establish the limits for the active account.
 
-The **Reset credits: N** badge shows
-only the count supplied by the provider. Codex uses the official
-`rateLimitResetCredits.availableCount`: an explicit `0` is valid, while a missing
-field stays unavailable. This is separate from extra-usage money and the reset
-countdown; qhud displays the count but never consumes a reset credit. If Claude's
-usage response supplies no manual-reset count, expanded details say that the
-information is unavailable. Reset dates, quota percentages, and reset offers of
-different types are not converted into an invented count. The account row's
-snapshot age applies to the count as well.
+The **Reset credits** badge on a Codex account shows `rateLimitResetCredits.availableCount` from its last usage snapshot. A reported `0` is valid. A missing count stays unknown.
+
+**Claude limit resets.** Open **Settings → Usage → Limit resets** in the relevant Claude organization. When the usage feed omits a count, qhud can show what you last saw on that screen. Expand the badge to see each offer's type, count, local expiry and the observation time. Each offer drops out of the total at expiry. If you use a reset in Claude, update the local observation to reflect the new balance. [Claude's guide to limit resets](https://support.claude.com/en/articles/17007452-what-is-a-limit-reset)
+
+In `accounts.json`, add an entry to `claude_reset_observations` with the member's `email`, Claude `org_id`, `observed_at_ms` and an `offers` array. Each offer has a `kind` (`full`, `fable`, `five_hour` or `weekly`), positive `count` and `expires_at_ms`. Both timestamps use Unix milliseconds. For a screen that explicitly reports zero, save a newer observation with `offers: []`. The newest matching observation applies only to that member and organization.
 
 Claude's legacy personal `claude_max` metadata with
 `default_claude_max_20x` is displayed as **Ultra**, following the
@@ -406,10 +402,15 @@ Credential expiry describes the local login token, not your subscription expiry.
 Old readings stay dated after a failed refresh; missing usage is never zero.
 
 Codex uses the installed CLI's `app-server` for the active account and supports
-the native Windows `Programs/OpenAI/Codex/bin` layout. Claude uses its Claude
-Code login: a signed-in Desktop app does not renew an expired CLI credential.
-Use `claude auth login` when prompted, then refresh qhud. qhud does not automate
-the login or exchange refresh tokens itself.
+the native Windows `Programs/OpenAI/Codex/bin` layout. Claude reads usage through the selected Claude Code profile.
+
+**Reconnect from the widget (Windows).** Select **Sign in again** on the expired personal or team row. Claude pre-fills the row's email and preselects its organization when a verified organization ID is available. Codex first tries its saved session. When a new login is needed and the workspace ID is known, Codex restricts sign-in to that workspace.
+
+If an isolated profile already has the wrong email or organization, select **Sign in to this account** on that row. If your browser shows another account, switch to the email on the row. qhud checks the new login in a separate profile. If the email or workspace differs, the existing connection stays in place. Once they match, qhud updates the connection and requests fresh usage.
+
+The access token used for usage checks can expire while the provider still recognizes your login. The provider determines its lifetime. Claude's one-year `claude setup-token` supports model requests only. Use the normal Claude Code login for usage checks. [Claude Code authentication](https://code.claude.com/docs/en/authentication#generate-a-long-lived-token)
+
+If Codex returns fresh usage for the selected workspace but its local credential file still shows an old expiry, the widget shows both the new usage and the local expiry. That successful check requires no browser sign-in.
 
 Antigravity supports a running native Windows app's local daemon registration
 as well as the existing `agy` listener. The native connection validates the
@@ -460,7 +461,7 @@ to qmonster's database.
 | Account missing | Confirm the provider CLI is signed in and qhud is reading the intended config/home directory. |
 | Email replaced by an ID | Confirm qhud is v0.6.2 or newer and reads the intended Codex home. If its local ID token has no usable email, add a matching `labels` entry for a display override. |
 | Spark or another model missing | Refresh and inspect the current account's response. An absent model is not synthesized. |
-| Old reading or 401 error | Read the row's age/error and sign in again through that provider's CLI, in the affected directory. |
+| Old reading or 401 error | Refresh the account and check its connection status. On an expired Windows row, select **Sign in again**. On Linux, sign in through the provider CLI using the affected profile. |
 | No terminal panes | Check tmux/herdr on Linux. Native Windows terminal tabs are outside this release's support. |
 | Widget not visible | Check the tray, use `--peek` on the running instance, and ensure the desktop is unlocked. |
 | Rows extend beyond the window | Scroll the quota area or increase the window size. |

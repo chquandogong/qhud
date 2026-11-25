@@ -168,6 +168,7 @@ pub fn payload() -> Payload {
         provider_health: Vec::new(),
         configured_connections: Vec::new(),
         billing_cycles: Vec::new(),
+        claude_reset_observations: Vec::new(),
         panes,
         account_placeholders: Vec::new(),
         workspace_names: std::collections::HashMap::new(),

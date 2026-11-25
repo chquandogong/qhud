@@ -6,7 +6,7 @@
 
 # TEST_PLAN
 
-> Status: Windows provider panel checked on a development build · Date: 2026-11-23 · Owner: chquandogong
+> Status: Windows provider panel checked on a development build · Date: 2026-11-25 · Owner: chquandogong
 
 ## Automated gates
 
@@ -159,6 +159,8 @@ implementation (synthetic-input evidence in DECISION_LOG D-008).
 - Refresh with both personal and team profiles. Check that each email groups its own rows with Personal first, including pending profiles. Check each workspace’s usage and reset times after restart.
 - Check a web-confirmed Claude Free personal profile with no quota alongside a paid team. The personal row shows **Usage unavailable** without a gauge. A matching provider usage row takes precedence over the plan observation.
 - Check Codex and Claude Standard/Premium seats, unknown seats and cycles, custom pricing, Free, status-only profiles and Google AI Pro in Korean. Verify one monthly-equivalent price, correct `m`/`y` suffixes, the unmarked monthly reference and starting-price details. Mismatched account, workspace or plan records must not supply a cycle. At narrow widths, check the suffix fits, the chip uses one blue fill, $500 spans 2.5 times $200 and the usage windows retain their separate gauges.
+
+On 2026-11-25, a Windows development build recovered a Claude team profile previously connected to another email. A fresh team usage reading appeared after sign-in and the default personal profile remained ready. PowerShell 5.1 and 7 fixtures covered canceled sign-in, mismatched accounts and workspaces, ambiguous Codex workspaces and preservation of existing profiles. A separate Windows console test exercised the embedded helper with a simulated CLI. Frontend tests covered organization-scoped reset records, explicit zero, expired offers and provider-count precedence.
 
 On 2026-11-23, a local Windows build showed personal and team rows together for Codex. For Claude, the same email displayed a personal Free row without a gauge and a separate paid team row with usage.
 

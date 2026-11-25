@@ -85,8 +85,9 @@ Do not run another Cargo command concurrently in that checkout. See the
   and reset instant. Missing data must not become an invented zero.
 - Preserve snapshot age and ownership. A successful parse is not proof that a
   stored value belongs to the current login.
-- Keep provider requests behind explicit refresh actions. qhud does not own
-  provider logins or run its own OAuth refresh grant.
+- Keep polling read-only. Provider requests require an explicit refresh or
+  reconnect action. The CLI handles OAuth. The Windows reconnect helper checks
+  the new login's email and workspace before updating the selected profile.
 - Keep Windows-specific adaptations scoped. Linux builds must continue to work
   from a normal clone without a developer's sibling dependency directory.
 - On Linux, do not install Unix signal handlers in the Tauri/WebKitGTK process;

@@ -541,3 +541,7 @@ Format: context → options → decision → rationale → residual risk.
   their status labels, and a regression test for the exact strings. qhud's
   frontend test asserts all three labels, override precedence, and unknown-value
   suppression.
+
+## D-023 · Verify a new Windows login before applying it
+
+Adopted in v0.8.4 on 2026-11-25. A browser may already be signed in to a different account from the selected row. Following an explicit sign-in action, the provider CLI authenticates in a fresh temporary profile. Claude receives the requested email and a known organization ID. Codex can restrict sign-in to a known workspace ID. The helper checks the returned email and workspace before updating the target. Canceling or choosing a different identity preserves the previous connection. Periodic observation remains read-only.

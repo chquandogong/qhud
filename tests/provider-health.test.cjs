@@ -29,6 +29,84 @@ test("reset credits stay account scoped and missing fresh data cannot revive an 
   assert.equal(health.resetCreditsView(team).count, 0);
 });
 
+const member = {
+  provider: "claude", origin: "fetched", cache_fetched_at_ms: NOW - 60_000,
+  account: { email: "member@example.com", account_id: "person", org_id: "org-team", org_type: "claude_team", config_dir: "team-profile" },
+  h5: { pct: 18 }, d7: { pct: 9 },
+};
+const observation = {
+  email: "MEMBER@example.com", org_id: "org-team", observed_at_ms: NOW - 5000,
+  offers: [{ kind: "full", count: 1, expires_at_ms: NOW + 1000 }, { kind: "fable", count: 2, expires_at_ms: NOW + 5000 }],
+};
+const resetView = (opts = {}) => health.resetCreditsView(opts.row || member, opts.live, opts.locale,
+  opts.notes || [observation], opts.now ?? NOW);
+
+test("a saved Claude member row discloses dated counts, kinds and local expiry in each language", () => {
+  for (const [locale, list] of [["ko-KR", ["초기화권 3개 · 확인값", "전체 초기화 1개", "Fable 초기화 2개"]],
+    ["zh-CN", ["重置券 3张 · 上次确认", "全部限额 1张", "Fable 2张"]],
+    ["en-US", ["Reset credits: 3 · last observed", "Full reset × 1", "Fable × 2"]]]) {
+    const view = resetView({ locale });
+    assert.equal(view.count, 3);
+    assert.equal(view.label, list[0]);
+    assert.equal(view.observed, true);
+    assert.equal(view.nextExpiry, NOW + 1000);
+    for (const item of list.slice(1)) assert.ok(view.hint.includes(item));
+    const fmt = new Intl.DateTimeFormat(locale, {
+      year: "numeric", month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZoneName: "short",
+    });
+    for (const date of [observation.observed_at_ms, ...observation.offers.map((offer) => offer.expires_at_ms)]) {
+      assert.ok(view.hint.includes(fmt.format(date)));
+    }
+  }
+  const note = { ...observation, offers: [
+    { kind: "five_hour", count: 1, expires_at_ms: NOW + 60_000 },
+    { kind: "weekly", count: 1, expires_at_ms: NOW + 3_600_000 },
+  ] };
+  assert.match(resetView({ notes: [note] }).hint, /5시간 한도 초기화 1개[\s\S]*주간 한도 초기화 1개/);
+});
+
+test("Claude reset notes require matching provider, member email and exact org, including inactive rows", () => {
+  assert.equal(resetView({ row: { ...member, origin: "saved-account" } }).count, 3);
+  for (const account of [
+    { ...member.account, org_id: "org-personal", org_type: "claude_free" },
+    { ...member.account, org_id: "ORG-TEAM" }, { ...member.account, email: "colleague@example.com" },
+    { email: member.account.email }, { org_id: observation.org_id },
+  ]) assert.equal(resetView({ row: { ...member, account } }).label, null);
+  assert.equal(resetView({ row: { ...member, provider: "codex" } }).label, null);
+  assert.equal(resetView({ notes: [{ ...observation, observed_at_ms: NOW + 1 }] }).label, null);
+});
+
+test("live provider reset counts take precedence, including an explicitly spent balance", () => {
+  for (const count of [0, 1]) {
+    const actual = resetView({ live: { reset_credits: count } });
+    assert.equal(actual.count, count);
+    assert.equal(actual.observed, undefined);
+    assert.doesNotMatch(actual.detail, /확인값|Fable/);
+  }
+  const freshWithoutCount = resetView({ row: { ...member, reset_credits: 4 }, live: { five_hour: null } });
+  assert.equal(freshWithoutCount.label, "초기화권 3개 · 확인값");
+  assert.match(freshWithoutCount.hint, /확인 후 사용한 초기화권/);
+});
+
+test("expiry changes the observed total without claiming a live zero or reviving earlier offers", () => {
+  const older = { ...observation, observed_at_ms: NOW - 10_000,
+    offers: [{ kind: "weekly", count: 10, expires_at_ms: NOW + 50_000 }] };
+  const notes = [observation, older];
+  const partial = resetView({ notes, now: NOW + 1000 });
+  assert.equal(partial.label, "초기화권 2개 · 확인값");
+  assert.equal(partial.nextExpiry, NOW + 5000);
+  assert.match(partial.hint, /전체 초기화 1개[^\n]*만료됨/);
+  const expired = resetView({ notes, now: NOW + 5000 });
+  assert.equal(expired.count, null);
+  assert.equal(expired.nextExpiry, null);
+  assert.equal(expired.label, "확인한 초기화권 만료");
+  const zero = resetView({ notes: [{ ...observation, offers: [], observed_at_ms: NOW }, ...notes] });
+  assert.equal(zero.label, "초기화권 0개 · 확인값");
+  assert.equal(zero.count, 0);
+  assert.equal(resetView({ notes: [observation, { ...observation, offers: [] }] }).label, null);
+  assert.equal(resetView({ notes: [{ ...observation, offers: [{ kind: "credit", count: 4, expires_at_ms: NOW + 1 }] }] }).label, null);
+});
+
 test("local credentials establish readiness, never a successful live connection", () => {
   const view = health.view({ provider: "codex", state: "ready", cli_available: true }, { now: NOW });
   assert.equal(view.state, "ready");
@@ -162,7 +240,8 @@ test("Claude Free details distinguish the registered connection from the web pla
     const view = health.configuredConnectionView({ ...personalFree, state, expires_at_ms: expiresAt }, "en");
     assert.equal(view.plan, "Free");
     assert.equal(view.label, labels.usageUnavailable);
-    const status = state === "login_required" ? labels.profileLoginRequired : labels[state];
+    const status = state === "login_required" ? labels.profileLoginRequired :
+      state === "credential_expired" ? labels.usageAuthExpired : labels[state];
     assert.ok(view.detail.includes(`${labels.profileStatus}: ${status}`));
     if (state === "ready" || state === "credential_expired") {
       assert.ok(view.detail.includes(`${labels.expires}: ${new Date(expiresAt).toLocaleString("en-US")}`));

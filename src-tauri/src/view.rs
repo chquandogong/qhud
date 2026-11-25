@@ -43,6 +43,9 @@ pub struct Payload {
     pub configured_connections: Vec<crate::connections::ConnectionStatus>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub billing_cycles: Vec<crate::registry::BillingCycleObservation>,
+    /// Dated web observations are separate from automatically fetched quotas.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub claude_reset_observations: Vec<crate::registry::ClaudeResetObservation>,
     pub panes: Vec<PaneView>,
     pub summary: Summary,
     /// Accounts that have connected before but have no live credential
@@ -203,6 +206,7 @@ pub fn payload(reports: &[PaneReport]) -> Payload {
         provider_health: Vec::new(),
         configured_connections: Vec::new(),
         billing_cycles: Vec::new(),
+        claude_reset_observations: Vec::new(),
         panes,
         summary,
         account_placeholders: Vec::new(),
@@ -483,6 +487,7 @@ pub fn attach_placeholders(
     payload.workspace_names = reg.workspace_names.clone();
     payload.workspace_plans = reg.workspace_plans.clone();
     payload.billing_cycles = reg.billing_cycles.clone();
+    payload.claude_reset_observations = reg.claude_reset_observations.clone();
 }
 
 /// Stamps each quota row with the account that owns it. Kept out of
@@ -755,6 +760,7 @@ mod tests {
             provider_health: Vec::new(),
             configured_connections: Vec::new(),
             billing_cycles: Vec::new(),
+            claude_reset_observations: Vec::new(),
             panes,
             summary: Summary::default(),
             account_placeholders: Vec::new(),
@@ -776,6 +782,33 @@ mod tests {
         attach_placeholders(&mut p, &reg, &[]);
         assert_eq!(serde_json::to_value(&p).unwrap()["billing_cycles"], notes);
         assert!(p.account_placeholders.is_empty() && p.quotas.is_empty());
+    }
+
+    #[test]
+    fn reset_observations_keep_member_and_org_without_creating_quotas() {
+        use serde_json::json;
+        let mut p = payload_of(Vec::new());
+        assert!(
+            serde_json::to_value(&p)
+                .unwrap()
+                .get("claude_reset_observations")
+                .is_none()
+        );
+        let observations = json!([
+            {"email":"a@example.com","org_id":"team","observed_at_ms":10,
+             "offers":[{"kind":"full","count":2,"expires_at_ms":20}]},
+            {"email":"a@example.com","org_id":"personal","observed_at_ms":11,"offers":[]},
+            {"email":"b@example.com","org_id":"team","observed_at_ms":12,
+             "offers":[{"kind":"weekly","count":1,"expires_at_ms":30}]}
+        ]);
+        let reg =
+            crate::registry::parse(&json!({"claude_reset_observations":observations}).to_string());
+        attach_placeholders(&mut p, &reg, &[]);
+        assert_eq!(
+            serde_json::to_value(&p).unwrap()["claude_reset_observations"],
+            observations
+        );
+        assert!(p.quotas.is_empty() && p.account_placeholders.is_empty());
     }
 
     #[test]

@@ -21,9 +21,10 @@ override this file.
 - Never commit or paste credentials, tokens, cookies, complete provider
   configuration, or live account data. Use synthetic fixtures and redact email
   addresses, account or organization IDs, session text, and local paths.
-- Treat provider authentication and cache directories as read-only input. qhud
-  must not modify provider logins, perform an OAuth refresh grant, or make a
-  provider request except behind the product's explicit refresh action.
+- Keep polling read-only. Provider requests require an explicit refresh or
+  reconnect action. The provider CLI owns OAuth sign-in and token renewal.
+  On Windows, an interactive reconnect stages a new login and updates the
+  selected profile only after verifying its account and workspace.
 - Keep each quota attached to its account, organization, model scope, duration,
   reset instant, freshness, and source. Missing or stale data must not become an
   invented zero or be assigned to the current login without ownership evidence.

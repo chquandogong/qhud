@@ -23,20 +23,20 @@
 | Windows x64 | 解压 ZIP，运行解压目录内的 `qhud.exe`。 | Microsoft Edge WebView2 Runtime。见 [Windows 设置](05-ops/WINDOWS.md)。 |
 | Linux x86_64 | 解压 tarball，安装版本目录内的二进制。 | GTK/WebKitGTK；参考系统为 Ubuntu 24.04。见 [Linux 运维](05-ops/RUNBOOK.md)。 |
 
-Linux v0.8.3 下载两个文件后：
+Linux v0.8.4 下载两个文件后：
 
 ```sh
-sha256sum -c qhud-v0.8.3-linux-x86_64.tar.gz.sha256
-tar -xzf qhud-v0.8.3-linux-x86_64.tar.gz
-install -Dm755 qhud-v0.8.3-linux-x86_64/qhud "$HOME/.local/bin/qhud"
+sha256sum -c qhud-v0.8.4-linux-x86_64.tar.gz.sha256
+tar -xzf qhud-v0.8.4-linux-x86_64.tar.gz
+install -Dm755 qhud-v0.8.4-linux-x86_64/qhud "$HOME/.local/bin/qhud"
 "$HOME/.local/bin/qhud"
 ```
 
 Windows 下载后，将显示的摘要与 `.sha256` 文件比较：
 
 ```powershell
-Get-FileHash -Algorithm SHA256 .\qhud-v0.8.3-windows-x86_64.zip
-Get-Content .\qhud-v0.8.3-windows-x86_64.zip.sha256
+Get-FileHash -Algorithm SHA256 .\qhud-v0.8.4-windows-x86_64.zip
+Get-Content .\qhud-v0.8.4-windows-x86_64.zip.sha256
 ```
 
 当前 release workflow 发布的压缩包还带 GitHub 构建来源证明。安装 GitHub CLI，将文件名替换为实际下载文件，验证压缩包本身而非 `.sha256` 配套文件：
@@ -107,12 +107,11 @@ Codex Business 和 Claude Team 显示每席位月费。例如，Standard 月付�
 
 缺少模型配额不等于用量为零。例如，只有当前 Codex 账户响应含有 Spark 5H/7D 限额时才显示它。刷新另一账户不能证明当前账户的限额。
 
-**重置券 N张**标签显示供应商明确提供的次数。
-Codex 使用官方 `rateLimitResetCredits.availableCount`；明确的 `0` 是有效值，
-字段缺失则保留为不可用。这与额外用量金额及重置倒计时不同；qhud 只显示次数，
-不会消耗重置券。若 Claude 用量响应没有提供手动重置次数，展开详情会说明信息
-不可用。不会根据重置日期、用量百分比或不同类型的重置选项推算虚构的次数。
-该次数同样适用所属账户行的快照时间。
+Codex 账户的**重置券**标签显示上次查询返回的 `rateLimitResetCredits.availableCount`。明确返回的 `0` 显示为零，缺少该字段时数量未知。
+
+**Claude 限额重置。** 在对应的 Claude 组织中打开**设置 → 用量 → 限额重置**。如果用量响应缺少数量，qhud 可以显示上次在页面上确认的记录。展开标签即可查看每种重置券的数量、当地到期时间和记录时间。已到期的重置券自动从合计中扣除。在 Claude 中使用重置券后，请更新本地记录中的余额。[Claude 限额重置指南](https://support.claude.com/en/articles/17007452-what-is-a-limit-reset)
+
+在 `accounts.json` 的 `claude_reset_observations` 中填写成员的 `email`、Claude 组织的 `org_id`、记录时间 `observed_at_ms` 和重置券列表 `offers`。每项包含类型 `kind`（`full`、`fable`、`five_hour` 或 `weekly`）、正整数 `count` 和到期时间 `expires_at_ms`。两个时间均使用 Unix 毫秒。如果页面明确显示零张，请保存一条更新的记录并设置 `offers: []`。只有成员和组织都匹配的最新记录才会生效。
 
 Claude 旧版个人 `claude_max` 元数据与 `default_claude_max_20x` 组合，依据
 [官方 Max 20x 更名](https://support.claude.com/en/articles/17728952-what-is-the-ultra-plan)
@@ -358,9 +357,15 @@ Codex 团队配置档案还可以保存从工作区管理员 Members 页面单�
 不是订阅到期。刷新失败后保留旧读数及其时间；缺失用量绝不表示为零。
 
 Codex 为当前账户使用已安装 CLI 的 `app-server`，并支持 Windows 的
-`Programs/OpenAI/Codex/bin` 安装路径。Claude 使用 Claude Code 登录；Desktop
-应用的登录不会更新已过期的 CLI 凭据。根据提示执行 `claude auth login` 后刷新
-qhud。qhud 不自动操作登录，也不自行交换 refresh token。
+`Programs/OpenAI/Codex/bin` 安装路径。Claude 通过选定的 Claude Code 配置档案查询用量。
+
+**从小组件重新登录（Windows）。** 在凭据已过期的个人或团队行点击**重新登录**。Claude 会预填该行的邮箱，如果已有核实过的组织 ID，也会预选该组织。Codex 会先尝试用现有会话续期。如果需要重新登录且工作区 ID 已知，Codex 会将登录限制在该工作区。
+
+如果独立配置中已经连接了其他邮箱或组织，请点击该行的**登录此账户**。如果浏览器显示其他账户，请切换到该行的邮箱。qhud 在单独的配置目录中验证新登录。如果邮箱或工作区不符，原有连接会保留。两者匹配后，qhud 会更新连接并重新查询用量。
+
+即使供应商仍能识别已登录账户，查询用量的访问令牌也可能过期。有效期由供应商决定。Claude 的一年期 `claude setup-token` 仅支持模型请求。请使用常规 Claude Code 登录查询用量。[Claude Code 身份验证文档](https://code.claude.com/docs/en/authentication#generate-a-long-lived-token)
+
+如果 Codex 已返回所选工作区的最新用量，但本地凭据文件仍记录着过去的到期时间，小组件会同时显示最新用量和本地凭据过期状态。这次查询无需在浏览器中登录。
 
 Antigravity 支持现有 `agy` 监听器及正在运行的 Windows 原生应用的本地守护进程
 注册。连接验证进程和环回端口，将用量绑定到应用返回的账户。此本地接口可能随
@@ -400,7 +405,7 @@ Windows 源码构建可用 `scripts/Build-Windows.ps1 -DependenciesRoot <path>` 
 | 账户缺失 | 确认供应商 CLI 已登录，qhud 读取预期配置/主目录。 |
 | 邮箱被 ID 替代 | 确认 qhud 为 v0.6.2 或更新版本，并读取预期的 Codex 主目录。如果本地 ID 令牌没有可用邮箱，可添加匹配的 `labels` 条目覆盖显示。 |
 | Spark 或其他模型缺失 | 刷新并检查当前账户响应；不会合成缺失模型。 |
-| 旧读数或 401 错误 | 阅读行的时间/错误，在受影响目录通过供应商 CLI 重新登录。 |
+| 旧读数或 401 错误 | 刷新用量并检查账户连接状态。在 Windows 上点击凭据过期行的**重新登录**。在 Linux 上使用相应配置通过供应商 CLI 登录。 |
 | 没有终端窗格 | Linux 检查 tmux/herdr；原生 Windows 终端标签页不在本版本支持范围。 |
 | 组件不可见 | 检查托盘，对运行实例使用 `--peek`，确认桌面已解锁。 |
 | 行超过窗口 | 滚动配额区或增大窗口。 |

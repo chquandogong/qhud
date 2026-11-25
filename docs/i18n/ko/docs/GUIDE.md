@@ -23,20 +23,20 @@ qhud 설치, 기존 CLI 계정 연결, 저장된 스냅샷과 현재 응답을 �
 | Windows x64 | ZIP을 풀고 추출된 디렉터리 안의 `qhud.exe`를 실행합니다. | Microsoft Edge WebView2 Runtime. [Windows 설정](05-ops/WINDOWS.md)을 참조하세요. |
 | Linux x86_64 | tarball을 풀고 버전 디렉터리 안의 바이너리를 설치합니다. | GTK/WebKitGTK. 기준 시스템은 Ubuntu 24.04입니다. [Linux 운영](05-ops/RUNBOOK.md)을 참조하세요. |
 
-Linux v0.8.3에서 두 파일을 모두 다운로드한 뒤 실행합니다.
+Linux v0.8.4에서 두 파일을 모두 다운로드한 뒤 실행합니다.
 
 ```sh
-sha256sum -c qhud-v0.8.3-linux-x86_64.tar.gz.sha256
-tar -xzf qhud-v0.8.3-linux-x86_64.tar.gz
-install -Dm755 qhud-v0.8.3-linux-x86_64/qhud "$HOME/.local/bin/qhud"
+sha256sum -c qhud-v0.8.4-linux-x86_64.tar.gz.sha256
+tar -xzf qhud-v0.8.4-linux-x86_64.tar.gz
+install -Dm755 qhud-v0.8.4-linux-x86_64/qhud "$HOME/.local/bin/qhud"
 "$HOME/.local/bin/qhud"
 ```
 
 Windows 다운로드는 표시된 해시를 `.sha256` 파일과 비교합니다.
 
 ```powershell
-Get-FileHash -Algorithm SHA256 .\qhud-v0.8.3-windows-x86_64.zip
-Get-Content .\qhud-v0.8.3-windows-x86_64.zip.sha256
+Get-FileHash -Algorithm SHA256 .\qhud-v0.8.4-windows-x86_64.zip
+Get-Content .\qhud-v0.8.4-windows-x86_64.zip.sha256
 ```
 
 현재 release workflow로 게시한 아카이브에는 GitHub 빌드 출처 증명도 있습니다. GitHub CLI를 설치하고 실제 다운로드한 파일명으로 바꿔 `.sha256` 제공 파일이 아닌 아카이브 자체를 검증합니다.
@@ -107,14 +107,11 @@ Codex Business와 Claude Team은 좌석당 월 정가입니다. 예를 들어 St
 
 모델 할당량이 없는 것은 사용량 0과 다릅니다. 예를 들어 Spark 5H/7D는 현재 Codex 계정의 응답에 해당 한도가 있을 때만 표시합니다. 다른 계정을 새로고침해도 활성 계정의 한도를 확인한 것이 되지는 않습니다.
 
-**초기화권 N개** 배지는 공급자가
-제공한 횟수만 표시합니다. Codex는 공식 `rateLimitResetCredits.availableCount`를
-사용합니다. 명시적인 `0`은 유효하지만 필드가 없으면 확인 불가로 남습니다. 이는
-추가 사용 금액 및 초기화까지 남은 시간과 별개이며, qhud는 횟수를 표시할 뿐
-초기화권을 사용하지 않습니다. Claude 사용량 응답에 수동 초기화 횟수가 없으면
-펼친 상세에 정보가 없다고 표시합니다. 초기화 날짜, 사용률, 유형이 다른 초기화
-제안으로 횟수를 만들어 내지 않습니다. 횟수에도 해당 계정 행의 스냅샷 경과 시간이
-적용됩니다.
+Codex 계정의 **초기화권** 배지는 마지막 사용량 조회에서 받은 `rateLimitResetCredits.availableCount`를 표시합니다. 명시적인 `0`은 0개로 표시하며, 수량이 빠진 응답은 미확인으로 처리합니다.
+
+**Claude 제한 초기화.** 해당 Claude 조직의 **설정 → 사용량 → 제한 초기화**를 여세요. 사용량 조회에 개수가 없으면 qhud는 이 화면에서 마지막으로 확인한 값을 표시할 수 있습니다. 배지를 펼치면 종류별 개수, 현지 시각 기준 만료일, 확인 시각이 나옵니다. 만료된 초기화권은 합계에서 빠집니다. Claude에서 초기화권을 사용하면 새 잔여량으로 기록을 갱신하세요. [Claude 초기화권 안내](https://support.claude.com/en/articles/17007452-what-is-a-limit-reset)
+
+`accounts.json`의 `claude_reset_observations`에 구성원의 `email`, Claude 조직의 `org_id`, 확인 시각 `observed_at_ms`, 초기화권 목록 `offers`를 기록합니다. 각 항목에는 종류 `kind`(`full`, `fable`, `five_hour`, `weekly`), 양의 정수 `count`, 만료 시각 `expires_at_ms`가 들어갑니다. 두 시각의 단위는 Unix 밀리초입니다. 화면에 0개라고 표시되면 새 확인 시각과 함께 `offers: []`를 저장하세요. 각 구성원에게는 이메일과 조직이 모두 일치하는 가장 최근 기록이 적용됩니다.
 
 Claude의 기존 개인 `claude_max` 메타데이터와 `default_claude_max_20x` 조합은
 [공식 Max 20x 이름 변경](https://support.claude.com/en/articles/17728952-what-is-the-ultra-plan)에
@@ -375,10 +372,15 @@ Codex 팀 프로필에는 작업공간의 관리자 Members 페이지에서 별�
 없는 사용량을 0으로 표시하지 않습니다.
 
 Codex는 활성 계정에 설치된 CLI의 `app-server`를 사용하며 Windows의
-`Programs/OpenAI/Codex/bin` 설치 경로를 지원합니다. Claude는 Claude Code의
-로그인을 사용합니다. Desktop 앱에 로그인해도 만료된 CLI 인증이 갱신되지는
-않습니다. 안내에 따라 `claude auth login`을 완료하고 qhud를 새로고침하세요.
-qhud는 로그인을 자동 조작하거나 자체적으로 refresh token을 교환하지 않습니다.
+`Programs/OpenAI/Codex/bin` 설치 경로를 지원합니다. Claude 사용량은 선택한 Claude Code 프로필로 조회합니다.
+
+**위젯에서 다시 로그인하기(Windows).** 인증이 만료된 개인 또는 팀 행에서 **다시 로그인**을 누르세요. Claude는 해당 행의 이메일을 로그인 화면에 미리 입력하고, 확인된 조직 ID가 있으면 그 조직을 미리 선택합니다. Codex는 기존 세션으로 갱신을 먼저 시도합니다. 새 로그인이 필요하면 확인된 작업공간 ID가 있을 때 그 ID로 로그인을 제한합니다.
+
+격리된 프로필에 이미 다른 이메일이나 조직이 연결돼 있으면 그 행에서 **이 계정으로 로그인**을 누르세요. 브라우저에 다른 계정이 표시되면 계정을 전환해 행의 이메일을 선택하세요. qhud는 새 로그인을 별도 프로필에서 확인합니다. 이메일이나 작업공간이 다르면 기존 연결을 유지합니다. 일치하면 연결을 갱신하고 사용량을 다시 조회합니다.
+
+서비스가 로그인을 기억하고 있어도 사용량 조회용 액세스 토큰은 만료될 수 있습니다. 유효기간은 공급자가 정합니다. Claude의 1년짜리 `claude setup-token`은 모델 요청 전용입니다. 사용량을 조회하려면 일반 Claude Code 로그인을 사용하세요. [Claude Code 인증 문서](https://code.claude.com/docs/en/authentication#generate-a-long-lived-token)
+
+Codex가 선택한 작업공간의 최신 사용량을 반환해도 로컬 인증 파일에는 이전 만료 시각이 남을 수 있습니다. 이때 위젯에는 새 사용량과 로컬 인증 만료가 함께 표시되며, 브라우저 로그인 없이 조회가 끝납니다.
 
 Antigravity는 기존 `agy` 리스너와 실행 중인 Windows 네이티브 앱의 로컬 데몬
 등록을 지원합니다. 프로세스와 루프백 포트를 검증하고 앱이 반환한 계정에 사용량을
@@ -423,7 +425,7 @@ Windows 소스 빌드에서 `scripts/Build-Windows.ps1 -DependenciesRoot <path>`
 | 계정이 없음 | 공급자 CLI에 로그인되어 있고 qhud가 의도한 설정/홈 디렉터리를 읽는지 확인합니다. |
 | 이메일 대신 ID 표시 | qhud가 v0.6.2 이상이며 의도한 Codex 홈을 읽는지 확인합니다. 로컬 ID 토큰에 사용 가능한 이메일이 없으면 일치하는 `labels` 항목으로 표시를 지정합니다. |
 | Spark 또는 다른 모델이 없음 | 새로고침 후 현재 계정의 응답을 확인합니다. 없는 모델은 만들어 표시하지 않습니다. |
-| 오래된 값 또는 401 오류 | 행의 경과 시간/오류를 읽고, 영향을 받은 디렉터리에서 해당 공급자 CLI로 다시 로그인합니다. |
+| 오래된 값 또는 401 오류 | 사용량을 새로고침하고 계정의 연결 상태를 확인하세요. Windows에서는 인증이 만료된 행의 **다시 로그인**을 누르세요. Linux에서는 해당 프로필을 사용해 공급자 CLI로 로그인하세요. |
 | 터미널 창 분할이 없음 | Linux에서는 tmux/herdr를 확인합니다. 네이티브 Windows 터미널 탭은 이 릴리스의 지원 범위 밖입니다. |
 | 위젯이 보이지 않음 | 트레이를 확인하고 실행 중 인스턴스에 `--peek`를 사용하며 데스크톱 잠금이 해제되어 있는지 확인합니다. |
 | 행이 창 밖으로 넘어감 | 사용량 영역을 스크롤하거나 창 크기를 늘립니다. |

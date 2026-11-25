@@ -16,7 +16,7 @@ qhud는 v0.6.0부터 Windows x64 WebView2 위젯을 제공합니다. WSL 없이 
 
 ## 릴리스 설치
 
-[GitHub Releases](https://github.com/chquandogong/qhud/releases)에서 `qhud-v0.8.3-windows-x86_64.zip`과 체크섬 파일을 받습니다. 압축을 풀고 버전명이 붙은 디렉터리 안의 `qhud.exe`를 실행합니다. Microsoft Edge WebView2 Runtime이 필요합니다.
+[GitHub Releases](https://github.com/chquandogong/qhud/releases)에서 `qhud-v0.8.4-windows-x86_64.zip`과 체크섬 파일을 받습니다. 압축을 풀고 버전명이 붙은 디렉터리 안의 `qhud.exe`를 실행합니다. Microsoft Edge WebView2 Runtime이 필요합니다.
 
 ZIP은 휴대용 배포판입니다. 설치 프로그램, 로그인 자동 시작, 바로가기를 자동 등록하지 않습니다. 업데이트할 때는 트레이의 **Quit qhud**로 종료한 뒤 실행 파일을 교체합니다. 설정과 공급자 로그인 파일은 별도 위치에 유지됩니다.
 
@@ -76,6 +76,8 @@ Codex나 Claude 로그인을 추가하려면 [사용자 가이드](../GUIDE.md)�
 .\scripts\Connect-Account.ps1 -List
 .\scripts\Connect-Account.ps1 -Profile codex-work-personal
 ```
+
+인증이 만료되면 **다시 로그인**을, 격리된 프로필에 다른 계정이나 조직이 연결되어 있으면 **이 계정으로 로그인**을 누르세요. 로그인이 필요하면 공식 CLI가 열립니다. 브라우저에서 해당 이메일과 조직을 확인하세요. 로그인을 취소하거나 다른 대상을 선택하면 기존 연결을 유지합니다.
 
 GPT-5.3-Codex-Spark 5H/7D 같은 모델 한도는 서버가 반환할 때 표시합니다. 긴 이름은 줄바꿈하고 항목이 많으면 사용량 영역을 스크롤합니다. 오른쪽 시간은 초기화까지 남은 시간이며 계기에 마우스를 올리면 정확한 초기화 날짜와 시각을 확인할 수 있습니다. 누락된 모델 한도를 0%로 가정하거나 다른 계정의 수치를 대신 표시하지 않습니다.
 

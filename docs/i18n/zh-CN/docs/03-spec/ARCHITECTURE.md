@@ -9,8 +9,8 @@
 
 # 架构 — qhud
 
-> 状态：持续维护（已更新至 v0.8.3） · 日期：2026-11-24 · 负责人：chquandogong
-> 与 SPEC（必须做什么）及 DECISION_LOG（为何这样构建）配套。模块地图已更新至 v0.8.3；带日期验证保存在 TEST_PLAN。
+> 状态：持续维护（已更新至 v0.8.4） · 日期：2026-11-25 · 负责人：chquandogong
+> 与 SPEC（必须做什么）及 DECISION_LOG（为何这样构建）配套。模块地图已更新至 v0.8.4；带日期验证保存在 TEST_PLAN。
 
 <!-- qhud:anchor -->
 <a id="1-what-qhud-is-structurally"></a>
@@ -294,6 +294,10 @@ Claude Code 自有缓存和 qhud 最近刷新均存在时，较新者优先；�
 <!-- qhud:anchor -->
 <a id="17-registry-and-placeholders"></a>
 
+在 Windows 上点击登录按钮时，WebView 将已登记的配置键传给 `reauthenticate_profile`。Rust 解析目标并检查是否可以登录。助手在新的配置目录中运行供应商 CLI，验证结果后才更新凭据。小组件请求刷新该供应商的用量，只有收到所选账户和工作区的最新读数才显示更新成功（D-023）。
+
+注册表可在 `claude_reset_observations` 中保存带日期的 Claude 重置券记录。小组件优先采用匹配账户快照中供应商返回的次数，包括零。若未返回次数，则采用与成员邮箱、组织都匹配的最新确认记录，只合计未过期的重置券。
+
 ## 17. 注册表与占位行
 
 一个操作者拥有的文件保存显示标签、工作区名称和套餐、曾连接账户列表、已忽略项，以及支持多账户的额外 Claude 配置目录与 Codex 主目录（D-015）。
@@ -357,6 +361,8 @@ qhud 不写入 qmonster 自身目录。该状态由 TUI 管理，第二个写入
 | `src-tauri/src/claude_usage.rs` | 按配置目录显式刷新 Claude |
 | `src-tauri/src/codex_usage.rs` | 工作区发现、范围检查、时长标签及各主目录的 app-server 查询 |
 | `src-tauri/src/connections.rs` | 匹配配置、验证带日期的席位信息及本地就绪状态 |
+| `src-tauri/src/reauth.rs` | 检查 Windows 配置是否可以登录并处理已登记配置的登录命令 |
+| `scripts/Connect-Account.ps1` | 运行供应商官方 CLI，在更新连接前验证登录结果 |
 | `src-tauri/src/provider_health.rs` | 本机连接状态和显式刷新的有限诊断 |
 | `src-tauri/src/agy_usage.rs` | 两个平台的 agy 环回 RPC 和端口发现 |
 | `src-tauri/src/fetched_store.rs` | 刷新持久化、原子写入、并发写锁 |

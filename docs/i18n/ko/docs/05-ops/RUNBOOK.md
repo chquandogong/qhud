@@ -9,7 +9,7 @@
 
 # 운영 가이드
 
-> 상태: 지속 갱신 · 날짜: 2026-09-15 · 담당: chquandogong
+> 상태: 지속 갱신 · 날짜: 2026-11-25 · 담당: chquandogong
 
 <!-- qhud:anchor -->
 <a id="install"></a>
@@ -114,6 +114,8 @@ cp ~/.config/autostart/qhud.desktop ~/.local/share/applications/qhud.desktop
 <a id="troubleshooting"></a>
 
 ## 문제 해결
+
+Windows에서는 인증이 만료된 행의 **다시 로그인**, 계정이 어긋난 격리 프로필 행의 **이 계정으로 로그인**을 누르세요. 행에 표시된 이메일과 작업공간으로 공식 로그인을 완료하면 qhud가 해당 계정의 최신 사용량을 받았는지 알려줍니다. [사용 가이드](../GUIDE.md)
 
 | 증상 | 해결 |
 | --- | --- |

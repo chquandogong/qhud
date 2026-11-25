@@ -77,7 +77,7 @@ git diff --exit-code -- Cargo.toml Cargo.lock
 
 - 每项配额始终保留所属账户、组织、模型 scope、时长和重置时刻；缺失数据不能成为虚构零值。
 - 保留快照时间和归属。解析成功不能证明保存值属于当前登录。
-- 供应商请求保持在显式刷新操作之后。qhud 不管理供应商登录，也不执行自己的 OAuth refresh grant。
+- 保持轮询只读。只在用户主动刷新或重新连接时向供应商发出请求。OAuth 由 CLI 处理。Windows 重新连接助手会先核对新登录的邮箱和工作区，再更新所选配置。
 - Windows 特有适配保持限定范围；普通 Linux 克隆必须能继续构建，不依赖开发者同级依赖目录。
 - Linux 的 Tauri/WebKitGTK 进程不要安装 Unix 信号处理器，见 [D-012](docs/02-decisions/DECISION_LOG.md)。
 

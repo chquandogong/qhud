@@ -6,7 +6,7 @@
 
 # SPEC — qhud
 
-> Status: living (updated through v0.8.3) · Date: 2026-11-24 · Owner:
+> Status: living (updated through v0.8.4) · Date: 2026-11-25 · Owner:
 > chquandogong
 > What qhud must do. ARCHITECTURE says how it is built, DECISION_LOG says why.
 > Existing requirement numbers remain stable; later releases append new rows.
@@ -98,10 +98,11 @@ pane-fed gauges always belong to the default account's row.
 | FR-24 | Codex asks `codex app-server` for each configured login first, then checks saved credentials for additional workspaces or missing results. A cross-workspace response must identify the requested workspace. | done (v0.5.0, v0.8.0, D-016) |
 | FR-33 | Provider refreshes running at the same time preserve each other's saved results                                                                                         | done (v0.6.0)        |
 | FR-41 | Report local readiness, explicit refresh outcomes and known authentication expiry. A configured personal or team connection stays visible without usage until its identity matches. | done (v0.8.0) |
-| FR-42 | Show reset credits only when a provider supplies a count, including zero. Attach the count and any native plan name to that account’s dated snapshot. | done (v0.8.0) |
+| FR-42 | Keep each provider reset count, including zero, with its dated account snapshot and native plan name. If a count is missing, Claude can show a dated count of unexpired offers for the same member and organization. | v0.8.0, v0.8.4 |
 | FR-43 | Distinguish the organization plan, member usage grade and dated seat verification. A model guide for recognized plans discloses its review date and access conditions. | done (v0.8.0) |
 | FR-44 | Group Codex and Claude profiles by email within each provider, with personal rows before teams. Show a verified Claude Free personal plan with unavailable usage when no quota is reported. | done (v0.8.1) |
 | FR-45 | Show one monthly list price with $200 per unit of blue fill. Mark known billing cycles with `m` or `y`. Use the published monthly reference for an unknown cycle and a starting price for an unspecified team seat. Leave unpublished special rates unknown. Show Google AI Pro in won in the Korean UI. | added in v0.8.2, refined in v0.8.3 |
+| FR-46 | On Windows, start the official sign-in for a registered email and workspace. Apply the new login only after verifying its identity, then check for fresh usage on the selected row. | v0.8.4 (D-023) |
 
 ### Being trustworthy about it
 
@@ -248,6 +249,10 @@ additive.
 ```
 
 A `provider_health` entry describes local readiness and the last explicit refresh. `configured_connections` lists requested logins, their scope and any dated seat verification. Each `quotas` entry may carry a provider-reported `reset_credits` count and `plan_name`. An absent count means unknown, and a returned zero remains visible.
+
+On Windows, `can_reauthenticate` marks rows eligible for sign-in. A mismatched login can be repaired in an isolated profile. A default profile can be renewed only when its matching credential has expired.
+
+The optional `claude_reset_observations` array carries dated readings from Claude's Limit resets screen. The latest reading for the same member email and organization can supply an explicitly labeled, last-observed count when the provider count is missing. Its entries retain their individual types and expirations. An empty observed list records zero at that time. When all recorded offers expire, the UI marks the observation as expired.
 
 Fields that are usually empty are omitted rather than sent as null:
 `account`, `origin`, `cache_fetched_at_ms`, `scoped`, `extra`,

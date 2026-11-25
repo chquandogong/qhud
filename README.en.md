@@ -40,7 +40,7 @@ backend and a lightweight webview. No Node.js or npm is required to build it.
 | **Connections and plans** | Expand a provider to see its connection status. Personal and team usage are grouped by email. A verified Claude personal Free plan shows “Usage unavailable” when no quota is reported. Select a recognized plan to open its model guide. |
 | **Monthly plan prices** | A single amount shows the monthly list price or its annual-plan equivalent. `m` marks monthly billing and `y` marks annual billing. The Korean UI shows Google AI Pro in won. |
 | **Session activity** | On supported Linux setups: status, context pressure, model, effort, branch, working directory, and conflict indicators. |
-| **Freshness** | Local observation every 2 seconds. Provider usage requests run when you explicitly refresh. |
+| **Freshness** | qhud checks local data every 2 seconds and requests provider usage when you refresh or reconnect an account. |
 | **System usage and About** | A quiet CPU, memory, optional GPU, disk and network history strip; select a metric for detail. About shows the build version, maker Chenghao Quan and [homepage](https://chquandogong.github.io/CHENGHAO-QUAN/). |
 
 ## A compact view, with room for detail
@@ -83,15 +83,15 @@ Example data is available only with `--demo`.
 
 ## Install
 
-**Current release: [v0.8.3](https://github.com/chquandogong/qhud/releases/tag/v0.8.3).**
+**Current release: [v0.8.4](https://github.com/chquandogong/qhud/releases/tag/v0.8.4).**
 Both platform build/test jobs gate publication. Each archive has a SHA-256 file.
 
 | Download | Verify |
 | --- | --- |
-| [Windows x64 ZIP](https://github.com/chquandogong/qhud/releases/download/v0.8.3/qhud-v0.8.3-windows-x86_64.zip) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.8.3/qhud-v0.8.3-windows-x86_64.zip.sha256) |
-| [Linux x86_64 tarball](https://github.com/chquandogong/qhud/releases/download/v0.8.3/qhud-v0.8.3-linux-x86_64.tar.gz) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.8.3/qhud-v0.8.3-linux-x86_64.tar.gz.sha256) |
+| [Windows x64 ZIP](https://github.com/chquandogong/qhud/releases/download/v0.8.4/qhud-v0.8.4-windows-x86_64.zip) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.8.4/qhud-v0.8.4-windows-x86_64.zip.sha256) |
+| [Linux x86_64 tarball](https://github.com/chquandogong/qhud/releases/download/v0.8.4/qhud-v0.8.4-linux-x86_64.tar.gz) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.8.4/qhud-v0.8.4-linux-x86_64.tar.gz.sha256) |
 
-v0.8.3 shows one monthly amount per plan. A Standard team seat shows **$25 m** when billed monthly or **$20 y** when billed annually. The Korean UI shows Google AI Pro in won. [v0.8.3 release notes](docs/05-ops/releases/v0.8.3.md)
+v0.8.4 adds sign-in from individual Codex and Claude account rows on Windows. Claude reset credits can also show the last count recorded for the selected account and organization. [v0.8.4 release notes](docs/05-ops/releases/v0.8.4.md)
 
 Archives published by the current release workflow also carry GitHub build
 provenance. With GitHub CLI, substitute the path of the archive you downloaded;
@@ -117,9 +117,9 @@ for prerequisites, source builds, and configuration.
 After downloading the archive and its SHA-256 file into the same directory:
 
 ```sh
-sha256sum -c qhud-v0.8.3-linux-x86_64.tar.gz.sha256
-tar -xzf qhud-v0.8.3-linux-x86_64.tar.gz
-install -Dm755 qhud-v0.8.3-linux-x86_64/qhud "$HOME/.local/bin/qhud"
+sha256sum -c qhud-v0.8.4-linux-x86_64.tar.gz.sha256
+tar -xzf qhud-v0.8.4-linux-x86_64.tar.gz
+install -Dm755 qhud-v0.8.4-linux-x86_64/qhud "$HOME/.local/bin/qhud"
 "$HOME/.local/bin/qhud"
 ```
 
@@ -133,6 +133,7 @@ Runtime dependencies on Ubuntu 24.04 include `libwebkit2gtk-4.1-0`,
 - **Inspect:** select an account row or session tile; hover a gauge for its exact reset time.
 - **Refresh usage.** Use ⟳ in the title bar for all providers or the ⟳ beside a single provider.
 - **Connect another account.** Register its Codex or Claude personal/team profile, run the bundled PowerShell helper, then refresh that provider. [Windows profiles](docs/GUIDE.md#windows-personal-and-team-profiles)
+- **Reconnect on Windows.** Select **Sign in again** on an expired account row, or **Sign in to this account** if an isolated profile shows another account or organization. qhud checks the email and workspace before applying the new login and fetching usage.
 - **Peek:** use the tray's *Pin above windows* action.
 - **Quit:** choose *Quit qhud* from the tray.
 
@@ -158,7 +159,7 @@ make provider API requests. An explicit refresh may read existing access
 tokens for the provider's usage endpoint; qhud does not run OAuth refresh
 grants itself. On Windows, the running Antigravity app or CLI supplies usage through its local service.
 
-Reset credits show how many manual resets the provider reported at the time of the reading. The countdown shows when the current window resets automatically.
+Reset credits count the manual resets available. When the usage response omits that count, Claude can show a dated observation from its Usage page. Expand the badge to see the types, counts and expiry times. Expired credits drop out of the total. The countdown beside a usage bar shows when that window resets automatically.
 
 Account settings stay outside the repository. See the
 [configuration and data guide](docs/GUIDE.md#configuration-and-local-data).

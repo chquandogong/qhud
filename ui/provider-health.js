@@ -33,6 +33,10 @@
       lastSuccess: "마지막 성공", lastAttempt: "마지막 시도", expires: "저장 인증 만료", expiryUnknown: "인증 만료 시각 미제공",
       source: "연결 경로", refresh: "사용량 새로고침", details: "연결 상세", noSuccess: "성공한 조회 없음",
       resetCreditsMissing: "초기화권 정보 없음", resetCreditsHint: "조회 시점의 남은 초기화권",
+      resetCount: (n) => `초기화권 ${n}개`, observedResets: "확인값", expiredResets: "확인한 초기화권 만료",
+      resetObservationTime: "Claude 사용량 화면 확인", resetObservationHint: "확인 후 사용한 초기화권은 반영되지 않습니다.",
+      resetKinds: { full: "전체 초기화", fable: "Fable 초기화", five_hour: "5시간 한도 초기화", weekly: "주간 한도 초기화" },
+      resetOffer: (kind, count, date, expired) => `${kind} ${count}개 · ${date} ${expired ? "만료됨" : "만료 예정"}`,
       wrong_account: "다른 계정", wrong_scope: "다른 조직", personal: "개인", team: "팀",
       profileStatus: "등록 연결 상태",
       usageUnavailable: "사용량 미제공", personalPlanSource: "Claude 웹에서 확인한 개인 플랜",
@@ -41,6 +45,16 @@
       seatSource: "출처: 관리자 Members 페이지", seatHistorical: "웹에서 확인한 기록입니다. 자동으로 최신 상태를 확인하지 않습니다.",
       organizationPlan: "조직 플랜", claudeSeatSource: "Claude Code에 저장된 이 조직의 멤버 좌석",
       profileConnect: "로컬 계정 연결 스크립트에서 이 계정과 조직에 로그인한 뒤 ⟳를 누르세요.",
+      usageAuthExpired: "사용량 인증 만료", signIn: "로그인", signInAgain: "다시 로그인",
+      signInTarget: "이 계정으로 로그인",
+      loginHelp: "이 계정과 조직으로 로그인하면 사용량을 다시 조회합니다.",
+      loginTarget: (email, scope) => `${email} · ${scope} 계정으로 다시 연결합니다.`,
+      auth_waiting: "로그인 창에서 계속하세요", auth_refreshing: "로그인 확인 · 사용량 조회 중",
+      auth_updated: "로그인 및 사용량 갱신 완료", auth_usage_unavailable: "로그인 확인 · 이 계정의 사용량 미확인",
+      auth_busy: "다른 로그인 진행 중", auth_unavailable: "로그인 도구를 열 수 없습니다",
+      auth_profile_changed: "계정 설정이 변경됐습니다", auth_login_failed: "로그인이 완료되지 않았습니다",
+      auth_wrong_account: "이메일 불일치 · 연결 중단", auth_wrong_scope: "워크스페이스 불일치 · 연결 중단",
+      auth_not_ready: "사용량 인증을 아직 확인할 수 없습니다",
       profileWrongAccount: "저장된 로그인이 등록한 이메일과 다릅니다. 이 항목에는 해당 사용량을 표시하지 않습니다.",
       profileWrongScope: "저장된 로그인의 조직이 등록한 개인/팀 구분과 다릅니다. 이 항목에는 해당 사용량을 표시하지 않습니다.",
       justNow: "방금", minute: "분 전", hour: "시간 전", day: "일 전",
@@ -73,6 +87,10 @@
       lastSuccess: "Last success", lastAttempt: "Last attempt", expires: "Stored auth expires", expiryUnknown: "Auth expiry unavailable",
       source: "Connection", refresh: "Refresh usage", details: "Connection details", noSuccess: "No successful fetch",
       resetCreditsMissing: "Reset credits unavailable", resetCreditsHint: "Reset credits remaining at the time of the fetch",
+      resetCount: (n) => `Reset credits: ${n}`, observedResets: "last observed", expiredResets: "Observed reset offers expired",
+      resetObservationTime: "Claude Usage page checked", resetObservationHint: "Credits used since the check are not reflected.",
+      resetKinds: { full: "Full reset", fable: "Fable", five_hour: "5-hour limit", weekly: "Weekly limit" },
+      resetOffer: (kind, count, date, expired) => `${kind} × ${count} · ${expired ? "expired" : "expires"} ${date}`,
       wrong_account: "Different account", wrong_scope: "Different organization", personal: "Personal", team: "Team",
       profileStatus: "Registered connection",
       usageUnavailable: "Usage unavailable", personalPlanSource: "Personal plan observed on Claude web",
@@ -81,6 +99,16 @@
       seatSource: "Source: admin Members page", seatHistorical: "A dated web observation; it is not refreshed automatically.",
       organizationPlan: "Organization plan", claudeSeatSource: "Member seat saved by Claude Code for this organization",
       profileConnect: "Use the local account connection script to sign in to this account and organization, then press ⟳.",
+      usageAuthExpired: "Usage sign-in expired", signIn: "Sign in", signInAgain: "Sign in again",
+      loginHelp: "Sign in to this account and organization to refresh usage.",
+      signInTarget: "Sign in to this account",
+      loginTarget: (email, scope) => `Reconnect ${email} · ${scope}.`,
+      auth_waiting: "Continue in the sign-in window", auth_refreshing: "Signed in · fetching usage",
+      auth_updated: "Signed in and usage updated", auth_usage_unavailable: "Signed in · usage unavailable for this account",
+      auth_busy: "Another sign-in is in progress", auth_unavailable: "Could not open the sign-in tool",
+      auth_profile_changed: "Account settings changed", auth_login_failed: "Sign-in did not finish",
+      auth_wrong_account: "Email mismatch · connection stopped", auth_wrong_scope: "Workspace mismatch · connection stopped",
+      auth_not_ready: "Usage credentials could not be verified",
       profileWrongAccount: "The stored login uses a different email. Its usage is not assigned to this entry.",
       profileWrongScope: "The stored login belongs to a different personal/team organization. Its usage is not assigned to this entry.",
       justNow: "just now", minute: "m ago", hour: "h ago", day: "d ago",
@@ -113,6 +141,10 @@
       lastSuccess: "上次成功", lastAttempt: "上次尝试", expires: "已存认证到期", expiryUnknown: "未提供认证到期时间",
       source: "连接方式", refresh: "刷新用量", details: "连接详情", noSuccess: "尚无成功查询",
       resetCreditsMissing: "未提供重置券信息", resetCreditsHint: "查询时剩余的重置券",
+      resetCount: (n) => `重置券 ${n}张`, observedResets: "上次确认", expiredResets: "已确认的重置券均已过期",
+      resetObservationTime: "Claude 用量页面确认时间", resetObservationHint: "此数量未扣除确认后使用的重置券。",
+      resetKinds: { full: "全部限额", fable: "Fable", five_hour: "5 小时限额", weekly: "每周限额" },
+      resetOffer: (kind, count, date, expired) => `${kind} ${count}张 · ${date}${expired ? "已到期" : "到期"}`,
       wrong_account: "账户不符", wrong_scope: "组织不符", personal: "个人", team: "团队",
       profileStatus: "已登记连接状态",
       usageUnavailable: "不提供用量", personalPlanSource: "在 Claude 网页确认的个人套餐",
@@ -121,6 +153,16 @@
       seatSource: "来源：管理员 Members 页面", seatHistorical: "这是网页确认记录，不会自动检查最新状态。",
       organizationPlan: "组织套餐", claudeSeatSource: "Claude Code 为此组织保存的成员席位",
       profileConnect: "使用本地账户连接脚本登录此账户与组织，然后点击 ⟳。",
+      usageAuthExpired: "用量查询认证已过期", signIn: "登录", signInAgain: "重新登录",
+      loginHelp: "登录此账户和组织后，qhud 会刷新用量。",
+      signInTarget: "登录此账户",
+      loginTarget: (email, scope) => `重新连接 ${email} · ${scope}。`,
+      auth_waiting: "请在登录窗口中继续", auth_refreshing: "登录已确认 · 正在查询用量",
+      auth_updated: "登录成功，用量已更新", auth_usage_unavailable: "登录已确认 · 尚未查到此账户的用量",
+      auth_busy: "另一个登录正在进行", auth_unavailable: "无法打开登录工具",
+      auth_profile_changed: "账户设置已变更", auth_login_failed: "登录未完成",
+      auth_wrong_account: "邮箱不符 · 已停止连接", auth_wrong_scope: "工作区不符 · 已停止连接",
+      auth_not_ready: "尚无法确认用量查询凭据",
       profileWrongAccount: "已存登录的邮箱与登记邮箱不同，不会将其用量归入此项。",
       profileWrongScope: "已存登录的个人/团队组织与登记组织不同，不会将其用量归入此项。",
       justNow: "刚刚", minute: "分钟前", hour: "小时前", day: "天前",
@@ -138,15 +180,75 @@
   const validPercent = (value) => typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 100;
   const hasQuota = (q) => validPercent(q?.h5?.pct) || validPercent(q?.d7?.pct) || (q?.scoped || []).some((x) => validPercent(x?.pct));
 
-  // A count is attached to its own account/workspace. A fresh response that
-  // omits the field must not inherit an older (possibly spent) count.
-  function resetCreditsView(row, freshUsage = null, locale = "ko") {
+  function latestResetObservation(row, observations, now) {
+    if (row?.provider !== "claude" || !Array.isArray(observations)) return null;
+    const account = row.account;
+    if (typeof account?.email !== "string" || !account.email.trim() || !account.org_id) return null;
+    const email = account.email.trim().toLowerCase();
+    let latest = null;
+    let conflict = false;
+    for (const note of observations) {
+      if (typeof note?.email !== "string" || note.email.trim().toLowerCase() !== email ||
+          note.org_id !== account.org_id || !Number.isSafeInteger(note.observed_at_ms) ||
+          note.observed_at_ms <= 0 || note.observed_at_ms > now ||
+          !Array.isArray(note.offers) || note.offers.length > 64 ||
+          !note.offers.every((offer) => offer && Object.hasOwn(TEXT.en.resetKinds, offer.kind) &&
+            Number.isInteger(offer.count) && offer.count > 0 && offer.count <= 0xffffffff &&
+            Number.isSafeInteger(offer.expires_at_ms) && offer.expires_at_ms > note.observed_at_ms &&
+            offer.expires_at_ms <= 8640000000000000)) continue;
+      if (!latest || note.observed_at_ms > latest.observed_at_ms) {
+        latest = note;
+        conflict = false;
+      } else if (note.observed_at_ms === latest.observed_at_ms &&
+          JSON.stringify(note.offers) !== JSON.stringify(latest.offers)) {
+        conflict = true;
+      }
+    }
+    return conflict ? null : latest;
+  }
+
+  const resetDates = new Map();
+  function observedResetView(note, now, locale) {
+    const key = localeKey(locale);
+    const t = TEXT[key];
+    if (!resetDates.has(key)) {
+      resetDates.set(key, new Intl.DateTimeFormat({ ko: "ko-KR", en: "en-US", zh: "zh-CN" }[key], {
+        year: "numeric", month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZoneName: "short",
+      }));
+    }
+    const dates = resetDates.get(key);
+    let remaining = 0;
+    const details = [`${t.resetObservationTime} · ${dates.format(note.observed_at_ms)}`];
+    const unexpired = [];
+    for (const offer of note.offers) {
+      const expired = offer.expires_at_ms <= now;
+      if (!expired) {
+        remaining += offer.count;
+        unexpired.push(offer.expires_at_ms);
+      }
+      details.push(t.resetOffer(t.resetKinds[offer.kind], offer.count, dates.format(offer.expires_at_ms), expired));
+    }
+    details.push(t.resetObservationHint);
+    // A page showing no offers is an observed zero. When all offers have
+    // elapsed, we no longer have a count for this member.
+    const count = remaining === 0 && note.offers.length ? null : remaining;
+    const label = count === null ? t.expiredResets : `${t.resetCount(count)} · ${t.observedResets}`;
+    const hint = details.join("\n");
+    return { count, label, hint, detail: `${label}\n${hint}`, observed: true,
+      nextExpiry: unexpired.length ? Math.min(...unexpired) : null };
+  }
+
+  // A fresh response that omits the field must not revive a provider count.
+  // Separately dated Usage-page offers can still be shown as observations.
+  function resetCreditsView(row, freshUsage = null, locale = "ko", observations, now = Date.now()) {
     const value = (freshUsage || row)?.reset_credits;
     const count = Number.isInteger(value) && value >= 0 && value <= 0xffffffff ? value : null;
     const t = strings(locale);
-    const label = count == null ? null
-      : localeKey(locale) === "ko" ? `초기화권 ${count}개`
-        : localeKey(locale) === "zh" ? `重置券 ${count}张` : `Reset credits: ${count}`;
+    if (count === null) {
+      const note = latestResetObservation(row, observations, now);
+      if (note) return observedResetView(note, now, locale);
+    }
+    const label = count == null ? null : t.resetCount(count);
     return { count, label, detail: label ? `${label} · ${t.resetCreditsHint}` : t.resetCreditsMissing, hint: t.resetCreditsHint };
   }
 
@@ -154,7 +256,8 @@
     if (!profile || profile.has_row || !PROVIDERS.includes(profile.provider) || typeof profile.key !== "string" || !profile.key) return null;
     const t = strings(locale);
     const state = ["login_required", "credential_expired", "wrong_account", "wrong_scope", "ready"].includes(profile.state) ? profile.state : "unknown";
-    const label = state === "login_required" ? t.profileLoginRequired : t[state];
+    const label = state === "login_required" ? t.profileLoginRequired :
+      state === "credential_expired" && profile.provider === "claude" ? t.usageAuthExpired : t[state];
     // The backend reads the local credential's expiry before checking its account and organization.
     const expires = ["ready", "credential_expired"].includes(state) && timestamp(profile.expires_at_ms);
     const dateLocale = { ko: "ko-KR", en: "en-US", zh: "zh-CN" }[localeKey(locale)];
@@ -174,7 +277,7 @@
     const detail = [];
     if (state === "wrong_account") detail.push(t.profileWrongAccount);
     else if (state === "wrong_scope") detail.push(t.profileWrongScope);
-    if (state !== "ready") detail.push(t.profileConnect);
+    if (state !== "ready") detail.push(profile.can_reauthenticate ? t.loginHelp : t.profileConnect);
     else detail.push(t.readyDetail);
     if (expiryLine) detail.push(expiryLine);
     return { key: profile.key, provider: profile.provider, email: profile.email || profile.label || "", scope: ["personal", "team"].includes(profile.scope) ? t[profile.scope] : "", state, label, detail: detail.join("\n") };
@@ -270,7 +373,8 @@
     else if (state === "cli_missing") detail.push(t.cliAction);
     else if (state === "error") detail.push(t.defaultAction);
     return {
-      provider, name: NAMES[provider] || provider, state, label: t[state], summary,
+      provider, name: NAMES[provider] || provider, state,
+      label: state === "credential_expired" && provider === "claude" ? t.usageAuthExpired : t[state], summary,
       detail: detail.join("\n"), lastSuccess, quotaAt,
       stale: usage.length > 0 && (state !== "connected" || !quotaAt || now - quotaAt > 5 * 60_000),
       tone: state === "connected" ? "good" : ["credential_expired", "login_required", "error"].includes(state) ? "warn" : "muted",

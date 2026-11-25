@@ -9,7 +9,7 @@
 
 # 运维手册
 
-> 状态：持续维护 · 日期：2026-09-15 · 负责人：chquandogong
+> 状态：持续维护 · 日期：2026-11-25 · 负责人：chquandogong
 
 <!-- qhud:anchor -->
 <a id="install"></a>
@@ -114,6 +114,8 @@ cp ~/.config/autostart/qhud.desktop ~/.local/share/applications/qhud.desktop
 <a id="troubleshooting"></a>
 
 ## 故障排查
+
+在 Windows 上，凭据过期时请点击**重新登录**。如果独立配置关联了错误的账户，请点击**登录此账户**。使用该行的邮箱和工作区完成官方登录后，qhud 会查询用量并显示是否已收到该账户的新读数。参见[用户指南](../GUIDE.md)。
 
 | 症状 | 修复 |
 | --- | --- |
