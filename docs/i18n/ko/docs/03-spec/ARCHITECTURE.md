@@ -9,8 +9,8 @@
 
 # 아키텍처 — qhud
 
-> 상태: 지속 갱신(v0.8.3까지 반영) · 날짜: 2026-11-24 · 담당: chquandogong
-> SPEC(해야 하는 일) 및 DECISION_LOG(이렇게 구현한 이유)의 동반 문서입니다. 모듈 지도는 v0.8.3까지 반영하며 날짜별 검증은 TEST_PLAN에 보존합니다.
+> 상태: 지속 갱신(v0.8.4까지 반영) · 날짜: 2026-11-25 · 담당: chquandogong
+> SPEC(해야 하는 일) 및 DECISION_LOG(이렇게 구현한 이유)의 동반 문서입니다. 모듈 지도는 v0.8.4까지 반영하며 날짜별 검증은 TEST_PLAN에 보존합니다.
 
 <!-- qhud:anchor -->
 <a id="1-what-qhud-is-structurally"></a>
@@ -291,6 +291,10 @@ CLI가 이미 관리하는 로컬 파일에서 계정 필드를 선택하며 공
 <!-- qhud:anchor -->
 <a id="17-registry-and-placeholders"></a>
 
+Windows에서 로그인 버튼을 누르면 웹뷰는 `reauthenticate_profile`에 등록된 프로필 키를 전달합니다. Rust가 대상과 로그인 가능 여부를 확인합니다. 도우미는 새 프로필에서 공급자 CLI를 실행하고 결과를 검증한 뒤 인증 정보를 갱신합니다. 위젯은 공급자 사용량을 다시 조회하고, 선택한 계정과 작업공간의 새 값이 있을 때만 갱신 완료를 표시합니다(D-023).
+
+레지스트리는 날짜가 있는 Claude 초기화권 기록을 `claude_reset_observations`에 보관할 수 있습니다. 위젯은 0을 포함한 공급자의 계정별 스냅샷 값을 우선합니다. 개수가 누락되면 구성원 이메일과 조직이 일치하는 최신 확인 기록에서 아직 만료되지 않은 초기화권을 합산합니다.
+
 ## 17. Registry와 자리 표시자
 
 운영자가 소유한 파일 하나에 표시 레이블, 작업 공간 이름과 플랜, 과거 연결 계정 목록, 제거 항목, 다중 계정에 필요한 추가 Claude 설정 디렉터리 및 Codex 홈을 저장합니다(D-015).
@@ -354,6 +358,8 @@ qhud는 qmonster 자체 디렉터리에 아무것도 쓰지 않습니다. TUI가
 | `src-tauri/src/claude_usage.rs` | 설정 디렉터리별 Claude 명시적 새로고침 |
 | `src-tauri/src/codex_usage.rs` | 워크스페이스 탐색, 범위 검사, 기간 레이블 및 홈별 app-server 조회 |
 | `src-tauri/src/connections.rs` | 프로필 일치 검사, 날짜가 있는 좌석 정보 검증 및 로컬 준비 상태 |
+| `src-tauri/src/reauth.rs` | Windows 프로필별 로그인 가능 여부 검사와 등록 프로필 명령 |
+| `scripts/Connect-Account.ps1` | 공식 공급자 CLI 실행 및 로그인 결과 검증 후 적용 |
 | `src-tauri/src/provider_health.rs` | 로컬 연결 상태 및 명시적 조회 결과 진단 |
 | `src-tauri/src/agy_usage.rs` | 두 플랫폼의 agy loopback RPC와 포트 탐색 |
 | `src-tauri/src/fetched_store.rs` | 새로고침 저장, 원자적 쓰기, 동시 쓰기 잠금 |

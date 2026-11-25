@@ -40,7 +40,7 @@ qhud 将分散在各个命令行界面的账户配额和会话状态集中到小
 | **连接和方案** | 展开供应商名称可查看连接状态。每个邮箱下按个人和团队分别展示用量。已确认的 Claude 个人 Free 套餐没有配额时显示“不提供用量”。点击已识别的套餐可展开模型指南。 |
 | **套餐月费** | 每个标签显示一个金额，即月付标价或年付折合的月均价。`m` 表示月付，`y` 表示年付。韩语界面的 Google AI Pro 以韩元显示。 |
 | **会话活动** | 在受支持的 Linux 环境中：状态、上下文压力、模型、推理力度、分支、工作目录和冲突指示。 |
-| **新旧程度** | 每 2 秒本地观测；只有显式刷新时才请求供应商用量。 |
+| **新旧程度** | 每 2 秒检查本地数据。刷新或重新连接账户时，qhud 会向供应商查询用量。 |
 | **系统用量与关于** | 低调显示 CPU、内存、受支持 GPU、磁盘和网络历史；选择指标查看详情。About 显示构建版本、作者 Chenghao Quan 和[主页](https://chquandogong.github.io/CHENGHAO-QUAN/)。 |
 
 <!-- qhud:anchor -->
@@ -84,14 +84,14 @@ qhud 将分散在各个命令行界面的账户配额和会话状态集中到小
 
 ## 安装
 
-**当前版本：[v0.8.3](https://github.com/chquandogong/qhud/releases/tag/v0.8.3)。** 两平台构建/测试均为发布门槛，每份压缩包都有 SHA-256 文件。
+**当前版本：[v0.8.4](https://github.com/chquandogong/qhud/releases/tag/v0.8.4)。** 两平台构建/测试均为发布门槛，每份压缩包都有 SHA-256 文件。
 
 | 下载 | 校验 |
 | --- | --- |
-| [Windows x64 ZIP](https://github.com/chquandogong/qhud/releases/download/v0.8.3/qhud-v0.8.3-windows-x86_64.zip) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.8.3/qhud-v0.8.3-windows-x86_64.zip.sha256) |
-| [Linux x86_64 tarball](https://github.com/chquandogong/qhud/releases/download/v0.8.3/qhud-v0.8.3-linux-x86_64.tar.gz) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.8.3/qhud-v0.8.3-linux-x86_64.tar.gz.sha256) |
+| [Windows x64 ZIP](https://github.com/chquandogong/qhud/releases/download/v0.8.4/qhud-v0.8.4-windows-x86_64.zip) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.8.4/qhud-v0.8.4-windows-x86_64.zip.sha256) |
+| [Linux x86_64 tarball](https://github.com/chquandogong/qhud/releases/download/v0.8.4/qhud-v0.8.4-linux-x86_64.tar.gz) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.8.4/qhud-v0.8.4-linux-x86_64.tar.gz.sha256) |
 
-v0.8.3 为每个套餐显示一个月均金额。团队 Standard 席位按月结算时显示 **$25 m**，按年结算时显示折合月价 **$20 y**。韩语界面的 Google AI Pro 价格以韩元显示。 [v0.8.3 发布说明](docs/i18n/zh-CN/docs/05-ops/releases/v0.8.3.md)
+v0.8.4 支持在 Windows 小组件的 Codex 或 Claude 账户行中重新登录。Claude 重置券还可显示该账户和组织上次记录的可用数量。 [v0.8.4 发布说明](docs/i18n/zh-CN/docs/05-ops/releases/v0.8.4.md)
 
 当前 release workflow 发布的压缩包还带 GitHub 构建来源证明。使用 GitHub CLI 时，将文件名替换为实际下载的压缩包路径；验证压缩包本身，而非其 `.sha256` 配套文件。
 
@@ -110,9 +110,9 @@ v0.7.2 之后的发布还包含 CycloneDX SBOM `qhud-vX.Y.Z-sbom.cdx.json`、其
 将压缩包及 SHA-256 文件下载到同一目录后：
 
 ```sh
-sha256sum -c qhud-v0.8.3-linux-x86_64.tar.gz.sha256
-tar -xzf qhud-v0.8.3-linux-x86_64.tar.gz
-install -Dm755 qhud-v0.8.3-linux-x86_64/qhud "$HOME/.local/bin/qhud"
+sha256sum -c qhud-v0.8.4-linux-x86_64.tar.gz.sha256
+tar -xzf qhud-v0.8.4-linux-x86_64.tar.gz
+install -Dm755 qhud-v0.8.4-linux-x86_64/qhud "$HOME/.local/bin/qhud"
 "$HOME/.local/bin/qhud"
 ```
 
@@ -127,6 +127,7 @@ Ubuntu 24.04 运行时依赖包括 `libwebkit2gtk-4.1-0`、`libgtk-3-0` 和用�
 - **查看详情：** 选择账户行或会话卡片；悬停仪表查看准确重置时间。
 - **刷新用量。** 点击顶部 ⟳ 刷新全部供应商，或点击供应商旁的 ⟳ 仅刷新该供应商。
 - **连接其他账户。** 注册 Codex 或 Claude 的个人或团队档案，用 ZIP 内的 PowerShell 脚本登录后刷新对应供应商。[Windows 档案设置](docs/i18n/zh-CN/docs/GUIDE.md#windows-personal-and-team-profiles)
+- **在 Windows 中重新连接。** 凭据过期时，点击该账户行的**重新登录**。如果独立配置已连接其他账户或组织，请点击**登录此账户**。qhud 核对邮箱和工作区后更新连接并查询用量。
 - **临时置顶：** 使用托盘 *Pin above windows*。
 - **退出：** 在托盘选择 *Quit qhud*。
 
@@ -148,7 +149,7 @@ qhud --peek
 
 保存读数标明时间。剩余重置时间是倒计时，悬停仪表可看准确日期和时间。本地观测不请求供应商 API。显式刷新可能读取现有 access token 以调用供应商用量端点；qhud 自身不执行 OAuth refresh grant。在 Windows 上，运行中的 Antigravity 应用或 CLI 通过本地服务提供用量。
 
-重置券显示获取用量时供应商返回的手动重置次数。倒计时显示当前用量窗口距离自动重置还剩多久。
+重置券表示可手动重置限额的次数。如果用量响应未给出数量，Claude 可显示上次在用量页记录的数量和确认时间。展开徽标可查看每种券的数量与到期时间。已过期的券会从总数中扣除。用量条旁的倒计时显示该限额距自动重置还有多久。
 
 账户设置保留在仓库外。见[配置与本地数据指南](docs/i18n/zh-CN/docs/GUIDE.md#configuration-and-local-data)。
 

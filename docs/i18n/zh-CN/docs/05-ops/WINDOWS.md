@@ -16,7 +16,7 @@ qhud 从 v0.6.0 起提供 Windows x64 WebView2 小组件，无需 WSL 即可显�
 
 ## 安装发布版
 
-从 [GitHub Releases](https://github.com/chquandogong/qhud/releases) 下载 `qhud-v0.8.3-windows-x86_64.zip` 及其校验和文件。解压后运行版本目录内的 `qhud.exe`。必须安装 Microsoft Edge WebView2 Runtime。
+从 [GitHub Releases](https://github.com/chquandogong/qhud/releases) 下载 `qhud-v0.8.4-windows-x86_64.zip` 及其校验和文件。解压后运行版本目录内的 `qhud.exe`。必须安装 Microsoft Edge WebView2 Runtime。
 
 ZIP 为便携包，不自动注册安装程序、登录自启动或快捷方式。更新时先通过托盘 **Quit qhud** 退出，再替换可执行文件。设置与供应商登录文件保存在独立位置。
 
@@ -76,6 +76,8 @@ Start-Process -FilePath '.\target\x86_64-pc-windows-msvc\release\qhud.exe'
 .\scripts\Connect-Account.ps1 -List
 .\scripts\Connect-Account.ps1 -Profile codex-work-personal
 ```
+
+账户凭据过期时请点击**重新登录**。独立配置关联了其他账户或组织时请点击**登录此账户**。需要登录时会打开官方 CLI。请在浏览器中核对邮箱和组织。取消登录或身份不符时会保留原连接。
 
 服务器返回时显示 GPT-5.3-Codex-Spark 5H/7D 等模型限额。长名称自动换行，条目较多时用量区可滚动。右侧时间是距重置的剩余时间；悬停仪表可看准确重置日期和时间。不会把缺失模型限额假定为 0%，也不会用其他账户的读数替代。
 

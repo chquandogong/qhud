@@ -6,7 +6,7 @@
 
 # RUNBOOK
 
-> Status: living · Date: 2026-09-15 · Owner: chquandogong
+> Status: living · Date: 2026-11-25 · Owner: chquandogong
 
 ## Install
 
@@ -192,6 +192,8 @@ instance (single-instance guard, v0.3.0).
 `install -m755 target/release/qhud ~/.local/bin/qhud && pkill -x qhud && ~/.local/bin/qhud &`
 
 ## Troubleshooting
+
+On Windows, choose **Sign in again** on an expired profile or **Sign in to this account** on a mismatched isolated profile. Use the email and workspace shown on the row. After sign-in, qhud checks for fresh usage on that row. See the [user guide](../GUIDE.md).
 
 | Symptom                                                                                                                                          | Fix                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | ------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

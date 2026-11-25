@@ -97,23 +97,27 @@ pub struct BillingCycleObservation {
     pub verified_at_ms: u64,
 }
 
+fn clean_id(id: &str, max_bytes: usize) -> bool {
+    !id.is_empty()
+        && id.len() <= max_bytes
+        && !id.chars().any(|c| c.is_control() || c.is_whitespace())
+}
+
+fn valid_email(email: &str) -> bool {
+    clean_id(email, 320)
+        && email.split_once('@').is_some_and(|(local, domain)| {
+            !local.is_empty() && !domain.is_empty() && !domain.contains('@')
+        })
+}
+
 impl BillingCycleObservation {
     fn valid_at(&self, now_ms: u64) -> bool {
-        let clean_id = |id: &str, limit| {
-            !id.is_empty()
-                && id.len() <= limit
-                && !id.chars().any(|c| c.is_control() || c.is_whitespace())
-        };
-        let valid_email = clean_id(&self.email, 320)
-            && self.email.split_once('@').is_some_and(|(local, domain)| {
-                !local.is_empty() && !domain.is_empty() && !domain.contains('@')
-            });
         let valid_workspace = match self.provider.as_str() {
             "agy" => self.workspace_id.eq_ignore_ascii_case(&self.email),
             "codex" | "claude" => clean_id(&self.workspace_id, 128),
             _ => false,
         };
-        valid_email
+        valid_email(&self.email)
             && valid_workspace
             && !self.plan.is_empty()
             && self.plan.len() <= 64
@@ -124,6 +128,50 @@ impl BillingCycleObservation {
             && matches!(self.cycle.as_str(), "monthly" | "annual")
             && self.verified_at_ms > 0
             && self.verified_at_ms <= now_ms
+    }
+}
+
+/// Manual limit reset offers seen together on one member's Claude Usage page.
+/// An explicit empty list records that the page showed no remaining offers.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct ClaudeResetObservation {
+    pub email: String,
+    pub org_id: String,
+    pub observed_at_ms: u64,
+    pub offers: Vec<ClaudeResetOffer>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct ClaudeResetOffer {
+    pub kind: ClaudeResetKind,
+    pub count: u32,
+    pub expires_at_ms: u64,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ClaudeResetKind {
+    Full,
+    Fable,
+    FiveHour,
+    Weekly,
+}
+
+impl ClaudeResetObservation {
+    fn valid_at(&self, now_ms: u64) -> bool {
+        // The webview formats these Unix milliseconds with JavaScript Date.
+        const MAX_DATE_MS: u64 = 8_640_000_000_000_000;
+        const MAX_OFFERS: usize = 64;
+        valid_email(&self.email)
+            && clean_id(&self.org_id, 128)
+            && self.observed_at_ms > 0
+            && self.observed_at_ms <= now_ms.min(MAX_DATE_MS)
+            && self.offers.len() <= MAX_OFFERS
+            && self.offers.iter().all(|offer| {
+                offer.count > 0
+                    && offer.expires_at_ms > self.observed_at_ms
+                    && offer.expires_at_ms <= MAX_DATE_MS
+            })
     }
 }
 
@@ -162,6 +210,7 @@ pub struct Registry {
     /// Adding a profile never activates its credential directory by itself.
     pub profiles: Vec<ConnectionProfile>,
     pub billing_cycles: Vec<BillingCycleObservation>,
+    pub claude_reset_observations: Vec<ClaudeResetObservation>,
 }
 
 /// Expands a single leading `~/` (or bare `~`) against the given home.
@@ -191,6 +240,21 @@ pub fn id(provider: &str, key: &str) -> String {
     format!("{provider}:{key}")
 }
 
+/// A mistyped optional setting or note must leave the other records usable.
+fn observations<T: serde::de::DeserializeOwned>(
+    value: serde_json::Value,
+    valid: impl Fn(&T) -> bool,
+) -> Vec<T> {
+    let serde_json::Value::Array(entries) = value else {
+        return Vec::new();
+    };
+    entries
+        .into_iter()
+        .filter_map(|entry| serde_json::from_value(entry).ok())
+        .filter(valid)
+        .collect()
+}
+
 /// Parses the registry file. Malformed content yields an empty registry:
 /// none of this is load-bearing enough to fail a tick over.
 pub fn parse(json: &str) -> Registry {
@@ -214,21 +278,11 @@ pub fn parse(json: &str) -> Registry {
         profiles: Vec<ConnectionProfile>,
         #[serde(default)]
         billing_cycles: serde_json::Value,
+        #[serde(default)]
+        claude_reset_observations: serde_json::Value,
     }
     let raw: Raw = serde_json::from_str(json).unwrap_or_default();
-    // Preserve usable settings and sibling notes if an optional entry was
-    // mistyped in this operator-owned file.
-    let billing_cycles = match raw.billing_cycles {
-        serde_json::Value::Array(entries) => {
-            let now_ms = crate::view::now_ms();
-            entries
-                .into_iter()
-                .filter_map(|entry| serde_json::from_value::<BillingCycleObservation>(entry).ok())
-                .filter(|note| note.valid_at(now_ms))
-                .collect()
-        }
-        _ => Vec::new(),
-    };
+    let now_ms = crate::view::now_ms();
     Registry {
         labels: raw.labels,
         workspace_names: raw.workspace_names,
@@ -238,7 +292,13 @@ pub fn parse(json: &str) -> Registry {
         claude_config_dirs: raw.claude_config_dirs,
         codex_homes: raw.codex_homes,
         profiles: raw.profiles,
-        billing_cycles,
+        billing_cycles: observations(raw.billing_cycles, |note: &BillingCycleObservation| {
+            note.valid_at(now_ms)
+        }),
+        claude_reset_observations: observations(
+            raw.claude_reset_observations,
+            |note: &ClaudeResetObservation| note.valid_at(now_ms),
+        ),
     }
 }
 
@@ -364,6 +424,59 @@ mod tests {
         assert!(parse("{}").claude_config_dirs.is_empty());
         assert!(parse("{}").profiles.is_empty());
         assert!(parse("{}").billing_cycles.is_empty());
+        assert!(parse(REG).claude_reset_observations.is_empty());
+    }
+
+    #[test]
+    fn claude_reset_notes_preserve_explicit_empty_offers_and_reject_invalid_snapshots() {
+        use serde_json::{Value, json};
+        let note = json!({
+            "email":"one@example.com","org_id":"team-example","observed_at_ms":123,
+            "offers":[
+                {"kind":"full","count":2,"expires_at_ms":200},
+                {"kind":"fable","count":1,"expires_at_ms":300},
+                {"kind":"five_hour","count":1,"expires_at_ms":400},
+                {"kind":"weekly","count":3,"expires_at_ms":500}
+            ]
+        });
+        let mut empty = note.clone();
+        empty["offers"] = json!([]);
+        empty["observed_at_ms"] = json!(501);
+        let read = |list: Value| {
+            let r = parse(
+                &json!({"known":[{"provider":"claude","key":"work"}],
+                    "claude_reset_observations":list})
+                .to_string(),
+            );
+            assert_eq!(r.known.len(), 1);
+            serde_json::to_value(r.claude_reset_observations).unwrap()
+        };
+        let mut no_offers = note.clone();
+        no_offers.as_object_mut().unwrap().remove("offers");
+        let mut notes = vec![note.clone(), json!(null), no_offers];
+        for (path, value) in [
+            ("/email", json!("two@@example.com")),
+            ("/org_id", json!("")),
+            ("/org_id", json!("space here")),
+            ("/org_id", json!("x".repeat(129))),
+            ("/observed_at_ms", json!(0)),
+            ("/observed_at_ms", json!(crate::view::now_ms() + 86_400_000)),
+            ("/offers", json!(vec![&note["offers"][0]; 65])),
+            ("/offers/1/kind", json!("unknown")),
+            ("/offers/1/count", json!(0)),
+            ("/offers/1/count", json!(1.5)),
+            ("/offers/1/count", json!(u64::MAX)),
+            ("/offers/1/expires_at_ms", json!(123)),
+            ("/offers/1/expires_at_ms", json!(-1)),
+            ("/offers/1/expires_at_ms", json!(u64::MAX)),
+        ] {
+            let mut invalid = note.clone();
+            *invalid.pointer_mut(path).unwrap() = value;
+            notes.push(invalid);
+        }
+        notes.push(empty.clone());
+        assert_eq!(read(json!(notes)), json!([note, empty]));
+        assert_eq!(read(json!("unavailable")), json!([]));
     }
 
     #[test]

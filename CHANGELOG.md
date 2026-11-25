@@ -10,6 +10,11 @@ All notable changes to qhud. Format: [Keep a Changelog](https://keepachangelog.c
 
 ## [Unreleased]
 
+## [0.8.4] — 2026-11-25
+
+- Reconnect a registered Claude or Codex account from its Windows widget row. The official CLI handles sign-in. qhud verifies the requested email and workspace before updating the profile and fetching usage.
+- Show dated Claude limit-reset observations by type and expiry when the usage response omits a count. Provider counts, including zero, take precedence.
+
 ## [0.8.3] — 2026-11-24
 
 - Show one monthly price with a blue fill. Confirmed billing cycles use `m` for monthly billing or `y` for the monthly equivalent of annual billing. An unknown cycle uses the published monthly reference without a suffix.

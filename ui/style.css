@@ -787,17 +787,17 @@ body {
 @media (max-width: 359px) {
   .q-price { --price-unit: 58px; padding-inline: 2px; }
 }
-.q-model-guide {
+.q-model-guide, .q-reset-offers {
   color: var(--tx-mut);
   font: 10px/1.5 var(--mono);
   min-width: 0;
 }
-.q-model-guide summary {
+.q-model-guide summary, .q-reset-offers summary {
   cursor: pointer;
   color: var(--accent);
   width: fit-content;
 }
-.q-model-guide[open] {
+.q-model-guide[open], .q-reset-offers[open] {
   flex: 1 0 100%;
   box-sizing: border-box;
   padding: 4px 8px;
@@ -857,6 +857,20 @@ body {
   gap: 7px;
 }
 .q-connection-state { color: var(--warn); font-size: 9px; }
+.q-login-control { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 4px; }
+.q-login-button {
+  cursor: pointer;
+  color: var(--accent);
+  background: transparent;
+  border: 0;
+  padding: 2px 3px;
+  font: 10px/1.4 var(--mono);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.q-login-button:focus-visible { outline: 1px solid var(--accent); }
+.q-login-button:disabled { cursor: wait; opacity: .65; }
+.q-login-status { color: var(--tx-mut); font: 10px/1.4 var(--mono); }
 .q-connection[data-connection-state="ready"] { border-color: var(--accent); }
 .q-connection[data-connection-state="ready"] .q-connection-state { color: var(--accent); }
 .q-extra[data-sev="concern"] {

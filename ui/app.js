@@ -322,6 +322,25 @@
     }
   }
 
+  function patchResetCredits(row, credits) {
+    const badge = row.querySelector("span.q-reset-credits");
+    let panel = row.querySelector("details.q-reset-offers");
+    badge.hidden = !credits.label || !!credits.observed;
+    badge.textContent = credits.label || "";
+    badge.title = credits.hint;
+    if (!credits.observed) {
+      panel?.remove();
+      return;
+    }
+    if (!panel) {
+      panel = el("details", "q-reset-offers");
+      panel.append(el("summary", "q-reset-credits"), el("div", "q-model-names"));
+      badge.after(panel);
+    }
+    if (panel.firstChild.textContent !== credits.label) panel.firstChild.textContent = credits.label;
+    if (panel.lastChild.textContent !== credits.hint) panel.lastChild.textContent = credits.hint;
+  }
+
   function buildQuotaRow(provider) {
     const row = el("div", "q-row");
     row.dataset.provider = provider;
@@ -415,6 +434,75 @@
   // Antigravity usage via the running app's local service. Its desktop
   // session authentication stays on loopback; requests require a click.
   const agyFetch = { state: "idle", data: null, error: null, at: 0, finishedAt: 0 };
+  const loginRows = new WeakMap();
+  const loginControls = new Map();
+
+  function registeredProfile(key) {
+    const matches = (state.payload?.configured_connections || []).filter((p) => p.key === key);
+    return matches.length === 1 ? matches[0] : null;
+  }
+  const profileLogin = window.QhudProfileLogin.controller({
+    lookup: registeredProfile,
+    authenticate: (key) => window.__TAURI__.core.invoke("reauthenticate_profile", { key }),
+    async refresh(provider) {
+      // If a request started before sign-in, let it settle and then read
+      // the newly authenticated account. Only this provider is refreshed.
+      const prior = provider === "claude" ? claudeFetch.pending : codexFetch.pending;
+      if (prior) await prior;
+      return provider === "claude" ? refreshClaudeUsage() : fetchCodexWorkspaces();
+    },
+    changed: () => render(),
+  });
+
+  function renderLoginActions() {
+    const alive = new Set();
+    const t = providerHealth.strings(healthLocale);
+    for (const row of quotasEl.querySelectorAll(".q-row")) {
+      for (const bound of loginRows.get(row) || []) {
+        const p = registeredProfile(bound.key);
+        if (!window.QhudProfileLogin.sameProfile(p, bound) || alive.has(p.key)) continue;
+        const message = profileLogin.messageFor(p);
+        const canLogin = window.QhudProfileLogin.eligible(p) && !!window.__TAURI__?.core?.invoke;
+        if (!canLogin && !message) continue;
+        alive.add(p.key);
+        let control = loginControls.get(p.key);
+        if (!control) {
+          control = el("span", "q-login-control");
+          const button = el("button", "q-login-button");
+          button.type = "button";
+          const activate = (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            if (!button.disabled) void profileLogin.start(control.loginTarget);
+          };
+          button.addEventListener("pointerdown", (e) => { if (e.button === 0) activate(e); });
+          button.addEventListener("click", (e) => { if (e.detail === 0) activate(e); });
+          const status = el("span", "q-login-status");
+          status.setAttribute("role", "status");
+          control.append(button, status);
+          loginControls.set(p.key, control);
+        }
+        if (control.parentNode !== row) row.insertBefore(control, row.querySelector(".q-detail"));
+        control.loginTarget = p;
+        const [button, status] = control.children;
+        const label = ["wrong_scope", "wrong_account"].includes(p.state) ? t.signInTarget :
+          p.state === "login_required" ? t.signIn : t.signInAgain;
+        button.textContent = label;
+        button.setAttribute("aria-label", [providerHealth.NAMES[p.provider], p.email, t[p.scope], label].join(" · "));
+        button.title = t.loginTarget(p.email, t[p.scope]);
+        button.hidden = !canLogin || ["auth_waiting", "auth_refreshing", "auth_updated", "auth_usage_unavailable"].includes(message);
+        button.disabled = profileLogin.pending();
+        const feedback = t[message] || "";
+        if (feedback !== status.textContent) status.textContent = feedback;
+      }
+    }
+    for (const [key, control] of loginControls) {
+      if (!alive.has(key)) {
+        control.remove();
+        loginControls.delete(key);
+      }
+    }
+  }
 
   async function refreshAgyUsage() {
     if (agyFetch.state === "loading") return;
@@ -435,8 +523,10 @@
     render();
   }
 
-  async function refreshClaudeUsage() {
-    if (claudeFetch.state === "loading") return;
+  function refreshClaudeUsage() {
+    return claudeFetch.pending ??= fetchClaudeUsage().finally(() => { claudeFetch.pending = null; });
+  }
+  async function fetchClaudeUsage() {
     claudeFetch.state = "loading";
     claudeFetch.error = null;
     render();
@@ -470,6 +560,7 @@
       });
       logLabels("after-claude-refresh");
     }
+    return claudeFetch.state === "done" ? claudeFetch.data : null;
   }
   // Provider words are long and the strip is ~520px; shorten without
   // inventing meaning.
@@ -480,8 +571,10 @@
       .replace(/^default_/, "")
       .replace(/^claude_/, "");
 
-  async function fetchCodexWorkspaces() {
-    if (codexFetch.state === "loading") return;
+  function fetchCodexWorkspaces() {
+    return codexFetch.pending ??= readCodexWorkspaces().finally(() => { codexFetch.pending = null; });
+  }
+  async function readCodexWorkspaces() {
     codexFetch.state = "loading";
     codexFetch.error = null;
     render();
@@ -497,6 +590,7 @@
     }
     codexFetch.finishedAt = Date.now();
     render();
+    return codexFetch.state === "done" ? codexFetch.rows : null;
   }
 
   // A workspace's windows in the snapshot shape the row-override path
@@ -655,7 +749,9 @@
       if (seat) meta.push(seat.detail);
       meta.push(priceDetail);
       meta.push(resetCredits.detail);
-      for (const profile of identities.connectionsForAccount(state.payload?.configured_connections, "codex", w)) {
+      const profiles = identities.connectionsForAccount(state.payload?.configured_connections, "codex", w);
+      loginRows.set(row, profiles);
+      for (const profile of profiles) {
         meta.push(providerHealth.configuredConnectionDetail(profile, healthLocale));
       }
       if (meta.length) row.title = meta.join("\n");
@@ -694,7 +790,7 @@
   // nothing. Selecting was never broken on the tiles; it did not exist
   // where the operator was clicking.
   quotasEl.addEventListener("pointerdown", async (e) => {
-    if (e.target.closest?.(".q-model-guide")) return;
+    if (e.target.closest?.(".q-model-guide, .q-reset-offers, .q-login-control")) return;
     if (e.target.classList?.contains("q-refresh")) {
       const provider = e.target.closest(".q-row")?.dataset.provider;
       if (provider === "agy") refreshAgyUsage();
@@ -942,6 +1038,7 @@
         quotasEl.append(row);
       }
       row.dataset.connectionState = model.state;
+      loginRows.set(row, [profile]);
       row.querySelector(".q-acct").textContent = model.email;
       identifyRow(row, model.provider, profile.email, profile.scope);
       row.querySelector(".q-scope").textContent = [model.scope, seat?.workspaceName].filter(Boolean).join(" · ");
@@ -1076,7 +1173,9 @@
     }
   }
 
+  let nextResetExpiry = Infinity;
   function renderQuotas(quotas) {
+    nextResetExpiry = Infinity;
     quotasEl.hidden = false;
     const codexData = codexSource();
     const codexAccounts = quotas.filter((q) => q.provider === "codex").map((q) => q.account);
@@ -1152,6 +1251,7 @@
         || providerHealth.seatAnnotationView(annotation, healthLocale);
       const scopeEl = row.querySelector(".q-scope");
       const matchedProfiles = identities.connectionsForAccount(state.payload?.configured_connections, q.provider, q.account);
+      loginRows.set(row, matchedProfiles);
       const type = q.provider === "codex" ? activeWs?.plan_type || q.account?.org_type : q.account?.org_type;
       const kind = identities.accountScope(q.provider, type) || matchedProfiles[0]?.scope || (seat ? "team" : "");
       scopeEl.textContent = identities.organizationLabel(q.provider, q.account, activeWsName || seat?.workspaceName, healthLocale, kind);
@@ -1207,11 +1307,9 @@
 
       // Reset credits are a remaining count, separate from money and the
       // quota-window countdown. Display only; no consumption action exists.
-      const resetCredits = providerHealth.resetCreditsView(q, liveUsage, healthLocale);
-      const resetCreditsEl = row.querySelector(".q-reset-credits");
-      resetCreditsEl.hidden = resetCredits.count == null;
-      resetCreditsEl.textContent = resetCredits.label || "";
-      resetCreditsEl.title = resetCredits.hint;
+      const resetCredits = providerHealth.resetCreditsView(q, liveUsage, healthLocale, state.payload?.claude_reset_observations);
+      patchResetCredits(row, resetCredits);
+      if (resetCredits.nextExpiry) nextResetExpiry = Math.min(nextResetExpiry, resetCredits.nextExpiry);
 
       // Usage credits beyond the plan ("extra usage") — the last thing the
       // provider's own usage page shows that the windows do not. A live ⟳
@@ -1413,6 +1511,7 @@
       renderCodexExtra();
       renderPlaceholders(p.account_placeholders || []);
       renderConfiguredConnections(p.configured_connections || []);
+      renderLoginActions();
       renderProviderHealth();
       organizeAccountRows();
       // Positive confirmation that the strip painted. Absence of a JS error
@@ -1486,6 +1585,7 @@
   // 1s ticker: countdowns and elapsed badges advance between polls.
   setInterval(() => {
     if (!state.payload) return;
+    if (Date.now() >= nextResetExpiry) render();
     // Stale watchdog (cross-validation CV-2): if the backend stops
     // emitting, say so instead of freezing plausible-looking numbers.
     const stalled = state.receivedAt > 0 && Date.now() - state.receivedAt > 8000;

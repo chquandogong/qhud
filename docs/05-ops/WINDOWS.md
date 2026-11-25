@@ -12,7 +12,7 @@ Node.js and npm are not required.
 
 ## Install a release
 
-Download `qhud-v0.8.3-windows-x86_64.zip` and its checksum file from
+Download `qhud-v0.8.4-windows-x86_64.zip` and its checksum file from
 [GitHub Releases](https://github.com/chquandogong/qhud/releases). Extract the
 archive and run `qhud.exe` inside its versioned directory. Microsoft Edge
 WebView2 Runtime is required.
@@ -95,6 +95,8 @@ For another Codex or Claude login, register an isolated profile as described in 
 .\scripts\Connect-Account.ps1 -List
 .\scripts\Connect-Account.ps1 -Profile codex-work-personal
 ```
+
+Select **Sign in again** on an expired row or **Sign in to this account** on a mismatched isolated row. The official CLI opens when sign-in is required. In the browser, check the email and organization. Canceling or choosing a different identity preserves the existing connection.
 
 Model limits such as GPT-5.3-Codex-Spark 5H/7D are displayed when returned by the
 server. Long names wrap and the usage area scrolls when there are many entries.

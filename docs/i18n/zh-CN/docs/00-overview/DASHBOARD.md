@@ -9,7 +9,7 @@
 
 # 项目看板 — qhud
 
-> 状态：v0.8.3 · 更新：2026-11-24 · 负责人：chquandogong
+> 状态：v0.8.4 · 更新：2026-11-25 · 负责人：chquandogong
 > 公开项目快照。Git 历史、带标签发布及 workflow 运行是权威记录；下方带日期观察保留其原始验证范围。
 
 <!-- qhud:anchor -->
@@ -19,8 +19,9 @@
 
 | 项目 | 值 |
 | --- | --- |
-| 当前版本 | [v0.8.3](https://github.com/chquandogong/qhud/releases/tag/v0.8.3) · 单一月均价格、结算周期标记和 Google AI Pro 韩国定价。 |
+| 当前版本 | [v0.8.4](https://github.com/chquandogong/qhud/releases/tag/v0.8.4) · 在 Windows 上重新登录指定账户和工作区，以及 Claude 重置券的确认记录。 |
 | 发布内容 | Windows ZIP 包含连接额外配置的 PowerShell 脚本。同一版本还提供 Linux 归档和 CycloneDX SBOM。 |
+| Windows 账户重连验证 | **2026-11-25，发布前的本地构建。** 修复了原先登录了其他邮箱的 Claude 团队配置。小组件核对登记的成员和组织后，显示了最新的五小时和每周用量。PowerShell 测试覆盖了 Codex 与 Claude 邮箱不符、工作区不符及取消登录的情况。 |
 | 方案标签自动检查 | **v0.7.3 本地源码树，2026-10-01：**8/8 项 Node 测试通过。两项方案标签测试覆盖 `prolite` / `pro` / `promax` 映射、规范化、显式 override 优先级和未知值隐藏。这是使用合成输入的自动化证据，不是实时供应商或桌面显示验证。 |
 | 流水线依赖 | qmonster @ `6a21c44`；Linux 使用规范 Git 依赖，Windows 使用命令级补丁并恢复 lockfile。 |
 | 支持平台 | Ubuntu 24.04 / GNOME 与原生 Windows x64 / WebView2。原生 Windows 终端标签页观测仍在支持范围之外。 |

@@ -29,6 +29,8 @@ pub struct ConnectionStatus {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub org_id: Option<String>,
     pub has_row: bool,
+    /// An interactive repair is available for this exact registered login.
+    pub can_reauthenticate: bool,
     /// A dated manual observation; it never establishes authentication or quota.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub seat_annotation: Option<SeatAnnotation>,
@@ -86,6 +88,9 @@ fn status_from_metadata(
     if !known_wrong_account && !out.has_row {
         out.observed_plan = validated_observed_plan(profile, now_ms);
     }
+    out.can_reauthenticate = cfg!(windows)
+        && validated_observed_plan(profile, now_ms).is_none()
+        && crate::reauth::can_start(profile, out.state);
     out
 }
 
@@ -127,6 +132,24 @@ fn validated_seat_annotation(profile: &ConnectionProfile, now_ms: u64) -> Option
         .then(|| annotation.clone())
 }
 
+/// An app-server read can stand in for an interactive repair only for the
+/// requested workspace, even when personal and team share the same login.
+#[cfg(any(windows, test))]
+pub(crate) fn codex_profile_usage(
+    profile: &ConnectionProfile,
+    usage: &WorkspaceUsage,
+    now_ms: u64,
+) -> bool {
+    profile.provider == "codex"
+        && usage
+            .email
+            .as_deref()
+            .is_some_and(|email| same_email(email, &profile.email))
+        && codex_scope(usage.plan_type.as_deref()) == Some(profile.scope.as_str())
+        && validated_seat_annotation(profile, now_ms)
+            .is_none_or(|seat| seat.workspace_id == usage.account_id)
+}
+
 fn login_status_from_metadata(
     profile: &ConnectionProfile,
     now_ms: u64,
@@ -147,6 +170,7 @@ fn login_status_from_metadata(
         account_id: None,
         org_id: None,
         has_row: false,
+        can_reauthenticate: false,
         seat_annotation: None,
         observed_plan: None,
     };
@@ -235,7 +259,7 @@ fn login_status_from_metadata(
     out
 }
 
-fn same_directory(left: &Path, right: &Path) -> bool {
+pub(crate) fn same_directory(left: &Path, right: &Path) -> bool {
     let normalize = |path: &Path| {
         let path = std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
         let text = path.to_string_lossy().replace('\\', "/");
@@ -260,43 +284,53 @@ fn claude_config_file(directory: &Path) -> PathBuf {
     directory.join(".claude.json")
 }
 
+pub(crate) fn profile_directory(profile: &ConnectionProfile) -> PathBuf {
+    let home = crate::paths::home_dir().unwrap_or_default();
+    PathBuf::from(crate::registry::expand_tilde(
+        &profile.directory,
+        &home.to_string_lossy(),
+    ))
+}
+
+pub(crate) fn profile_status(
+    profile: &ConnectionProfile,
+    now_ms: u64,
+    quotas: &[ProviderQuota],
+    workspaces: &[WorkspaceUsage],
+) -> ConnectionStatus {
+    let directory = profile_directory(profile);
+    let (identity, auth) = match profile.provider.as_str() {
+        "claude" => {
+            let identity = provider_health::read_metadata(&claude_config_file(&directory))
+                .and_then(|body| crate::accounts::claude_account(&body));
+            let auth = provider_health::read_metadata(&directory.join(".credentials.json"))
+                .and_then(|body| provider_health::claude_auth_metadata(&body));
+            (identity, auth)
+        }
+        "codex" => {
+            let body = provider_health::read_metadata(&directory.join("auth.json"));
+            let identity = body
+                .as_ref()
+                .and_then(|s| crate::accounts::codex_account(s));
+            let auth = body
+                .as_ref()
+                .and_then(|s| provider_health::codex_auth_metadata(s));
+            (identity, auth)
+        }
+        _ => (None, None),
+    };
+    status_from_metadata(profile, now_ms, identity, auth, quotas, workspaces)
+}
+
 pub fn statuses(
     now_ms: u64,
     quotas: &[ProviderQuota],
     workspaces: &[WorkspaceUsage],
 ) -> Vec<ConnectionStatus> {
-    let registry = crate::registry::load();
-    let home = crate::paths::home_dir().unwrap_or_default();
-    registry
+    crate::registry::load()
         .profiles
         .iter()
-        .map(|profile| {
-            let directory = PathBuf::from(crate::registry::expand_tilde(
-                &profile.directory,
-                &home.to_string_lossy(),
-            ));
-            let (identity, auth) = match profile.provider.as_str() {
-                "claude" => {
-                    let identity = provider_health::read_metadata(&claude_config_file(&directory))
-                        .and_then(|body| crate::accounts::claude_account(&body));
-                    let auth = provider_health::read_metadata(&directory.join(".credentials.json"))
-                        .and_then(|body| provider_health::claude_auth_metadata(&body));
-                    (identity, auth)
-                }
-                "codex" => {
-                    let body = provider_health::read_metadata(&directory.join("auth.json"));
-                    let identity = body
-                        .as_ref()
-                        .and_then(|s| crate::accounts::codex_account(s));
-                    let auth = body
-                        .as_ref()
-                        .and_then(|s| provider_health::codex_auth_metadata(s));
-                    (identity, auth)
-                }
-                _ => (None, None),
-            };
-            status_from_metadata(profile, now_ms, identity, auth, quotas, workspaces)
-        })
+        .map(|profile| profile_status(profile, now_ms, quotas, workspaces))
         .collect()
 }
 
@@ -409,6 +443,18 @@ mod tests {
             verified_at_ms: 7,
         });
         profile
+    }
+
+    #[test]
+    fn codex_login_repair_accepts_only_the_observed_member_scope_and_pinned_workspace() {
+        let profile = annotated_profile();
+        let matches =
+            |email, plan, id| codex_profile_usage(&profile, &workspace(email, plan, id), 10);
+        assert!(matches(Some("person@example.com"), "team", "team-1"));
+        assert!(!matches(Some("other@example.com"), "team", "team-1"));
+        assert!(!matches(Some("person@example.com"), "team", "team-2"));
+        assert!(!matches(Some("person@example.com"), "free", "team-1"));
+        assert!(!matches(None, "team", "team-1"));
     }
 
     #[test]

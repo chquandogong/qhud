@@ -40,7 +40,7 @@ qhud는 여러 명령행 인터페이스에 흩어진 계정 할당량과 세션
 | **연결과 요금제** | 공급자 이름을 펼치면 연결 상태를 볼 수 있습니다. 이메일 아래에 개인·팀 사용량을 묶습니다. 확인된 Claude 개인 Free 요금제에 한도 정보가 없으면 ‘사용량 미제공’으로 표시합니다. 확인된 요금제를 누르면 지원 모델이 열립니다. |
 | **월 요금** | 칩에 월 정가 또는 연 결제의 월 환산액 하나를 표시합니다. `m`은 월 결제, `y`는 연 결제입니다. 한국어 화면에서 Google AI Pro 가격은 원화로 표시합니다. |
 | **세션 활동** | 지원하는 Linux 환경에서 상태, 컨텍스트 사용 정도, 모델, 추론 노력, 브랜치, 작업 디렉터리, 충돌 표시. |
-| **최신성** | 2초마다 로컬 관찰. 공급자 사용량 요청은 명시적으로 새로고침할 때 실행. |
+| **최신성** | 로컬 데이터를 2초마다 확인합니다. 새로고침하거나 계정을 다시 연결하면 공급자에 사용량을 요청합니다. |
 | **시스템 사용량과 정보** | CPU·메모리·지원되는 GPU·디스크·네트워크의 작은 기록 그래프. 항목을 선택하면 상세 정보가, About에는 빌드 버전·제작자 Chenghao Quan·[홈페이지](https://chquandogong.github.io/CHENGHAO-QUAN/)가 표시됩니다. |
 
 <!-- qhud:anchor -->
@@ -84,15 +84,15 @@ qhud는 여러 명령행 인터페이스에 흩어진 계정 할당량과 세션
 
 ## 설치
 
-**현재 릴리스: [v0.8.3](https://github.com/chquandogong/qhud/releases/tag/v0.8.3).**
+**현재 릴리스: [v0.8.4](https://github.com/chquandogong/qhud/releases/tag/v0.8.4).**
 두 플랫폼의 빌드/테스트 작업을 통과해야 공개합니다. 각 아카이브에는 SHA-256 파일이 있습니다.
 
 | 다운로드 | 검증 |
 | --- | --- |
-| [Windows x64 ZIP](https://github.com/chquandogong/qhud/releases/download/v0.8.3/qhud-v0.8.3-windows-x86_64.zip) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.8.3/qhud-v0.8.3-windows-x86_64.zip.sha256) |
-| [Linux x86_64 tarball](https://github.com/chquandogong/qhud/releases/download/v0.8.3/qhud-v0.8.3-linux-x86_64.tar.gz) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.8.3/qhud-v0.8.3-linux-x86_64.tar.gz.sha256) |
+| [Windows x64 ZIP](https://github.com/chquandogong/qhud/releases/download/v0.8.4/qhud-v0.8.4-windows-x86_64.zip) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.8.4/qhud-v0.8.4-windows-x86_64.zip.sha256) |
+| [Linux x86_64 tarball](https://github.com/chquandogong/qhud/releases/download/v0.8.4/qhud-v0.8.4-linux-x86_64.tar.gz) | [SHA-256](https://github.com/chquandogong/qhud/releases/download/v0.8.4/qhud-v0.8.4-linux-x86_64.tar.gz.sha256) |
 
-v0.8.3은 요금제마다 월 기준 금액 하나를 표시합니다. 팀 Standard 좌석은 월 결제면 **$25 m**, 연 결제면 월 환산액 **$20 y**로 표시합니다. 한국어 화면에서는 Google AI Pro 가격을 원화로 볼 수 있습니다. [v0.8.3 릴리스 노트](docs/i18n/ko/docs/05-ops/releases/v0.8.3.md)
+v0.8.4에서는 Windows 위젯의 Codex·Claude 계정 행에서 다시 로그인할 수 있습니다. Claude 초기화권은 해당 계정과 조직에서 마지막으로 확인한 수량도 표시합니다. [v0.8.4 릴리스 노트](docs/i18n/ko/docs/05-ops/releases/v0.8.4.md)
 
 현재 release workflow로 게시한 아카이브는 GitHub 빌드 출처 증명도 제공합니다. GitHub CLI에서 실제 다운로드한 아카이브 경로를 사용해 확인하세요. `.sha256` 파일이 아닌 아카이브 자체를 검증합니다.
 
@@ -111,9 +111,9 @@ ZIP을 풀고 버전 디렉터리 안의 `qhud.exe`를 실행합니다. Microsof
 아카이브와 SHA-256 파일을 같은 디렉터리에 다운로드한 뒤 실행합니다.
 
 ```sh
-sha256sum -c qhud-v0.8.3-linux-x86_64.tar.gz.sha256
-tar -xzf qhud-v0.8.3-linux-x86_64.tar.gz
-install -Dm755 qhud-v0.8.3-linux-x86_64/qhud "$HOME/.local/bin/qhud"
+sha256sum -c qhud-v0.8.4-linux-x86_64.tar.gz.sha256
+tar -xzf qhud-v0.8.4-linux-x86_64.tar.gz
+install -Dm755 qhud-v0.8.4-linux-x86_64/qhud "$HOME/.local/bin/qhud"
 "$HOME/.local/bin/qhud"
 ```
 
@@ -129,6 +129,7 @@ Ubuntu 24.04 런타임 의존성에는 `libwebkit2gtk-4.1-0`, `libgtk-3-0`, 트�
 - **확인:** 계정 행이나 세션 타일을 선택합니다. 게이지에 마우스를 올리면 정확한 초기화 시간을 볼 수 있습니다.
 - **사용량 조회.** 상단의 ⟳를 누르면 전체 공급자를, 공급자 이름 옆의 ⟳를 누르면 해당 공급자를 새로고침합니다.
 - **계정 추가.** Codex 또는 Claude 개인·팀 프로필을 등록한 뒤 ZIP에 동봉된 PowerShell 스크립트로 로그인하고 해당 공급자를 새로고침합니다. [Windows 프로필 설정](docs/i18n/ko/docs/GUIDE.md#windows-personal-and-team-profiles)
+- **Windows에서 다시 연결하기.** 인증이 만료된 행에서는 **다시 로그인**을, 격리된 프로필에 다른 계정이나 조직이 연결된 경우에는 **이 계정으로 로그인**을 누르세요. qhud는 이메일과 작업공간을 확인한 뒤 연결을 갱신하고 사용량을 조회합니다.
 - **미리 보기:** 트레이의 *Pin above windows*(창 위에 고정)를 사용합니다.
 - **종료:** 트레이에서 *Quit qhud*(qhud 종료)를 선택합니다.
 
@@ -150,7 +151,7 @@ qhud --peek
 
 저장된 값에는 경과 시간이 표시됩니다. 초기화까지 남은 시간은 카운트다운이며, 게이지에 마우스를 올리면 정확한 날짜와 시간을 볼 수 있습니다. 로컬 관찰은 공급자 API를 요청하지 않습니다. 명시적 새로고침은 공급자 사용량 엔드포인트를 위해 기존 액세스 토큰을 읽을 수 있지만, qhud 자체는 OAuth refresh grant를 실행하지 않습니다. Windows에서 Antigravity는 실행 중인 앱이나 CLI의 로컬 서비스를 통해 사용량을 제공합니다.
 
-초기화권은 조회 시점에 공급자가 알려 준 수동 초기화 가능 횟수입니다. 카운트다운은 현재 사용 기간이 자동으로 초기화되기까지 남은 시간입니다.
+초기화권은 수동으로 한도를 초기화할 수 있는 횟수입니다. 조회 응답에 수량이 없으면 Claude 사용량 페이지에서 마지막으로 확인해 기록한 값과 확인 시각을 볼 수 있습니다. 배지를 펼치면 종류별 개수와 만료 시각이 표시됩니다. 만료된 초기화권은 합계에서 빠집니다. 사용량 막대 옆의 카운트다운은 해당 한도가 자동으로 초기화될 때까지 남은 시간입니다.
 
 계정 설정은 저장소 밖에 보관합니다. [설정 및 데이터 가이드](docs/i18n/ko/docs/GUIDE.md#configuration-and-local-data)를 참조하세요.
 

@@ -13,6 +13,7 @@ mod frame_guard;
 mod paths;
 mod poll;
 mod provider_health;
+mod reauth;
 mod registry;
 mod system_metrics;
 mod usage_cache;
@@ -629,6 +630,7 @@ fn main() {
         }))
         .invoke_handler(tauri::generate_handler![
             ui_event,
+            reauth::reauthenticate_profile,
             fetch_codex_workspaces,
             fetch_claude_usage,
             fetch_agy_usage,

@@ -6,10 +6,10 @@
 
 # ARCHITECTURE — qhud
 
-> Status: living (updated through v0.8.3) · Date: 2026-11-24 · Owner:
+> Status: living (updated through v0.8.4) · Date: 2026-11-25 · Owner:
 > chquandogong
 > Companion to SPEC (what it must do) and DECISION_LOG (why it is built this
-> way). The module map is updated through v0.8.3; dated verification stays in
+> way). The module map is updated through v0.8.4; dated verification stays in
 > TEST_PLAN.
 
 ## 1. What qhud is, structurally
@@ -531,6 +531,10 @@ expanded detail or tooltip and does not become a visible badge.
 
 `ui/plan-prices.js` selects a single monthly list price. A matched Codex seat annotation or a recognized Claude Team `seatTier` selects the seat. The local account registry stores dated `billing_cycles` observations scoped by provider, email, workspace ID and plan. A matching observation selects monthly billing (`m`) or annual billing (`y`, the annual price divided by twelve). With no cycle evidence, the public monthly rate serves as a reference without a suffix. A monthly-only paid plan can show `m` from its published terms. An unspecified team seat shows a starting price and lists options in the details. A recognized special or discounted Claude seat with no published rate shows an unknown price. Google AI Pro uses Korean prices in the Korean UI and the US monthly equivalent for the same cycle to set the fill. `ui/price-chip.js` uses one blue fill at $200 per unit.
 
+The Windows webview sends a registered profile key to `reauthenticate_profile`. Rust resolves the target and checks eligibility. The helper runs the provider CLI in a fresh profile and validates its result before updating credentials. The widget refreshes the provider and confirms when the selected account and workspace returned fresh usage (D-023).
+
+The registry can store dated Claude reset offers in `claude_reset_observations`. A count from the matching provider snapshot, including zero, takes precedence. If it is absent, the widget can show the latest observation for the member email and organization, excluding expired offers from its total.
+
 ## 17. Registry and placeholders
 
 One operator-owned file holds display labels, workspace names and plans, the
@@ -623,6 +627,8 @@ per-module test counts. Dated whole-suite evidence lives in TEST_PLAN.
 | `src-tauri/src/claude_usage.rs` | Claude explicit refresh, per config directory |
 | `src-tauri/src/codex_usage.rs` | Workspace discovery, scope checks, duration labels and per-home app-server reads |
 | `src-tauri/src/connections.rs` | Profile matching, dated seat validation and local readiness |
+| `src-tauri/src/reauth.rs` | Windows sign-in eligibility and registered profile command |
+| `scripts/Connect-Account.ps1` | Official provider CLI sign-in and verification before activation |
 | `src-tauri/src/provider_health.rs` | Local health and bounded explicit-refresh diagnostics |
 | `src-tauri/src/agy_usage.rs` | agy loopback RPC and port discovery on both platforms |
 | `src-tauri/src/fetched_store.rs` | Refresh persistence, atomic writes, concurrent-write lock |
